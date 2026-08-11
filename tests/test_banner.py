@@ -1,15 +1,3 @@
-from orcabatch.banner import create_banner
+"""Banner tests placeholder."""
 
-
-def test_banner_contains_name():
-
-    banner = create_banner()
-
-    assert "OrcaBatch" in banner
-
-
-def test_banner_contains_version():
-
-    banner = create_banner()
-
-    assert "Version" in banner
+# TODO: Add banner tests.

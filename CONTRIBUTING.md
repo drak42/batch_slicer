@@ -1,0 +1,192 @@
+# Contributing to OrcaBatch
+
+First of all...
+
+Thank you for taking the time to contribute.
+
+OrcaBatch is built around one simple goal:
+
+> Remove friction from the 3D printing workflow through reliable, maintainable automation.
+
+Every contribution should move the project closer to that goal.
+
+---
+
+# Before You Begin
+
+Please read the following documents before making changes.
+
+1. README.md
+2. AGENTS.md
+3. docs/Vision.md
+4. docs/Architecture.md
+5. docs/CodingStandards.md
+
+These documents describe how the project is designed and how development decisions are made.
+
+---
+
+# Engineering Philosophy
+
+We believe:
+
+- Simple solutions are usually better.
+- Readable code is more valuable than clever code.
+- Architecture matters.
+- Documentation is part of the implementation.
+- Every feature must provide measurable value.
+
+If a feature does not solve a real problem, it probably should not exist.
+
+---
+
+# Development Workflow
+
+Every feature follows the same process.
+
+1. Identify the problem.
+2. Discuss the design.
+3. Implement the solution.
+4. Add tests.
+5. Update documentation.
+6. Submit for review.
+
+We intentionally avoid implementing large features without first discussing the architecture.
+
+---
+
+# Pull Requests
+
+Please keep pull requests focused.
+
+Small pull requests are much easier to review than large ones.
+
+Where practical:
+
+- One feature per pull request.
+- One bug fix per pull request.
+- One architectural change per pull request.
+
+Avoid combining unrelated changes.
+
+---
+
+# Coding Standards
+
+The project uses:
+
+- Python 3.12+
+- pathlib
+- dataclasses
+- type hints
+- logging
+- pytest
+
+Please avoid:
+
+- global variables
+- hidden dependencies
+- duplicated logic
+- circular imports
+- generic utility modules
+
+Every module should have one clearly defined responsibility.
+
+---
+
+# Documentation
+
+Documentation is considered part of the implementation.
+
+New modules should include:
+
+- module docstring
+- public API documentation
+- explanation of responsibilities
+
+When changing behaviour, update the relevant documentation.
+
+---
+
+# Testing
+
+New functionality should include appropriate unit tests.
+
+Bug fixes should include regression tests whenever practical.
+
+A feature is not complete until tests pass.
+
+---
+
+# Commit Messages
+
+Use Conventional Commits.
+
+Examples:
+
+feat(queue): add persistent queue
+
+fix(config): validate missing file
+
+docs(architecture): update startup sequence
+
+refactor(logging): simplify logger configuration
+
+test(queue): improve queue coverage
+
+---
+
+# Code Reviews
+
+Reviews should focus on improving the software.
+
+Question ideas.
+
+Never question people.
+
+Constructive discussion is encouraged.
+
+---
+
+# Project Values
+
+Every contributor should aim to leave the project in a better state than they found it.
+
+We value:
+
+- clarity
+- reliability
+- maintainability
+- consistency
+- professionalism
+
+over speed.
+
+---
+
+# Definition of Done
+
+A task is complete when:
+
+- Code builds successfully.
+- Tests pass.
+- Documentation has been updated.
+- Logging has been added where appropriate.
+- Type hints are complete.
+- The implementation follows the documented architecture.
+
+---
+
+# Engineering Motto
+
+> Build for today.
+
+> Design for tomorrow.
+
+> Every feature must earn its place.
+
+> Reliability is a feature.
+
+---
+
+Thank you for helping make OrcaBatch better.

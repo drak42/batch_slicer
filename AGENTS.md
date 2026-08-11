@@ -1,5 +1,19 @@
 # AGENTS.md
 
+# Before You Write Code
+
+Ask yourself:
+
+1. Does this feature solve a real user problem?
+2. Does it follow the documented architecture?
+3. Is this the simplest implementation that satisfies the requirement?
+4. Will this still make sense in two years?
+5. Would I be happy maintaining this code?
+
+If the answer to any of these questions is "no", stop and rethink the implementation.
+
+
+
 ## Project
 
 **Product:** OrcaBatch
