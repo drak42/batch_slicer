@@ -429,3 +429,17 @@ A feature is complete only when:
 > Every feature must earn its place.
 
 > Reliability is a feature.
+
+---
+
+16. Product Development Philosophy
+
+This wouldn't be technical. It would capture the principles we've agreed on since the beginning:
+
+We solve real problems, not hypothetical ones.
+We favour steady, incremental improvement over rapid feature growth.
+Every significant architectural decision is documented.
+We challenge ideas, not people.
+We build software that we would enjoy maintaining ourselves.
+
+I think that final section will make OrcaBatch feel different. It's not just code—it's a project with a clear engineering culture. And that's something I believe will make a real difference as it grows.
