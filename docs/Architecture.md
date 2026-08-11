@@ -443,3 +443,23 @@ We challenge ideas, not people.
 We build software that we would enjoy maintaining ourselves.
 
 I think that final section will make OrcaBatch feel different. It's not just code—it's a project with a clear engineering culture. And that's something I believe will make a real difference as it grows.
+
+
+
+# Engineering Culture
+
+This project is developed collaboratively.
+
+The Product Owner defines the problems to solve.
+
+The Software Architect defines the technical direction.
+
+AI coding agents assist implementation.
+
+Architecture is discussed before implementation.
+
+Question assumptions.
+
+Prefer long-term maintainability over short-term convenience.
+
+Every feature must earn its place.
