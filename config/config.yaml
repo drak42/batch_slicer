@@ -1,0 +1,9 @@
+orca:
+  executable: ""
+  datadir: ""
+
+paths:
+  incoming: "incoming"
+  output: "output"
+  logs: "logs"
+  data: "data"
