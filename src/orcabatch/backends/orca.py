@@ -177,6 +177,10 @@ class OrcaBackend:
     def _configured_path(self, key: str) -> Path:
         """Return one required configured Orca path."""
         value = self._config.get("orca", key)
-        if not isinstance(value, str) or not value:
-            raise ValueError(f"Configuration value orca.{key} must not be empty.")
-        return Path(value)
+        if isinstance(value, str):
+            if not value:
+                raise ValueError(f"Configuration value orca.{key} must not be empty.")
+            return Path(value)
+        if isinstance(value, Path):
+            return value
+        raise ValueError(f"Configuration value orca.{key} must be a path.")

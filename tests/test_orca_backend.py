@@ -94,6 +94,19 @@ def test_help_and_version_commands(backend: OrcaBackend) -> None:
     assert backend.build_help_command()[2].endswith("Orca Data")
 
 
+def test_configured_paths_accept_strings_and_paths() -> None:
+    """Configured string and Path values are returned as pathlib Paths."""
+    config = Mock(spec=Config)
+    config.get.side_effect = {
+        ("orca", "executable"): "orca",
+        ("orca", "datadir"): Path("orca-data"),
+    }.get
+    backend = OrcaBackend(config=config, logger=Mock())
+
+    assert backend._configured_path("executable") == Path("orca")
+    assert backend._configured_path("datadir") == Path("orca-data")
+
+
 def test_export_settings_command(backend: OrcaBackend, tmp_path: Path) -> None:
     """Export settings includes its output path as one argument."""
     output = tmp_path / "settings file.json"
