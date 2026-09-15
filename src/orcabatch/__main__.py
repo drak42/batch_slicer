@@ -1,7 +1,7 @@
-"""
-Module: __main__.py
-Purpose: Provide the package entry-point placeholder.
-Status: Placeholder
-"""
+"""Run OrcaBatch as a Python module."""
 
-# TODO: Implement the package entry point.
+from orcabatch.app import main
+
+
+if __name__ == "__main__":
+	raise SystemExit(main())
