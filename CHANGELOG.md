@@ -6,6 +6,11 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-20
+
+Dependable in everyday use: a setup check, tidy logs, and weekly testing
+against the newest slicers.
+
 ### Added
 
 - **`batchslicer doctor`** checks the configuration, folders and each
@@ -126,7 +131,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/drak42/batch_slicer/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/drak42/batch_slicer/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/drak42/batch_slicer/compare/v0.1.0-bootstrap...v0.2.0
 [0.1.0]: https://github.com/drak42/batch_slicer/releases/tag/v0.1.0-bootstrap

@@ -21,15 +21,15 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - Profiles: `--save-profile`, `--profile`, `--last`.
 - Slicing the same models for several printers in one run.
 
-## Next: 0.4.0, dependable in everyday use
+### 0.4.0 (2026-11-20): dependable in everyday use
 
-- [x] **Weekly test against the newest slicer releases** (OrcaSlicer, Creality
-  Print, Bambu Studio), so a slicer update that changes its command line is
-  noticed within a week.
-- [x] **`batchslicer doctor`**: checks configuration, folders and slicers, and
-  produces a report for bug reports.
-- [x] **Log rotation** so the log cannot grow without limit.
-- [x] **Single-file mode lists models in subfolders.**
+- Weekly test against the newest OrcaSlicer, Creality Print and Bambu Studio
+  releases.
+- `batchslicer doctor` for checking a setup and reporting problems.
+- Log rotation; single-file mode lists models in subfolders.
+
+## Next
+
 - [ ] **Bambu Studio preset selection** (needs a Bambu Studio settings folder to
   verify against).
 
