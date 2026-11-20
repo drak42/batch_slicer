@@ -242,6 +242,7 @@ class OrcaBackend:
             if enabled:
                 self._require_option(option)
                 command.extend((option, "1"))
+        command.extend(self._slicer.slice_arguments)
         for flag, enabled in (
             ("--enable-timelapse", enable_timelapse),
             ("--no-check", no_check),

@@ -394,6 +394,7 @@ def test_creality_print_commands_start_with_cli_mode(tmp_path: Path) -> None:
         "0",
         "--outputdir",
         str(tmp_path / "out"),
+        "--need-gcode-file",
         "--no-check",
         str(tmp_path / "model.stl"),
     )

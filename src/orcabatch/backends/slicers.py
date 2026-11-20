@@ -3,7 +3,8 @@
 OrcaSlicer, Bambu Studio and Creality Print share one command-line interface
 (Bambu Studio is the common ancestor), so a single backend drives all three.
 This module records the per-slicer differences: the configuration section that
-holds its paths, extra launch arguments, and CLI options it does not support.
+holds its paths, extra launch and slice arguments, CLI options it does not
+support, and whether its presets can be listed.
 It does not run slicers, check that configured paths exist, or prompt users.
 """
 
@@ -25,6 +26,18 @@ class SlicerDefinition:
 
     unsupported_options: frozenset[str] = frozenset()
 
+    slice_arguments: tuple[str, ...] = ()
+    """Arguments every slice command needs for this slicer to write G-code."""
+
+    app_config_name: str | None = None
+    """Settings file in the data directory used to list presets; None if preset
+    selection is not yet supported for this slicer."""
+
+    @property
+    def supports_preset_selection(self) -> bool:
+        """Return whether OrcaBatch can list and resolve this slicer's presets."""
+        return self.app_config_name is not None
+
     def supports(self, option: str) -> bool:
         """Return whether this slicer's CLI accepts ``option``."""
         return option not in self.unsupported_options
@@ -43,6 +56,9 @@ CREALITY_PRINT = SlicerDefinition(
     unsupported_options=frozenset(
         {"--orient", "--arrange", "--skip-modified-gcodes", "--export-settings"}
     ),
+    # Without this, Creality Print reports success but writes no G-code.
+    slice_arguments=("--need-gcode-file",),
+    app_config_name="Creality.conf",
 )
 
 SLICERS: tuple[SlicerDefinition, ...] = (ORCASLICER, CREALITY_PRINT, BAMBU_STUDIO)
