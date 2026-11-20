@@ -1,0 +1,33 @@
+# BatchSlicer configuration.
+#
+# BatchSlicer looks for its configuration in this order:
+#   1. the file given with --config PATH
+#   2. the file named by the BATCHSLICER_CONFIG environment variable
+#   3. config/config.yaml in the current folder (a project checkout)
+#   4. ~/.config/batchslicer/config.yaml (the usual place for an installed copy)
+#
+# Copy this file to one of those places (or run `batchslicer setup`) and fill
+# in the slicers you use. Paths may start with ~ for your home folder; relative
+# paths are relative to the folder this file is in.
+
+# Slicers. Set both paths for each slicer you want to use; leave the others
+# empty. executable is the slicer program (for example its AppImage); datadir is
+# the folder where the slicer keeps its settings and presets.
+orca:
+  executable: ""     # e.g. ~/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.4.0.AppImage
+  datadir: ""        # e.g. ~/.config/OrcaSlicer
+
+creality_print:
+  executable: ""     # e.g. ~/Apps/CrealityPrint-V7.3.0.6157-x86_64-Release.AppImage
+  datadir: ""        # e.g. ~/.config/Creality/Creality Print/7.3
+
+bambu_studio:
+  executable: ""     # e.g. ~/Apps/BambuStudio.AppImage
+  datadir: ""        # e.g. ~/.config/BambuStudio
+
+# Folders. All optional; remove or leave empty to use the defaults shown.
+paths:
+  incoming: ""       # models offered for slicing   (default ~/BatchSlicer/incoming)
+  output: ""         # default output folder        (default ~/BatchSlicer/output)
+  logs: ""           # log files                    (default ~/.local/state/batchslicer)
+  data: ""           # BatchSlicer's working cache  (default ~/.cache/batchslicer)

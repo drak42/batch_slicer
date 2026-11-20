@@ -222,3 +222,6 @@ __marimo__/
 /output/
 /logs/
 /data/
+
+# Local configuration (copy config/config.example.yaml)
+/config/config.yaml
