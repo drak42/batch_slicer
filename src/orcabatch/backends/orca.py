@@ -1,7 +1,10 @@
-"""Execute the OrcaSlicer command-line interface.
+"""Execute the OrcaSlicer-family command-line interface.
 
-This module constructs deterministic OrcaSlicer commands and runs them through
-one controlled subprocess boundary. Commands follow the OrcaSlicer CLI contract:
+This module constructs deterministic commands for OrcaSlicer and the slicers
+that share its CLI (Bambu Studio, Creality Print), and runs them through one
+controlled subprocess boundary. Per-slicer differences come from
+:mod:`orcabatch.backends.slicers`; options a slicer lacks are refused with a
+clear error rather than sent. Commands follow the OrcaSlicer CLI contract:
 ``orca-slicer [OPTIONS] [file.3mf/file.stl ...]``, where ``--slice`` selects a
 plate and input models are positional arguments. It does not discover
 installations, resolve presets, or interpret slicing profiles.
@@ -21,6 +24,7 @@ import tempfile
 import time
 from typing import TypeAlias
 
+from orcabatch.backends.slicers import ORCASLICER, SlicerDefinition
 from orcabatch.core.config import Config, get_config
 from orcabatch.core.logging import get_logger
 
@@ -50,21 +54,28 @@ class OrcaResult:
 
 
 class OrcaBackend:
-    """Provide controlled access to the configured OrcaSlicer executable."""
+    """Provide controlled access to one configured OrcaSlicer-family executable."""
 
     def __init__(
         self,
         *,
+        slicer: SlicerDefinition = ORCASLICER,
         config: Config | None = None,
         logger: logging.Logger | None = None,
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
     ) -> None:
-        """Create a backend using the shared configuration and logging services."""
+        """Create a backend for ``slicer`` using the shared configuration and logging services."""
         if timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be greater than zero.")
+        self._slicer = slicer
         self._config = config or get_config()
         self._logger = logger or get_logger()
         self._timeout_seconds = timeout_seconds
+
+    @property
+    def slicer(self) -> SlicerDefinition:
+        """Return the slicer this backend drives."""
+        return self._slicer
 
     def run(
         self,
@@ -91,7 +102,7 @@ class OrcaBackend:
             )
         except subprocess.TimeoutExpired as error:
             elapsed = time.perf_counter() - started_at
-            message = f"OrcaSlicer timed out after {self._timeout_seconds:g} seconds."
+            message = f"{self._slicer.display_name} timed out after {self._timeout_seconds:g} seconds."
             self._logger.error("%s Command: %s", message, executed_command)
             stderr = _as_text(error.stderr)
             return OrcaResult(
@@ -105,7 +116,9 @@ class OrcaBackend:
         except OSError as error:
             elapsed = time.perf_counter() - started_at
             message = str(error)
-            self._logger.error("OrcaSlicer command failed to start: %s", message)
+            self._logger.error(
+                "%s command failed to start: %s", self._slicer.display_name, message
+            )
             return OrcaResult(False, -1, "", message, elapsed, executed_command)
 
         elapsed = time.perf_counter() - started_at
@@ -119,13 +132,15 @@ class OrcaBackend:
         )
         if result.success:
             self._logger.info(
-                "OrcaSlicer command completed in %.1fs: %s",
+                "%s command completed in %.1fs: %s",
+                self._slicer.display_name,
                 result.elapsed,
                 result.command,
             )
         else:
             self._logger.error(
-                "OrcaSlicer command failed with exit code %s: %s\nstderr: %s",
+                "%s command failed with exit code %s: %s\nstderr: %s",
+                self._slicer.display_name,
                 result.exit_code,
                 result.command,
                 _tail(result.stderr) or "(empty)",
@@ -178,6 +193,7 @@ class OrcaBackend:
 
     def build_export_settings_command(self, output_path: PathLike) -> tuple[str, ...]:
         """Return the deterministic command used by :meth:`export_settings`."""
+        self._require_option("--export-settings")
         return self._base_command() + (
             "--export-settings",
             str(Path(output_path).absolute()),
@@ -204,6 +220,7 @@ class OrcaBackend:
         ``--skip-modified-gcodes``) are passed ``1`` when enabled. Settings and
         filament files are joined into the single semicolon-separated argument
         OrcaSlicer expects. The input model is the final positional argument.
+        Requesting an option the selected slicer lacks raises ``ValueError``.
         """
         if plate < 0:
             raise ValueError(f"Plate must be 0 (all plates) or a plate number: {plate}")
@@ -223,12 +240,14 @@ class OrcaBackend:
             ("--skip-modified-gcodes", skip_modified_gcodes),
         ):
             if enabled:
+                self._require_option(option)
                 command.extend((option, "1"))
         for flag, enabled in (
             ("--enable-timelapse", enable_timelapse),
             ("--no-check", no_check),
         ):
             if enabled:
+                self._require_option(flag)
                 command.append(flag)
         if load_settings:
             command.extend(("--load-settings", _join_file_list(load_settings)))
@@ -242,8 +261,13 @@ class OrcaBackend:
         with tempfile.TemporaryDirectory(prefix="orcabatch-") as scratch_directory:
             return self.run(command, working_directory=scratch_directory)
 
+    def _require_option(self, option: str) -> None:
+        """Raise ``ValueError`` if the selected slicer does not accept ``option``."""
+        if not self._slicer.supports(option):
+            raise ValueError(f"{self._slicer.display_name} does not support {option}.")
+
     def _base_command(self) -> tuple[str, ...]:
-        """Return the executable and configured OrcaSlicer data directory.
+        """Return the executable, its launch arguments, and the data directory.
 
         Paths are made absolute so commands behave the same from any working
         directory. A bare executable name is kept so it is still found on PATH.
@@ -252,18 +276,24 @@ class OrcaBackend:
         if len(executable.parts) > 1:
             executable = executable.absolute()
         datadir = self._configured_path("datadir").absolute()
-        return (str(executable), "--datadir", str(datadir))
+        return (
+            str(executable),
+            *self._slicer.launch_arguments,
+            "--datadir",
+            str(datadir),
+        )
 
     def _configured_path(self, key: str) -> Path:
-        """Return one required configured Orca path."""
-        value = self._config.get("orca", key)
+        """Return one required configured path for the selected slicer."""
+        section = self._slicer.key
+        value = self._config.get(section, key)
         if isinstance(value, str):
             if not value:
-                raise ValueError(f"Configuration value orca.{key} must not be empty.")
+                raise ValueError(f"Configuration value {section}.{key} must not be empty.")
             return Path(value)
         if isinstance(value, Path):
             return value
-        raise ValueError(f"Configuration value orca.{key} must be a path.")
+        raise ValueError(f"Configuration value {section}.{key} must be a path.")
 
 
 def _join_file_list(paths: Sequence[PathLike]) -> str:

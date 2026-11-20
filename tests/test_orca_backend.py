@@ -9,6 +9,12 @@ import subprocess
 import pytest
 
 from orcabatch.backends.orca import DEFAULT_TIMEOUT_SECONDS, OrcaBackend, OrcaResult
+from orcabatch.backends.slicers import (
+    BAMBU_STUDIO,
+    CREALITY_PRINT,
+    ORCASLICER,
+    SlicerDefinition,
+)
 from orcabatch.core.config import Config
 
 
@@ -348,42 +354,142 @@ def test_slice_executes_the_constructed_command(
     assert ("--orient", "1") == executed[-3:-1]
 
 
-_REAL_ORCA = os.environ.get("ORCABATCH_TEST_ORCA_EXECUTABLE")
+def _backend_for(slicer: SlicerDefinition, tmp_path: Path) -> OrcaBackend:
+    """Create a backend whose config only has a section for ``slicer``."""
+    config = Mock(spec=Config)
+    values = {
+        (slicer.key, "executable"): tmp_path / slicer.display_name,
+        (slicer.key, "datadir"): tmp_path / f"{slicer.display_name} data",
+    }
+    config.get.side_effect = lambda section, key: values[(section, key)]
+    return OrcaBackend(slicer=slicer, config=config, logger=Mock())
 
 
-@pytest.mark.skipif(
-    not _REAL_ORCA,
-    reason="Set ORCABATCH_TEST_ORCA_EXECUTABLE to check against a real OrcaSlicer.",
+def test_backend_reads_the_selected_slicers_config_section(tmp_path: Path) -> None:
+    """Each slicer's paths come from its own config section."""
+    command = _backend_for(BAMBU_STUDIO, tmp_path).build_help_command()
+
+    assert command == (
+        str(tmp_path / "Bambu Studio"),
+        "--datadir",
+        str(tmp_path / "Bambu Studio data"),
+        "--help",
+    )
+
+
+def test_creality_print_commands_start_with_cli_mode(tmp_path: Path) -> None:
+    """Creality Print gets --cli straight after the executable."""
+    command = _backend_for(CREALITY_PRINT, tmp_path).build_slice_command(
+        tmp_path / "model.stl",
+        tmp_path / "out",
+        no_check=True,
+    )
+
+    assert command == (
+        str(tmp_path / "Creality Print"),
+        "--cli",
+        "--datadir",
+        str(tmp_path / "Creality Print data"),
+        "--slice",
+        "0",
+        "--outputdir",
+        str(tmp_path / "out"),
+        "--no-check",
+        str(tmp_path / "model.stl"),
+    )
+
+
+@pytest.mark.parametrize(
+    "option",
+    [{"orient": True}, {"arrange": True}, {"skip_modified_gcodes": True}],
 )
-def test_every_option_used_is_accepted_by_real_orca(
+def test_unsupported_slice_options_are_refused(tmp_path: Path, option: dict[str, bool]) -> None:
+    """Options Creality Print lacks raise a clear error instead of a bad command."""
+    backend = _backend_for(CREALITY_PRINT, tmp_path)
+
+    with pytest.raises(ValueError, match="Creality Print does not support"):
+        backend.build_slice_command(tmp_path / "model.stl", tmp_path / "out", **option)
+
+
+def test_unsupported_export_settings_is_refused(tmp_path: Path) -> None:
+    """Creality Print has no --export-settings."""
+    with pytest.raises(ValueError, match="does not support --export-settings"):
+        _backend_for(CREALITY_PRINT, tmp_path).build_export_settings_command("out.json")
+
+
+def test_log_messages_name_the_selected_slicer(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Every option this backend emits appears in the real OrcaSlicer help text."""
+    """Failures are logged under the selected slicer's name."""
+    backend = _backend_for(BAMBU_STUDIO, tmp_path)
+    monkeypatch.setattr(
+        "orcabatch.backends.orca.subprocess.run",
+        Mock(return_value=Mock(returncode=1, stdout="", stderr="boom")),
+    )
+
+    backend.run(("bambu", "--help"))
+
+    assert backend._logger.error.call_args.args[1] == "Bambu Studio"
+
+
+_REAL_SLICERS = [
+    pytest.param(
+        slicer,
+        os.environ.get(variable),
+        id=slicer.key,
+        marks=pytest.mark.skipif(
+            not os.environ.get(variable),
+            reason=f"Set {variable} to check against a real {slicer.display_name}.",
+        ),
+    )
+    for slicer, variable in (
+        (ORCASLICER, "ORCABATCH_TEST_ORCA_EXECUTABLE"),
+        (CREALITY_PRINT, "ORCABATCH_TEST_CREALITY_EXECUTABLE"),
+        (BAMBU_STUDIO, "ORCABATCH_TEST_BAMBU_EXECUTABLE"),
+    )
+]
+
+
+@pytest.mark.parametrize(("slicer", "executable"), _REAL_SLICERS)
+def test_every_option_used_is_accepted_by_real_slicer(
+    slicer: SlicerDefinition,
+    executable: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Every option the backend can send this slicer appears in its real help text."""
     monkeypatch.chdir(tmp_path)
     config = Mock(spec=Config)
     values = {
-        ("orca", "executable"): _REAL_ORCA,
-        ("orca", "datadir"): tmp_path / "orca-data",
+        (slicer.key, "executable"): executable,
+        (slicer.key, "datadir"): tmp_path / "slicer-data",
     }
     config.get.side_effect = lambda section, key: values[(section, key)]
-    backend = OrcaBackend(config=config, logger=Mock(), timeout_seconds=120)
+    backend = OrcaBackend(slicer=slicer, config=config, logger=Mock(), timeout_seconds=120)
 
-    help_text = backend.help().stdout
+    help_result = backend.help()
+    help_text = help_result.stdout + help_result.stderr
     command = backend.build_slice_command(
         tmp_path / "model.stl",
         tmp_path / "out",
-        orient=True,
-        arrange=True,
+        orient=slicer.supports("--orient"),
+        arrange=slicer.supports("--arrange"),
         enable_timelapse=True,
-        skip_modified_gcodes=True,
+        skip_modified_gcodes=slicer.supports("--skip-modified-gcodes"),
         no_check=True,
         load_settings=[tmp_path / "machine.json"],
         load_filaments=[tmp_path / "filament.json"],
-    ) + backend.build_export_settings_command(tmp_path / "settings.json")
+    )
+    if slicer.supports("--export-settings"):
+        command += backend.build_export_settings_command(tmp_path / "settings.json")
 
     assert not (tmp_path / "result.json").exists()
-    options = {argument for argument in command if argument.startswith("--")}
     assert "--slice option" in help_text
+    options = {
+        argument
+        for argument in command
+        if argument.startswith("--") and argument not in slicer.launch_arguments
+    }
     for option in options:
         assert f" {option} " in help_text or f" {option}\n" in help_text, option
