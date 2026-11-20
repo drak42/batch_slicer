@@ -118,6 +118,25 @@ A feature is not complete until tests pass.
 
 ---
 
+# Releasing
+
+1. Make sure `main` is green on GitHub Actions.
+2. Set the new version in `src/batchslicer/version.py` (`__version__`); it is
+   the only place the number is written.
+3. In `CHANGELOG.md`, move the entries under `[Unreleased]` into a new
+   `## [X.Y.Z] - YYYY-MM-DD` section and update the comparison links at the
+   bottom. A test checks that the current version has a section.
+4. Commit (`chore(release): X.Y.Z`) and merge to `main`.
+5. Tag and push: `git tag -a vX.Y.Z -m "BatchSlicer X.Y.Z"` then
+   `git push origin vX.Y.Z`.
+
+Pushing the tag runs `.github/workflows/release.yml`: it checks that the tag
+matches the version, runs the full checks, builds the package, and publishes a
+GitHub release with the wheel and source archive attached and that version's
+changelog section as the release notes.
+
+---
+
 # Commit Messages
 
 Use Conventional Commits.

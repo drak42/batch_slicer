@@ -101,20 +101,39 @@ automatically when OrcaSlicer is updated. This takes well under a second.
 
 ## Installation
 
-From the project folder:
+### From a release (recommended)
+
+Download the `.whl` file from the
+[latest release](https://github.com/drak42/batch_slicer/releases) and install
+it with [pipx](https://pipx.pypa.io/), which keeps BatchSlicer in its own
+environment and puts the `batchslicer` command on your PATH:
+
+```bash
+pipx install ./batchslicer-0.2.0-py3-none-any.whl
+batchslicer --version
+```
+
+(`python3 -m pip install --user ./batchslicer-0.2.0-py3-none-any.whl` works too.)
+To upgrade, install the newer file with `pipx install --force`.
+
+### From source (for development)
+
+From a copy of this repository:
 
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
 ```
 
-This creates a private Python environment in `.venv` and installs BatchSlicer
-into it, along with the `batchslicer` command and the test tools.
+This installs BatchSlicer into `.venv` together with the test and lint tools;
+run it as `.venv/bin/batchslicer`.
 
-Then let BatchSlicer find your slicers and create its configuration:
+### First run
+
+Let BatchSlicer find your slicers and create its configuration:
 
 ```bash
-.venv/bin/batchslicer setup
+batchslicer setup
 ```
 
 ## Configuration
