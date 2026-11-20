@@ -1,7 +1,7 @@
-"""Tests for the OrcaBatch banner service."""
+"""Tests for the BatchSlicer banner service."""
 
-from orcabatch.banner import get_banner, get_separator
-from orcabatch.version import get_version, get_version_string
+from batchslicer.banner import get_banner, get_separator
+from batchslicer.version import get_version, get_version_string
 
 
 def test_get_separator_returns_requested_width() -> None:

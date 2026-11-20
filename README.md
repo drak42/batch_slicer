@@ -1,9 +1,9 @@
 # batch_slicer
 STL Batch Slicer
 
-OrcaBatch
+BatchSlicer
 
-OrcaBatch exists to remove friction from the entire 3D printing workflow through reliable, maintainable, and thoughtfully engineered automation.
+BatchSlicer exists to remove friction from the entire 3D printing workflow through reliable, maintainable, and thoughtfully engineered automation.
 
 Its purpose is not simply to batch slice STL files.
 

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from orcabatch.backends.slicers import (
+from batchslicer.backends.slicers import (
     BAMBU_STUDIO,
     CREALITY_PRINT,
     ORCASLICER,
@@ -12,7 +12,7 @@ from orcabatch.backends.slicers import (
     get_slicer,
     is_configured,
 )
-from orcabatch.core.config import Config
+from batchslicer.core.config import Config
 
 
 def test_all_three_slicers_are_offered_in_order() -> None:

@@ -1,4 +1,4 @@
-"""Generate the OrcaBatch startup banner from canonical version metadata.
+"""Generate the BatchSlicer startup banner from canonical version metadata.
 
 This module formats display text only. It does not print, log, inspect the
 terminal, or provide styling.
@@ -13,7 +13,7 @@ def get_separator(width: int = 60) -> str:
 
 
 def get_banner() -> str:
-    """Return the formatted OrcaBatch startup banner with a trailing newline."""
+    """Return the formatted BatchSlicer startup banner with a trailing newline."""
     current_version = get_version()
     separator = get_separator()
 

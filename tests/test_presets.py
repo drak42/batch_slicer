@@ -8,12 +8,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from orcabatch.backends.orca import OrcaBackend
-from orcabatch.backends.presets import PresetError, PresetLibrary
-from orcabatch.backends.profiles import find_system_profiles
-from orcabatch.backends.slicers import CREALITY_PRINT, ORCASLICER, SlicerDefinition
-from orcabatch.core.config import Config
-from orcabatch.domain.presets import Preset, PresetKind, PresetSelection
+from batchslicer.backends.orca import OrcaBackend
+from batchslicer.backends.presets import PresetError, PresetLibrary
+from batchslicer.backends.profiles import find_system_profiles
+from batchslicer.backends.slicers import CREALITY_PRINT, ORCASLICER, SlicerDefinition
+from batchslicer.core.config import Config
+from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 
 
 K2 = "Creality K2 Plus 0.4 nozzle"
@@ -237,8 +237,8 @@ def test_unreadable_settings_file_is_reported(tmp_path: Path) -> None:
 
 def _real_slicer(slicer: SlicerDefinition, prefix: str) -> list[object]:
     """Return test parameters for a real slicer configured by environment variables."""
-    executable = os.environ.get(f"ORCABATCH_TEST_{prefix}_EXECUTABLE")
-    datadir = os.environ.get(f"ORCABATCH_TEST_{prefix}_DATADIR")
+    executable = os.environ.get(f"BATCHSLICER_TEST_{prefix}_EXECUTABLE")
+    datadir = os.environ.get(f"BATCHSLICER_TEST_{prefix}_DATADIR")
     return [
         pytest.param(
             slicer,
@@ -249,7 +249,7 @@ def _real_slicer(slicer: SlicerDefinition, prefix: str) -> list[object]:
             marks=pytest.mark.skipif(
                 not (executable and datadir),
                 reason=(
-                    f"Set ORCABATCH_TEST_{prefix}_EXECUTABLE and ORCABATCH_TEST_{prefix}_DATADIR "
+                    f"Set BATCHSLICER_TEST_{prefix}_EXECUTABLE and BATCHSLICER_TEST_{prefix}_DATADIR "
                     f"to slice with real {slicer.display_name} presets."
                 ),
             ),

@@ -1,10 +1,10 @@
-"""Tests for the OrcaBatch configuration service."""
+"""Tests for the BatchSlicer configuration service."""
 
 from pathlib import Path
 
 import pytest
 
-from orcabatch.core.config import Config, get_config
+from batchslicer.core.config import Config, get_config
 
 
 def test_configuration_file_loads_successfully(tmp_path: Path) -> None:

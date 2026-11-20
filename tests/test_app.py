@@ -1,4 +1,4 @@
-"""Tests for the OrcaBatch application bootstrap."""
+"""Tests for the BatchSlicer application bootstrap."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -6,11 +6,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from orcabatch import app
-from orcabatch.backends.slicers import BAMBU_STUDIO, CREALITY_PRINT, SLICERS
-from orcabatch.domain.presets import Preset, PresetKind, PresetSelection
-from orcabatch.cli.file_prompt import SliceInput
-from orcabatch.services.slicing import BatchOutcome, SliceOutcome
+from batchslicer import app
+from batchslicer.backends.slicers import BAMBU_STUDIO, CREALITY_PRINT, SLICERS
+from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
+from batchslicer.cli.file_prompt import SliceInput
+from batchslicer.services.slicing import BatchOutcome, SliceOutcome
 
 
 def _single_input() -> SliceInput:
@@ -31,7 +31,7 @@ def _outcome(
         message=message,
         elapsed=1.25,
     )
-from orcabatch.cli.slicer_prompt import SlicerSelectionError
+from batchslicer.cli.slicer_prompt import SlicerSelectionError
 
 
 @dataclass
@@ -78,7 +78,7 @@ def test_successful_startup_returns_zero_and_reports_ready(
     assert result == 0
     output = capsys.readouterr().out
     assert app.get_banner() in output
-    assert "OrcaBatch ready. Slicer: Bambu Studio." in output
+    assert "BatchSlicer ready. Slicer: Bambu Studio." in output
 
 
 def test_environment_failure_returns_nonzero_without_ready_message(
@@ -91,7 +91,7 @@ def test_environment_failure_returns_nonzero_without_ready_message(
     result = app.main()
 
     assert result != 0
-    assert "OrcaBatch ready." not in capsys.readouterr().out
+    assert "BatchSlicer ready." not in capsys.readouterr().out
 
 
 def test_configuration_failure_is_handled_cleanly(
@@ -104,7 +104,7 @@ def test_configuration_failure_is_handled_cleanly(
     result = app.main()
 
     assert result != 0
-    assert "OrcaBatch startup failed: missing config" in capsys.readouterr().out
+    assert "BatchSlicer startup failed: missing config" in capsys.readouterr().out
 
 
 def test_startup_uses_services_in_order(
@@ -167,8 +167,8 @@ def test_no_slicer_selected_stops_startup(
     assert app.main() == 1
     assert not environment_service.called
     output = capsys.readouterr().out
-    assert "OrcaBatch startup failed: No slicer selected." in output
-    assert "OrcaBatch ready." not in output
+    assert "BatchSlicer startup failed: No slicer selected." in output
+    assert "BatchSlicer ready." not in output
 
 
 def test_environment_failure_lists_failed_checks(
@@ -257,8 +257,8 @@ def test_cancelled_preset_selection_stops_startup(
 
     assert app.main() == 1
     output = capsys.readouterr().out
-    assert "OrcaBatch startup failed: No filament selected." in output
-    assert "OrcaBatch ready." not in output
+    assert "BatchSlicer startup failed: No filament selected." in output
+    assert "BatchSlicer ready." not in output
 
 
 def test_model_is_chosen_from_incoming_and_sliced_into_output(

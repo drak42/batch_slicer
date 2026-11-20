@@ -1,4 +1,4 @@
-"""Tests for the shared OrcaBatch logging service."""
+"""Tests for the shared BatchSlicer logging service."""
 
 import logging
 from collections.abc import Generator
@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from orcabatch.core.logging import configure_logging, get_logger
+from batchslicer.core.logging import configure_logging, get_logger
 
 
 @pytest.fixture(autouse=True)
-def reset_orcabatch_logger() -> Generator[None, None, None]:
+def reset_batchslicer_logger() -> Generator[None, None, None]:
     """Remove service handlers so each test starts with a clean logger."""
-    logger = logging.getLogger("orcabatch")
+    logger = logging.getLogger("batchslicer")
     _remove_service_handlers(logger)
     yield
     _remove_service_handlers(logger)
@@ -22,12 +22,12 @@ def test_configure_logging_creates_the_default_log_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Default configuration creates logs/orcabatch.log."""
+    """Default configuration creates logs/batchslicer.log."""
     monkeypatch.chdir(tmp_path)
 
     configure_logging()
 
-    assert (tmp_path / "logs" / "orcabatch.log").is_file()
+    assert (tmp_path / "logs" / "batchslicer.log").is_file()
 
 
 def test_configure_logging_supports_a_custom_level(tmp_path: Path) -> None:
@@ -46,7 +46,7 @@ def test_configure_logging_writes_to_the_log_file(tmp_path: Path) -> None:
     logger.info("Logging service configured.")
     _flush_handlers(logger)
 
-    assert "Logging service configured." in (log_directory / "orcabatch.log").read_text()
+    assert "Logging service configured." in (log_directory / "batchslicer.log").read_text()
 
 
 def test_configure_logging_is_idempotent(tmp_path: Path) -> None:
@@ -74,7 +74,7 @@ def _flush_handlers(logger: logging.Logger) -> None:
 def _remove_service_handlers(logger: logging.Logger) -> None:
     """Detach and close file handlers created by the logging service."""
     for handler in logger.handlers[:]:
-        if isinstance(handler, logging.FileHandler) and handler.get_name() == "orcabatch-file":
+        if isinstance(handler, logging.FileHandler) and handler.get_name() == "batchslicer-file":
             logger.removeHandler(handler)
             handler.close()
 
@@ -84,5 +84,5 @@ def _service_handlers(logger: logging.Logger) -> list[logging.FileHandler]:
     return [
         handler
         for handler in logger.handlers
-        if isinstance(handler, logging.FileHandler) and handler.get_name() == "orcabatch-file"
+        if isinstance(handler, logging.FileHandler) and handler.get_name() == "batchslicer-file"
     ]

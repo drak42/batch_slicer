@@ -8,9 +8,9 @@ This module only handles the conversation; it does not read preset files.
 from collections.abc import Callable, Sequence
 from typing import Protocol
 
-from orcabatch.cli.menu import choose
-from orcabatch.cli.slicer_prompt import SlicerSelectionError
-from orcabatch.domain.presets import Preset, PresetKind, PresetSelection
+from batchslicer.cli.menu import choose
+from batchslicer.cli.slicer_prompt import SlicerSelectionError
+from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 
 
 class PresetSource(Protocol):

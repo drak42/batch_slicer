@@ -1,10 +1,10 @@
-# Contributing to OrcaBatch
+# Contributing to BatchSlicer
 
 First of all...
 
 Thank you for taking the time to contribute.
 
-OrcaBatch is built around one simple goal:
+BatchSlicer is built around one simple goal:
 
 > Remove friction from the 3D printing workflow through reliable, maintainable automation.
 
@@ -189,4 +189,4 @@ A task is complete when:
 
 ---
 
-Thank you for helping make OrcaBatch better.
+Thank you for helping make BatchSlicer better.

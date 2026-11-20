@@ -1,4 +1,4 @@
-"""Describe the slicers OrcaBatch can drive and which of them are configured.
+"""Describe the slicers BatchSlicer can drive and which of them are configured.
 
 OrcaSlicer, Bambu Studio and Creality Print share one command-line interface
 (Bambu Studio is the common ancestor), so a single backend drives all three.
@@ -10,7 +10,7 @@ It does not run slicers, check that configured paths exist, or prompt users.
 
 from dataclasses import dataclass
 
-from orcabatch.core.config import Config
+from batchslicer.core.config import Config
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,7 +35,7 @@ class SlicerDefinition:
 
     @property
     def supports_preset_selection(self) -> bool:
-        """Return whether OrcaBatch can list and resolve this slicer's presets."""
+        """Return whether BatchSlicer can list and resolve this slicer's presets."""
         return self.app_config_name is not None
 
     def supports(self, option: str) -> bool:

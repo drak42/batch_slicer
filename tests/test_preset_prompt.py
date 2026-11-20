@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from orcabatch.cli.preset_prompt import choose_preset, prompt_for_presets
-from orcabatch.cli.slicer_prompt import SlicerSelectionError
-from orcabatch.domain.presets import Preset, PresetKind
+from batchslicer.cli.preset_prompt import choose_preset, prompt_for_presets
+from batchslicer.cli.slicer_prompt import SlicerSelectionError
+from batchslicer.domain.presets import Preset, PresetKind
 
 
 def _answers(*values: str) -> Callable[[str], str]:

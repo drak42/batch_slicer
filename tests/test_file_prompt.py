@@ -5,13 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from orcabatch.cli.file_prompt import (
+from batchslicer.cli.file_prompt import (
     find_models,
     prompt_for_folder,
     prompt_for_input,
     prompt_for_model,
 )
-from orcabatch.cli.slicer_prompt import SlicerSelectionError
+from batchslicer.cli.slicer_prompt import SlicerSelectionError
 
 
 def _answers(*values: str) -> Callable[[str], str]:

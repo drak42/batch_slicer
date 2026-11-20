@@ -8,14 +8,14 @@ import subprocess
 
 import pytest
 
-from orcabatch.backends.orca import DEFAULT_TIMEOUT_SECONDS, OrcaBackend, OrcaResult
-from orcabatch.backends.slicers import (
+from batchslicer.backends.orca import DEFAULT_TIMEOUT_SECONDS, OrcaBackend, OrcaResult
+from batchslicer.backends.slicers import (
     BAMBU_STUDIO,
     CREALITY_PRINT,
     ORCASLICER,
     SlicerDefinition,
 )
-from orcabatch.core.config import Config
+from batchslicer.core.config import Config
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def test_run_captures_success_and_exact_command(
 ) -> None:
     """Successful subprocess output and command details are preserved."""
     run = Mock(return_value=Mock(returncode=0, stdout="help", stderr=""))
-    monkeypatch.setattr("orcabatch.backends.orca.subprocess.run", run)
+    monkeypatch.setattr("batchslicer.backends.orca.subprocess.run", run)
 
     result = backend.run(("orca", "--help"))
 
@@ -70,7 +70,7 @@ def test_run_captures_nonzero_exit_and_stderr(
 ) -> None:
     """Non-zero Orca exits produce unsuccessful results without raising."""
     monkeypatch.setattr(
-        "orcabatch.backends.orca.subprocess.run",
+        "batchslicer.backends.orca.subprocess.run",
         Mock(return_value=Mock(returncode=2, stdout="partial", stderr="bad input")),
     )
 
@@ -88,7 +88,7 @@ def test_run_logs_stderr_when_command_fails(
 ) -> None:
     """Failed commands log Orca's error output so failures can be diagnosed."""
     monkeypatch.setattr(
-        "orcabatch.backends.orca.subprocess.run",
+        "batchslicer.backends.orca.subprocess.run",
         Mock(return_value=Mock(returncode=2, stdout="", stderr="no printer preset")),
     )
 
@@ -111,7 +111,7 @@ def test_run_stops_commands_that_exceed_the_timeout(
             cmd=("orca",), timeout=5, output=b"partial", stderr=b"still slicing"
         )
     )
-    monkeypatch.setattr("orcabatch.backends.orca.subprocess.run", run)
+    monkeypatch.setattr("batchslicer.backends.orca.subprocess.run", run)
 
     result = backend.run(("orca", "--slice", "0", "part.stl"))
 
@@ -136,7 +136,7 @@ def test_run_handles_process_start_failure(
 ) -> None:
     """Expected process start failures become unsuccessful results."""
     monkeypatch.setattr(
-        "orcabatch.backends.orca.subprocess.run",
+        "batchslicer.backends.orca.subprocess.run",
         Mock(side_effect=FileNotFoundError("orca missing")),
     )
 
@@ -193,7 +193,7 @@ def test_help_and_export_run_outside_the_working_directory(
         (directory / "result.json").write_text("{}", encoding="utf-8")
         return Mock(returncode=0, stdout="", stderr="")
 
-    monkeypatch.setattr("orcabatch.backends.orca.subprocess.run", fake_run)
+    monkeypatch.setattr("batchslicer.backends.orca.subprocess.run", fake_run)
 
     backend.help()
     backend.export_settings("settings.json")
@@ -212,7 +212,7 @@ def test_slice_keeps_working_directory(
 ) -> None:
     """Slicing writes result.json to --outputdir, so it runs from the current directory."""
     run = Mock(return_value=Mock(returncode=0, stdout="", stderr=""))
-    monkeypatch.setattr("orcabatch.backends.orca.subprocess.run", run)
+    monkeypatch.setattr("batchslicer.backends.orca.subprocess.run", run)
 
     backend.slice(tmp_path / "model.stl", tmp_path / "out")
 
@@ -425,7 +425,7 @@ def test_log_messages_name_the_selected_slicer(
     """Failures are logged under the selected slicer's name."""
     backend = _backend_for(BAMBU_STUDIO, tmp_path)
     monkeypatch.setattr(
-        "orcabatch.backends.orca.subprocess.run",
+        "batchslicer.backends.orca.subprocess.run",
         Mock(return_value=Mock(returncode=1, stdout="", stderr="boom")),
     )
 
@@ -445,9 +445,9 @@ _REAL_SLICERS = [
         ),
     )
     for slicer, variable in (
-        (ORCASLICER, "ORCABATCH_TEST_ORCA_EXECUTABLE"),
-        (CREALITY_PRINT, "ORCABATCH_TEST_CREALITY_EXECUTABLE"),
-        (BAMBU_STUDIO, "ORCABATCH_TEST_BAMBU_EXECUTABLE"),
+        (ORCASLICER, "BATCHSLICER_TEST_ORCA_EXECUTABLE"),
+        (CREALITY_PRINT, "BATCHSLICER_TEST_CREALITY_EXECUTABLE"),
+        (BAMBU_STUDIO, "BATCHSLICER_TEST_BAMBU_EXECUTABLE"),
     )
 ]
 

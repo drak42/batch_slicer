@@ -7,9 +7,9 @@ from unittest.mock import Mock
 
 import pytest
 
-from orcabatch.backends.orca import OrcaResult
-from orcabatch.domain.presets import Preset, PresetKind, PresetSelection
-from orcabatch.services.slicing import SlicingService
+from batchslicer.backends.orca import OrcaResult
+from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
+from batchslicer.services.slicing import SlicingService
 
 
 NOW = datetime(2026, 11, 20, 14, 45, 30)

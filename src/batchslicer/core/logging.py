@@ -1,4 +1,4 @@
-"""Configure and provide the shared OrcaBatch application logger.
+"""Configure and provide the shared BatchSlicer application logger.
 
 This module owns the application's file logger. It does not configure console
 output, rotate logs, parse configuration files, or format structured logs.
@@ -8,9 +8,9 @@ import logging
 from pathlib import Path
 
 
-_LOGGER_NAME = "orcabatch"
-_FILE_HANDLER_NAME = "orcabatch-file"
-_LOG_FILE_NAME = "orcabatch.log"
+_LOGGER_NAME = "batchslicer"
+_FILE_HANDLER_NAME = "batchslicer-file"
+_LOG_FILE_NAME = "batchslicer.log"
 _LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
 
@@ -19,9 +19,9 @@ def configure_logging(
     log_directory: Path = Path("logs"),
     level: int | str = logging.INFO,
 ) -> logging.Logger:
-    """Configure and return the shared OrcaBatch file logger.
+    """Configure and return the shared BatchSlicer file logger.
 
-    Repeated calls retain one OrcaBatch file handler and update its log level.
+    Repeated calls retain one BatchSlicer file handler and update its log level.
     """
     log_directory.mkdir(parents=True, exist_ok=True)
     log_file = log_directory / _LOG_FILE_NAME
@@ -46,7 +46,7 @@ def configure_logging(
 
 
 def get_logger() -> logging.Logger:
-    """Return the configured OrcaBatch application logger."""
+    """Return the configured BatchSlicer application logger."""
     logger = logging.getLogger(_LOGGER_NAME)
     if _get_file_handler(logger) is None:
         return configure_logging()

@@ -10,8 +10,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from orcabatch.cli.menu import choose, confirm
-from orcabatch.cli.slicer_prompt import SlicerSelectionError
+from batchslicer.cli.menu import choose, confirm
+from batchslicer.cli.slicer_prompt import SlicerSelectionError
 
 
 MODEL_SUFFIXES = frozenset({".stl", ".3mf", ".obj"})

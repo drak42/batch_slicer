@@ -1,4 +1,4 @@
-"""Tests for the OrcaBatch environment verification service."""
+"""Tests for the BatchSlicer environment verification service."""
 
 import logging
 from collections.abc import Generator
@@ -6,21 +6,21 @@ from pathlib import Path
 
 import pytest
 
-from orcabatch.backends.slicers import (
+from batchslicer.backends.slicers import (
     BAMBU_STUDIO,
     CREALITY_PRINT,
     ORCASLICER,
     SlicerDefinition,
 )
-from orcabatch.core.config import Config
-from orcabatch.core.environment import CheckResult, EnvironmentService
-from orcabatch.core.logging import configure_logging
+from batchslicer.core.config import Config
+from batchslicer.core.environment import CheckResult, EnvironmentService
+from batchslicer.core.logging import configure_logging
 
 
 @pytest.fixture(autouse=True)
-def reset_orcabatch_logger() -> Generator[None, None, None]:
+def reset_batchslicer_logger() -> Generator[None, None, None]:
     """Remove service handlers so each test starts with a clean logger."""
-    logger = logging.getLogger("orcabatch")
+    logger = logging.getLogger("batchslicer")
     _remove_service_handlers(logger)
     yield
     _remove_service_handlers(logger)
@@ -303,6 +303,6 @@ def _result_by_name(results: list[CheckResult], name: str) -> CheckResult:
 def _remove_service_handlers(logger: logging.Logger) -> None:
     """Detach and close file handlers created by the logging service."""
     for handler in logger.handlers[:]:
-        if isinstance(handler, logging.FileHandler) and handler.get_name() == "orcabatch-file":
+        if isinstance(handler, logging.FileHandler) and handler.get_name() == "batchslicer-file":
             logger.removeHandler(handler)
             handler.close()

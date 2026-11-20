@@ -1,4 +1,4 @@
-"""Provide the single source of truth for OrcaBatch version information.
+"""Provide the single source of truth for BatchSlicer version information.
 
 This module exposes immutable application metadata. It does not perform I/O,
 read packaging metadata, or format console output beyond the public version
@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Version:
-    """Describe immutable OrcaBatch product and runtime version metadata."""
+    """Describe immutable BatchSlicer product and runtime version metadata."""
 
     product_name: str
     repository_name: str
@@ -21,7 +21,7 @@ class Version:
 
 
 CURRENT_VERSION = Version(
-    product_name="OrcaBatch",
+    product_name="BatchSlicer",
     repository_name="batch_slicer",
     version="0.1.0",
     python_minimum="3.12",

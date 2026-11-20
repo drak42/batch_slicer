@@ -16,11 +16,11 @@ If the answer to any of these questions is "no", stop and rethink the implementa
 
 ## Project
 
-**Product:** OrcaBatch
+**Product:** BatchSlicer
 
 **Repository:** batch_slicer
 
-OrcaBatch is a professional print automation platform centred around OrcaSlicer. The long-term vision is to remove friction from the entire 3D printing workflow through reliable automation.
+BatchSlicer is a professional print automation platform centred around OrcaSlicer. The long-term vision is to remove friction from the entire 3D printing workflow through reliable automation.
 
 ---
 

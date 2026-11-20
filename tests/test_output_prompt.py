@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from orcabatch.cli.output_prompt import find_destinations, prompt_for_output
-from orcabatch.cli.slicer_prompt import SlicerSelectionError
+from batchslicer.cli.output_prompt import find_destinations, prompt_for_output
+from batchslicer.cli.slicer_prompt import SlicerSelectionError
 
 
 def _answers(*values: str) -> Callable[[str], str]:

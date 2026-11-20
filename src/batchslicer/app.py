@@ -1,4 +1,4 @@
-"""Coordinate the OrcaBatch application lifecycle.
+"""Coordinate the BatchSlicer application lifecycle.
 
 Startup shows the banner, configures logging, loads configuration, asks the
 user which slicer to use, verifies the environment for that slicer, and asks
@@ -10,24 +10,24 @@ Each step waits for the user's choice before the next begins.
 
 from pathlib import Path
 
-from orcabatch.backends.orca import OrcaBackend
-from orcabatch.backends.presets import PresetError, PresetLibrary
-from orcabatch.backends.profiles import find_system_profiles
-from orcabatch.backends.slicers import SLICERS, is_configured
-from orcabatch.banner import get_banner
-from orcabatch.cli.file_prompt import SliceInput, prompt_for_input
-from orcabatch.cli.output_prompt import prompt_for_output
-from orcabatch.cli.preset_prompt import prompt_for_presets
-from orcabatch.cli.slicer_prompt import SlicerSelectionError, prompt_for_slicer
-from orcabatch.core.config import get_config
-from orcabatch.core.environment import EnvironmentService
-from orcabatch.core.logging import configure_logging
-from orcabatch.domain.presets import PresetSelection
-from orcabatch.services.slicing import BatchOutcome, SliceOutcome, SlicingService
+from batchslicer.backends.orca import OrcaBackend
+from batchslicer.backends.presets import PresetError, PresetLibrary
+from batchslicer.backends.profiles import find_system_profiles
+from batchslicer.backends.slicers import SLICERS, is_configured
+from batchslicer.banner import get_banner
+from batchslicer.cli.file_prompt import SliceInput, prompt_for_input
+from batchslicer.cli.output_prompt import prompt_for_output
+from batchslicer.cli.preset_prompt import prompt_for_presets
+from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slicer
+from batchslicer.core.config import get_config
+from batchslicer.core.environment import EnvironmentService
+from batchslicer.core.logging import configure_logging
+from batchslicer.domain.presets import PresetSelection
+from batchslicer.services.slicing import BatchOutcome, SliceOutcome, SlicingService
 
 
 def main() -> int:
-    """Start OrcaBatch and return a process exit status."""
+    """Start BatchSlicer and return a process exit status."""
     print(get_banner(), end="")
     logger = None
 
@@ -45,8 +45,8 @@ def main() -> int:
 
         failed = [result for result in results if not result.passed]
         if failed:
-            logger.error("OrcaBatch startup failed environment verification.")
-            print("OrcaBatch startup failed: environment verification failed.")
+            logger.error("BatchSlicer startup failed environment verification.")
+            print("BatchSlicer startup failed: environment verification failed.")
             for result in failed:
                 print(f"  - {result.name}: {result.message}")
             return 1
@@ -77,7 +77,7 @@ def main() -> int:
         else:
             print(f"Preset selection is not available for {slicer.display_name} yet.")
 
-        print(f"OrcaBatch ready. Slicer: {slicer.display_name}.")
+        print(f"BatchSlicer ready. Slicer: {slicer.display_name}.")
         if selection is not None:
             print(f"  Printer:  {selection.printer.name}")
             print(f"  Filament: {selection.filament.name}")
@@ -107,9 +107,9 @@ def main() -> int:
         OSError,
         ValueError,
     ) as error:
-        print(f"OrcaBatch startup failed: {error}")
+        print(f"BatchSlicer startup failed: {error}")
         if logger is not None:
-            logger.error("OrcaBatch startup failed: %s", error)
+            logger.error("BatchSlicer startup failed: %s", error)
         return 1
 
     if slice_input.is_folder:

@@ -19,10 +19,10 @@ import logging
 from pathlib import Path
 import re
 
-from orcabatch.backends.orca import OrcaBackend, OrcaResult
-from orcabatch.backends.presets import PresetLibrary
-from orcabatch.core.logging import get_logger
-from orcabatch.domain.presets import PresetSelection
+from batchslicer.backends.orca import OrcaBackend, OrcaResult
+from batchslicer.backends.presets import PresetLibrary
+from batchslicer.core.logging import get_logger
+from batchslicer.domain.presets import PresetSelection
 
 
 _RESULT_FILE_NAME = "result.json"

@@ -15,8 +15,8 @@ import shutil
 import subprocess
 import tempfile
 
-from orcabatch.backends.presets import PresetError
-from orcabatch.core.logging import get_logger
+from batchslicer.backends.presets import PresetError
+from batchslicer.core.logging import get_logger
 
 
 _APPIMAGE_MAGIC = b"AI\x02"

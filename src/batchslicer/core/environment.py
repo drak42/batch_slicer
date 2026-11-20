@@ -1,8 +1,8 @@
-"""Verify that the OrcaBatch runtime environment is ready.
+"""Verify that the BatchSlicer runtime environment is ready.
 
 This module checks Python, configuration, runtime directories, and the
 configured paths of the selected slicer before application startup continues. It returns structured
-results and writes summary messages through the OrcaBatch logging service. It
+results and writes summary messages through the BatchSlicer logging service. It
 does not print output, launch external processes, validate databases, validate
 presets, or create configuration files.
 """
@@ -13,9 +13,9 @@ from pathlib import Path
 import sys
 from typing import Any
 
-from orcabatch.backends.slicers import ORCASLICER, SlicerDefinition
-from orcabatch.core.config import Config, get_config
-from orcabatch.core.logging import get_logger
+from batchslicer.backends.slicers import ORCASLICER, SlicerDefinition
+from batchslicer.core.config import Config, get_config
+from batchslicer.core.logging import get_logger
 
 
 _PYTHON_MINIMUM = (3, 12)
@@ -31,7 +31,7 @@ class CheckResult:
 
 
 class EnvironmentService:
-    """Verify runtime prerequisites needed for OrcaBatch startup."""
+    """Verify runtime prerequisites needed for BatchSlicer startup."""
 
     def __init__(
         self,

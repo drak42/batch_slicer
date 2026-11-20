@@ -1,4 +1,4 @@
-"""Load and access OrcaBatch application configuration.
+"""Load and access BatchSlicer application configuration.
 
 This module provides the sole configuration access path. It reads YAML safely,
 caches loaded data, and validates configured Orca paths. It does not provide
@@ -13,7 +13,7 @@ import yaml
 
 
 class Config:
-    """Load, access, and validate one OrcaBatch configuration file."""
+    """Load, access, and validate one BatchSlicer configuration file."""
 
     def __init__(self, path: Path = Path("config/config.yaml")) -> None:
         """Store the path to the configuration file."""

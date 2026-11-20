@@ -6,8 +6,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from orcabatch.backends.presets import PresetError
-from orcabatch.backends.profiles import find_system_profiles, is_appimage
+from batchslicer.backends.presets import PresetError
+from batchslicer.backends.profiles import find_system_profiles, is_appimage
 
 
 def _fake_appimage(path: Path) -> Path:
@@ -66,7 +66,7 @@ def test_packed_presets_are_extracted_from_the_appimage_once(
     executable = _fake_appimage(tmp_path / "OrcaSlicer.AppImage")
     data = _data_directory(tmp_path, "Creality", "OrcaFilamentLibrary")
     calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr("orcabatch.backends.profiles.subprocess.run", _extracting_run(calls))
+    monkeypatch.setattr("batchslicer.backends.profiles.subprocess.run", _extracting_run(calls))
 
     first = find_system_profiles(executable, data, tmp_path / "cache", logger=Mock())
     second = find_system_profiles(executable, data, tmp_path / "cache", logger=Mock())
@@ -90,7 +90,7 @@ def test_new_vendor_triggers_a_fresh_extraction(
     executable = _fake_appimage(tmp_path / "OrcaSlicer.AppImage")
     data = _data_directory(tmp_path, "Creality")
     calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr("orcabatch.backends.profiles.subprocess.run", _extracting_run(calls))
+    monkeypatch.setattr("batchslicer.backends.profiles.subprocess.run", _extracting_run(calls))
     find_system_profiles(executable, data, tmp_path / "cache", logger=Mock())
     (data / "system" / "Prusa.opc").write_bytes(b"ZCRO")
 
@@ -108,7 +108,7 @@ def test_missing_vendor_in_the_appimage_is_reported(
     executable = _fake_appimage(tmp_path / "OrcaSlicer.AppImage")
     data = _data_directory(tmp_path, "Creality", "Mystery")
     monkeypatch.setattr(
-        "orcabatch.backends.profiles.subprocess.run", _extracting_run([], skip="Mystery")
+        "batchslicer.backends.profiles.subprocess.run", _extracting_run([], skip="Mystery")
     )
 
     with pytest.raises(PresetError, match="Mystery"):
@@ -120,7 +120,7 @@ def test_failed_extraction_is_reported(tmp_path: Path, monkeypatch: pytest.Monke
     executable = _fake_appimage(tmp_path / "OrcaSlicer.AppImage")
     data = _data_directory(tmp_path, "Creality")
     monkeypatch.setattr(
-        "orcabatch.backends.profiles.subprocess.run",
+        "batchslicer.backends.profiles.subprocess.run",
         Mock(side_effect=subprocess.TimeoutExpired(cmd="x", timeout=1)),
     )
 

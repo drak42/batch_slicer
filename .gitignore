@@ -217,7 +217,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# OrcaBatch runtime folders (models, G-code, logs, cached slicer profiles)
+# BatchSlicer runtime folders (models, G-code, logs, cached slicer profiles)
 /incoming/
 /output/
 /logs/

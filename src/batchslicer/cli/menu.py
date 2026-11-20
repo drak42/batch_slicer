@@ -9,7 +9,7 @@ the conversation; it knows nothing about slicers, presets or files.
 from collections.abc import Callable, Sequence
 from typing import TypeVar
 
-from orcabatch.cli.slicer_prompt import SlicerSelectionError
+from batchslicer.cli.slicer_prompt import SlicerSelectionError
 
 
 ItemT = TypeVar("ItemT")

@@ -4,15 +4,15 @@ The configured output folder is the default. Its existing subfolders are
 offered by number, and any other folder can be named: a plain name is created
 inside the output folder, while an absolute or ``~`` path is used as typed.
 Folders that do not exist are created only after the user confirms. Job folders
-OrcaBatch created earlier are not offered as destinations.
+BatchSlicer created earlier are not offered as destinations.
 """
 
 from collections.abc import Callable
 from pathlib import Path
 import re
 
-from orcabatch.cli.menu import confirm
-from orcabatch.cli.slicer_prompt import SlicerSelectionError
+from batchslicer.cli.menu import confirm
+from batchslicer.cli.slicer_prompt import SlicerSelectionError
 
 
 _JOB_FOLDER_PATTERN = re.compile(r"-\d{8}-\d{6}(-\d+)?$")

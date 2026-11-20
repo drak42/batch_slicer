@@ -2,7 +2,7 @@
 
 Creality Print and OrcaSlicer store the user's own presets as JSON files under
 ``user/<user id>/<kind>/`` in the data directory. Shipped presets are JSON files
-under ``<vendor>/<kind>/`` in a system folder (see :mod:`orcabatch.backends.profiles`).
+under ``<vendor>/<kind>/`` in a system folder (see :mod:`batchslicer.backends.profiles`).
 Most presets only store differences from the preset they ``inherits`` from, and
 the slicer's command line cannot use them as saved, so this module:
 
@@ -22,8 +22,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from orcabatch.core.logging import get_logger
-from orcabatch.domain.presets import Preset, PresetKind, PresetSelection
+from batchslicer.core.logging import get_logger
+from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 
 
 _DEFAULT_USER_DIRECTORY = "default"

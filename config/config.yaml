@@ -1,4 +1,4 @@
-# Slicers OrcaBatch can use. At startup you choose one of the slicers whose
+# Slicers BatchSlicer can use. At startup you choose one of the slicers whose
 # executable and datadir are both set.
 orca:
   executable: ""

@@ -1,4 +1,4 @@
-# OrcaBatch Architecture
+# BatchSlicer Architecture
 
 **Version:** 0.1.0-alpha  
 **Status:** Draft  
@@ -8,7 +8,7 @@
 
 # 1. Purpose
 
-This document describes the architectural design of OrcaBatch.
+This document describes the architectural design of BatchSlicer.
 
 It explains how the application is structured, how components communicate, and the engineering principles that guide every design decision.
 
@@ -20,7 +20,7 @@ The architecture is expected to evolve over time, however the core design princi
 
 # 2. Vision
 
-OrcaBatch exists to remove friction from the entire 3D printing workflow through reliable, maintainable, and thoughtfully engineered automation.
+BatchSlicer exists to remove friction from the entire 3D printing workflow through reliable, maintainable, and thoughtfully engineered automation.
 
 The project began as a batch slicing tool for OrcaSlicer but has evolved into a print automation platform.
 
@@ -86,7 +86,7 @@ Documentation should explain **why** the software behaves as it does, not simply
 
 # 4. High-Level Architecture
 
-OrcaBatch follows a layered architecture.
+BatchSlicer follows a layered architecture.
 
 ```
                         User
@@ -199,7 +199,7 @@ Startup failures should clearly identify the failing stage.
 
 ```
 src/
-└── orcabatch/
+└── batchslicer/
     ├── application/
     ├── services/
     ├── domain/
@@ -484,7 +484,7 @@ Every significant architectural decision is documented.
 We challenge ideas, not people.
 We build software that we would enjoy maintaining ourselves.
 
-I think that final section will make OrcaBatch feel different. It's not just code—it's a project with a clear engineering culture. And that's something I believe will make a real difference as it grows.
+I think that final section will make BatchSlicer feel different. It's not just code—it's a project with a clear engineering culture. And that's something I believe will make a real difference as it grows.
 
 
 

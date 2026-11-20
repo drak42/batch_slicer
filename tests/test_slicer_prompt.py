@@ -4,8 +4,8 @@ from collections.abc import Callable, Iterator
 
 import pytest
 
-from orcabatch.backends.slicers import BAMBU_STUDIO, CREALITY_PRINT, ORCASLICER, SLICERS
-from orcabatch.cli.slicer_prompt import SlicerSelectionError, prompt_for_slicer
+from batchslicer.backends.slicers import BAMBU_STUDIO, CREALITY_PRINT, ORCASLICER, SLICERS
+from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slicer
 
 
 def _answers(*values: str) -> Callable[[str], str]:

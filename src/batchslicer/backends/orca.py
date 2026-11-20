@@ -3,7 +3,7 @@
 This module constructs deterministic commands for OrcaSlicer and the slicers
 that share its CLI (Bambu Studio, Creality Print), and runs them through one
 controlled subprocess boundary. Per-slicer differences come from
-:mod:`orcabatch.backends.slicers`; options a slicer lacks are refused with a
+:mod:`batchslicer.backends.slicers`; options a slicer lacks are refused with a
 clear error rather than sent. Commands follow the OrcaSlicer CLI contract:
 ``orca-slicer [OPTIONS] [file.3mf/file.stl ...]``, where ``--slice`` selects a
 plate and input models are positional arguments. It does not discover
@@ -24,9 +24,9 @@ import tempfile
 import time
 from typing import TypeAlias
 
-from orcabatch.backends.slicers import ORCASLICER, SlicerDefinition
-from orcabatch.core.config import Config, get_config
-from orcabatch.core.logging import get_logger
+from batchslicer.backends.slicers import ORCASLICER, SlicerDefinition
+from batchslicer.core.config import Config, get_config
+from batchslicer.core.logging import get_logger
 
 
 PathLike: TypeAlias = str | Path
@@ -259,7 +259,7 @@ class OrcaBackend:
 
     def _run_in_scratch_directory(self, command: Sequence[str]) -> OrcaResult:
         """Run a command without ``--outputdir`` where its result.json is discarded."""
-        with tempfile.TemporaryDirectory(prefix="orcabatch-") as scratch_directory:
+        with tempfile.TemporaryDirectory(prefix="batchslicer-") as scratch_directory:
             return self.run(command, working_directory=scratch_directory)
 
     def _require_option(self, option: str) -> None:

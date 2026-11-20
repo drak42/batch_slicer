@@ -1,4 +1,4 @@
-"""Ask the user which slicer OrcaBatch should use for this run.
+"""Ask the user which slicer BatchSlicer should use for this run.
 
 This module owns the interactive slicer menu. It lists every supported slicer,
 marks the ones without configuration as unavailable, and repeats the question
@@ -8,7 +8,7 @@ slicer paths, or run slicers.
 
 from collections.abc import Callable, Sequence
 
-from orcabatch.backends.slicers import SlicerDefinition
+from batchslicer.backends.slicers import SlicerDefinition
 
 
 class SlicerSelectionError(Exception):
