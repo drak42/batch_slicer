@@ -1,4 +1,14 @@
+# Slicers OrcaBatch can use. At startup you choose one of the slicers whose
+# executable and datadir are both set.
 orca:
+  executable: ""
+  datadir: ""
+
+creality_print:
+  executable: ""
+  datadir: ""
+
+bambu_studio:
   executable: ""
   datadir: ""
 
