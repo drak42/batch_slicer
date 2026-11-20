@@ -191,6 +191,9 @@ Ready
 
 Every stage must complete successfully before the next begins.
 
+Each selection stage takes its value from the command line when given
+(`cli/arguments.py`) and otherwise prompts, unless `--no-prompt` is used.
+
 Startup failures should clearly identify the failing stage.
 
 ---

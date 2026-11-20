@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat(cli): command-line options for every choice (`--slicer`, `--printer`, `--filament`, `--process`, `--input`, `--output`), `--no-prompt` for unattended runs, and `--list-presets` to find preset names. Unknown preset names suggest close matches. Adds a `batchslicer` command.
 - feat(presets): preset selection for OrcaSlicer. Built-in presets are extracted once from the OrcaSlicer AppImage (its data folder only has packed `.opc` files) and cached in `data/slicer-profiles/`. Verified with real OrcaSlicer 2.4 slices.
 - feat(presets): filament lists only show built-in filaments made visible in the slicer, matching its own menus (applies to Creality Print too).
 - feat(slicing): name G-code after the model (`bracket.stl` → `bracket.gcode`; multi-plate projects → `<name>_plate_N.gcode`) instead of `plate_1.gcode`.
