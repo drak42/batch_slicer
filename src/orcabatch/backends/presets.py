@@ -1,12 +1,14 @@
 """Read and resolve presets from a Bambu-family slicer data directory.
 
-Creality Print stores presets as JSON files: shipped presets under
-``system/<vendor>/<kind>/`` and the user's own under ``user/<user id>/<kind>/``.
+Creality Print and OrcaSlicer store the user's own presets as JSON files under
+``user/<user id>/<kind>/`` in the data directory. Shipped presets are JSON files
+under ``<vendor>/<kind>/`` in a system folder (see :mod:`orcabatch.backends.profiles`).
 Most presets only store differences from the preset they ``inherits`` from, and
 the slicer's command line cannot use them as saved, so this module:
 
 - lists the printers the user has set up, and the filament and process presets
-  compatible with a chosen printer, the way the slicer's own menus do;
+  compatible with a chosen printer, the way the slicer's own menus do (shipped
+  filaments are limited to those the user has made visible in the slicer);
 - writes complete, self-contained copies of a selection that the slicer's
   command line accepts.
 
@@ -39,22 +41,27 @@ class PresetLibrary:
         data_directory: Path,
         app_config_name: str,
         *,
+        system_directory: Path | None = None,
         logger: logging.Logger | None = None,
     ) -> None:
         """Index the presets in ``data_directory``.
 
         ``app_config_name`` is the slicer's settings file in that directory
-        (for example ``Creality.conf``), which records the signed-in user and
-        the printers the user has added.
+        (for example ``Creality.conf``), which records the signed-in user, the
+        printers the user has added and the filaments they made visible.
+        ``system_directory`` holds the shipped presets; it defaults to the data
+        directory's ``system`` folder.
         """
         self._root = data_directory
         self._logger = logger or get_logger()
         self._app_config = self._read_app_config(data_directory / app_config_name)
         self._user_directory = self._find_user_directory()
+        self._visible_filaments = self._read_visible_filaments()
+        system_root = system_directory or data_directory / "system"
         self._system: dict[PresetKind, dict[str, tuple[Path, dict[str, Any]]]] = {}
         self._user: dict[PresetKind, dict[str, tuple[Path, dict[str, Any]]]] = {}
         for kind in PresetKind:
-            self._system[kind] = self._index(self._root.glob(f"system/*/{kind.value}/**/*.json"))
+            self._system[kind] = self._index(system_root.glob(f"*/{kind.value}/**/*.json"))
             self._user[kind] = (
                 self._index(sorted((self._user_directory / kind.value).glob("*.json")))
                 if self._user_directory is not None
@@ -76,8 +83,19 @@ class PresetLibrary:
         return printers
 
     def filaments_for(self, printer: Preset) -> list[Preset]:
-        """Return filament presets compatible with ``printer``, the user's own first."""
-        return self._compatible(PresetKind.FILAMENT, printer)
+        """Return filament presets compatible with ``printer``, the user's own first.
+
+        Shipped filaments are limited to those visible in the slicer, when the
+        slicer records that list.
+        """
+        filaments = self._compatible(PresetKind.FILAMENT, printer)
+        if not self._visible_filaments:
+            return filaments
+        return [
+            preset
+            for preset in filaments
+            if preset.is_user or preset.name in self._visible_filaments
+        ]
 
     def processes_for(self, printer: Preset) -> list[Preset]:
         """Return process presets compatible with ``printer``, the user's own first."""
@@ -216,6 +234,13 @@ class PresetLibrary:
         if isinstance(current, str) and current not in names:
             names.append(current)
         return names
+
+    def _read_visible_filaments(self) -> frozenset[str]:
+        """Return the shipped filaments the user has made visible in the slicer."""
+        names = self._app_config.get("filaments")
+        if not isinstance(names, list):
+            return frozenset()
+        return frozenset(name for name in names if isinstance(name, str))
 
     def _find_user_directory(self) -> Path | None:
         """Return the signed-in user's preset folder, else the default one."""

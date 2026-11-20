@@ -10,7 +10,8 @@ import pytest
 
 from orcabatch.backends.orca import OrcaBackend
 from orcabatch.backends.presets import PresetError, PresetLibrary
-from orcabatch.backends.slicers import CREALITY_PRINT
+from orcabatch.backends.profiles import find_system_profiles
+from orcabatch.backends.slicers import CREALITY_PRINT, ORCASLICER, SlicerDefinition
 from orcabatch.core.config import Config
 from orcabatch.domain.presets import Preset, PresetKind, PresetSelection
 
@@ -202,6 +203,28 @@ def test_written_user_printer_keeps_link_to_its_shipped_printer(datadir: Path, t
     assert printer["bed_x"] == "300"
 
 
+def test_shipped_presets_can_come_from_a_separate_folder(datadir: Path, tmp_path: Path) -> None:
+    """OrcaSlicer's shipped presets live outside the data directory."""
+    elsewhere = tmp_path / "profiles"
+    (datadir / "system").rename(elsewhere)
+
+    library = PresetLibrary(datadir, "Creality.conf", system_directory=elsewhere)
+
+    assert _names(library.printers()) == [ENDER, K2]
+
+
+def test_filaments_are_limited_to_those_visible_in_the_slicer(datadir: Path) -> None:
+    """When the slicer records visible filaments, hidden shipped ones are left out."""
+    _write(datadir / "system" / "Creality" / "filament" / "petg_k2.json", {"name": f"Generic PETG @{K2}", "instantiation": "true", "compatible_printers": [K2]})
+    conf = json.loads((datadir / "Creality.conf").read_text().split("\n#")[0])
+    conf["filaments"] = [f"Generic PETG @{K2}"]
+    (datadir / "Creality.conf").write_text(json.dumps(conf))
+    library = _library(datadir)
+    k2 = next(printer for printer in library.printers() if printer.name == K2)
+
+    assert _names(library.filaments_for(k2)) == ["My PLA", f"Generic PETG @{K2}"]
+
+
 def test_unreadable_settings_file_is_reported(tmp_path: Path) -> None:
     """A missing or invalid slicer settings file raises PresetError."""
     with pytest.raises(PresetError, match="Cannot read"):
@@ -212,8 +235,30 @@ def test_unreadable_settings_file_is_reported(tmp_path: Path) -> None:
         PresetLibrary(tmp_path, "Creality.conf")
 
 
-_REAL_CREALITY = os.environ.get("ORCABATCH_TEST_CREALITY_EXECUTABLE")
-_REAL_CREALITY_DATA = os.environ.get("ORCABATCH_TEST_CREALITY_DATADIR")
+def _real_slicer(slicer: SlicerDefinition, prefix: str) -> list[object]:
+    """Return test parameters for a real slicer configured by environment variables."""
+    executable = os.environ.get(f"ORCABATCH_TEST_{prefix}_EXECUTABLE")
+    datadir = os.environ.get(f"ORCABATCH_TEST_{prefix}_DATADIR")
+    return [
+        pytest.param(
+            slicer,
+            executable,
+            datadir,
+            user_presets,
+            id=f"{slicer.key}-{'user' if user_presets else 'built-in'}-presets",
+            marks=pytest.mark.skipif(
+                not (executable and datadir),
+                reason=(
+                    f"Set ORCABATCH_TEST_{prefix}_EXECUTABLE and ORCABATCH_TEST_{prefix}_DATADIR "
+                    f"to slice with real {slicer.display_name} presets."
+                ),
+            ),
+        )
+        for user_presets in (True, False)
+    ]
+
+
+_REAL_SLICERS = _real_slicer(CREALITY_PRINT, "CREALITY") + _real_slicer(ORCASLICER, "ORCA")
 
 
 def _write_cube(path: Path, size: float = 20.0) -> None:
@@ -232,23 +277,27 @@ def _write_cube(path: Path, size: float = 20.0) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-@pytest.mark.skipif(
-    not (_REAL_CREALITY and _REAL_CREALITY_DATA),
-    reason=(
-        "Set ORCABATCH_TEST_CREALITY_EXECUTABLE and ORCABATCH_TEST_CREALITY_DATADIR "
-        "to slice with real Creality Print presets."
-    ),
-)
-@pytest.mark.parametrize("user_presets", [True, False], ids=["user-presets", "built-in-presets"])
-def test_real_creality_print_slices_with_selected_presets(
+@pytest.mark.parametrize(("slicer", "executable", "datadir", "user_presets"), _REAL_SLICERS)
+def test_real_slicer_slices_with_selected_presets(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    slicer: SlicerDefinition,
+    executable: str,
+    datadir: str,
     user_presets: bool,
 ) -> None:
-    """Presets chosen from a real data directory produce G-code with real Creality Print."""
+    """Presets chosen from a real data directory produce G-code with the real slicer."""
     monkeypatch.chdir(tmp_path)
-    data_directory = Path(str(_REAL_CREALITY_DATA))
-    library = PresetLibrary(data_directory, "Creality.conf")
+    data_directory = Path(datadir)
+    system_directory = find_system_profiles(
+        Path(executable), data_directory, tmp_path / "profile-cache", logger=Mock()
+    )
+    library = PresetLibrary(
+        data_directory,
+        str(slicer.app_config_name),
+        system_directory=system_directory,
+        logger=Mock(),
+    )
     printer, filament, process = _first_usable_selection(library, prefer_user=user_presets)
     settings, filaments = library.write_resolved(
         PresetSelection(printer, filament, process), tmp_path / "resolved"
@@ -257,11 +306,11 @@ def test_real_creality_print_slices_with_selected_presets(
     _write_cube(model)
     config = Mock(spec=Config)
     values = {
-        ("creality_print", "executable"): _REAL_CREALITY,
-        ("creality_print", "datadir"): data_directory,
+        (slicer.key, "executable"): executable,
+        (slicer.key, "datadir"): data_directory,
     }
     config.get.side_effect = lambda section, key: values[(section, key)]
-    backend = OrcaBackend(slicer=CREALITY_PRINT, config=config, logger=Mock(), timeout_seconds=300)
+    backend = OrcaBackend(slicer=slicer, config=config, logger=Mock(), timeout_seconds=300)
 
     result = backend.slice(
         model,
