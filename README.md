@@ -109,11 +109,11 @@ it with [pipx](https://pipx.pypa.io/), which keeps BatchSlicer in its own
 environment and puts the `batchslicer` command on your PATH:
 
 ```bash
-pipx install ./batchslicer-0.2.0-py3-none-any.whl
+pipx install ./batchslicer-*-py3-none-any.whl
 batchslicer --version
 ```
 
-(`python3 -m pip install --user ./batchslicer-0.2.0-py3-none-any.whl` works too.)
+(`python3 -m pip install --user ./batchslicer-*-py3-none-any.whl` works too.)
 To upgrade, install the newer file with `pipx install --force`.
 
 ### From source (for development)
