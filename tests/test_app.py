@@ -1004,3 +1004,20 @@ def test_same_printer_with_different_slicers_names_the_slicer(
         Path("/out/K2 Plus (Creality Print)"),
         Path("/out/K2 Plus (OrcaSlicer)"),
     ]
+
+
+def test_doctor_command_reports_and_sets_the_exit_status(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """'batchslicer doctor' runs the checks instead of slicing; problems give status 1."""
+    run_doctor = Mock(return_value=0)
+    monkeypatch.setattr(app, "run_doctor", run_doctor)
+
+    assert app.main(["doctor"]) == 0
+    assert "BatchSlicer v" not in capsys.readouterr().out
+    assert not app.find_config_file.called
+
+    run_doctor.return_value = 2
+    assert app.main(["doctor"]) == 1

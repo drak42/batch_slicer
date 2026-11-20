@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from batchslicer.backends.slicers import SLICERS
+from batchslicer.cli.doctor import DoctorOptions
 from batchslicer.cli.setup import SetupOptions
 from batchslicer.core.locations import user_config_file
 from batchslicer.domain.profiles import LAST_RUN
@@ -81,15 +82,19 @@ class RunOptions:
         )
 
 
-def parse_arguments(argv: Sequence[str] | None = None) -> RunOptions | SetupOptions:
+def parse_arguments(
+    argv: Sequence[str] | None = None,
+) -> RunOptions | SetupOptions | DoctorOptions:
     """Return the options in ``argv`` (default: the process arguments).
 
-    ``setup`` as the first argument selects the setup command. Invalid options
+    ``setup`` or ``doctor`` as the first argument selects that command. Invalid options
     print a usage message and exit with status 2.
     """
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments[:1] == ["setup"]:
         return _parse_setup(arguments[1:])
+    if arguments[:1] == ["doctor"]:
+        return _parse_doctor(arguments[1:])
     namespace = _parser().parse_args(arguments)
     return RunOptions(
         slicer=namespace.slicer,
@@ -106,6 +111,19 @@ def parse_arguments(argv: Sequence[str] | None = None) -> RunOptions | SetupOpti
         list_profiles=namespace.list_profiles,
         delete_profile=namespace.delete_profile,
     )
+
+
+def _parse_doctor(arguments: Sequence[str]) -> DoctorOptions:
+    """Return the options for ``batchslicer doctor``."""
+    parser = argparse.ArgumentParser(
+        prog="batchslicer doctor",
+        description=(
+            "Check BatchSlicer's configuration, folders and slicers, and report any "
+            "problems. Include its output when reporting a problem."
+        ),
+    )
+    parser.add_argument("--config", type=Path, metavar="PATH", help="configuration file to check")
+    return DoctorOptions(config=parser.parse_args(arguments).config)
 
 
 def _parse_setup(arguments: Sequence[str]) -> SetupOptions:
@@ -159,7 +177,8 @@ def _parser() -> argparse.ArgumentParser:
         description=(
             f"Slice 3D models with {slicers}. Choices not given here are asked "
             "for interactively, unless --no-prompt is used. First time? Run "
-            "'batchslicer setup' to find your slicers and create the configuration."
+            "'batchslicer setup' to find your slicers and create the configuration. "
+            "Something wrong? 'batchslicer doctor' checks your setup."
         ),
         epilog=(
             "Example: batchslicer --slicer creality --printer 'Creality K2 Plus 0.4 nozzle' "

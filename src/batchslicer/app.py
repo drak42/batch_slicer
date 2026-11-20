@@ -27,6 +27,7 @@ from batchslicer.backends.profiles import find_system_profiles
 from batchslicer.backends.slicers import SLICERS, SlicerDefinition, get_slicer, is_configured
 from batchslicer.banner import get_banner
 from batchslicer.cli.arguments import RunOptions, parse_arguments
+from batchslicer.cli.doctor import DoctorOptions, run_doctor
 from batchslicer.cli.file_prompt import SliceInput, input_from_path, prompt_for_input
 from batchslicer.cli.menu import confirm
 from batchslicer.cli.output_prompt import output_from_path, prompt_for_output
@@ -58,6 +59,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if isinstance(options, SetupOptions):
             return _setup(options)
+        if isinstance(options, DoctorOptions):
+            return EXIT_SUCCESS if run_doctor(options) == 0 else EXIT_FAILURE
         return _run(options)
     except KeyboardInterrupt:
         _error("\nCancelled.")

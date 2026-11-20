@@ -1,0 +1,141 @@
+"""Tests for ``batchslicer doctor``."""
+
+import json
+from pathlib import Path
+
+import pytest
+
+from batchslicer.cli.doctor import DoctorOptions, run_doctor
+from conftest import write_config
+
+HELP_TEXT = "Usage: slicer [ OPTIONS ]\n --slice option   Slice the plates\n"
+
+
+def _program(path: Path, *, output: str = HELP_TEXT, exit_code: int = 0) -> Path:
+    """Write a fake slicer program that prints ``output``."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"#!/bin/sh\ncat <<'TEXT'\n{output}TEXT\nexit {exit_code}\n")
+    path.chmod(0o755)
+    return path
+
+
+def _creality_data(path: Path, *, printers: list[str]) -> Path:
+    """Write a minimal Creality Print settings folder where ``printers`` were added.
+
+    The built-in presets always include a K2 Plus; only the added printers are offered.
+    """
+    machines = path / "system" / "Creality" / "machine"
+    machines.mkdir(parents=True)
+    for name in {"K2 Plus", *printers}:
+        (machines / f"{name}.json").write_text(json.dumps({"name": name, "instantiation": "true"}))
+    (path / "Creality.conf").write_text(
+        json.dumps({"orca_presets": [{"machine": name} for name in printers]})
+    )
+    return path
+
+
+def _report(options: DoctorOptions) -> tuple[int, list[str]]:
+    """Run the doctor and return the problem count and the report lines."""
+    lines: list[str] = []
+    return run_doctor(options, write=lines.append), lines
+
+
+def test_healthy_setup_reports_no_problems(tmp_path: Path) -> None:
+    """A working slicer with printers gives a clean report."""
+    config = write_config(
+        tmp_path / "settings",
+        {
+            "creality_print": {
+                "executable": _program(tmp_path / "bin" / "creality"),
+                "datadir": _creality_data(tmp_path / "creality", printers=["K2 Plus"]),
+            },
+            "paths": {"profiles": tmp_path / "profiles.yaml"},
+        },
+    )
+
+    problems, lines = _report(DoctorOptions(config=config.path))
+
+    assert problems == 0
+    assert lines[0].startswith("BatchSlicer v")
+    assert f"  {config.path} (from --config)" in lines
+    assert any(line.strip().startswith("runs:     yes") for line in lines)
+    assert "    presets:  1 printer" in lines
+    assert "  OrcaSlicer: not configured" in lines
+    assert "  0 saved (none saved yet)" in lines
+    assert lines[-1] == "No problems found."
+
+
+def test_missing_configuration_is_a_problem(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Without a configuration, the report says how to create one."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.delenv("BATCHSLICER_CONFIG", raising=False)
+
+    problems, lines = _report(DoctorOptions())
+
+    assert problems == 1
+    assert any("batchslicer setup" in line for line in lines if line.startswith("  PROBLEM"))
+    assert "Folders:" in lines
+
+
+@pytest.mark.parametrize(
+    ("setup", "expected"),
+    [
+        ("missing-program", "Creality Print program not found"),
+        ("missing-settings", "Creality Print settings folder not found"),
+        ("program-fails", "did not run its command-line help (exit code 3): crashed"),
+        ("no-printers", "Creality Print offers no printers"),
+    ],
+)
+def test_slicer_problems_are_named(tmp_path: Path, setup: str, expected: str) -> None:
+    """Each kind of slicer problem is reported with what is wrong."""
+    program = tmp_path / "bin" / "creality"
+    if setup != "missing-program":
+        if setup == "program-fails":
+            _program(program, output="crashed\n", exit_code=3)
+            program.write_text("#!/bin/sh\necho crashed >&2\nexit 3\n")
+        else:
+            _program(program)
+    data = tmp_path / "creality"
+    if setup != "missing-settings":
+        _creality_data(data, printers=[] if setup == "no-printers" else ["K2 Plus"])
+    config = write_config(
+        tmp_path / "settings",
+        {"creality_print": {"executable": program, "datadir": data}},
+    )
+
+    problems, lines = _report(DoctorOptions(config=config.path))
+
+    assert problems == 1
+    assert any(expected in line for line in lines), lines
+
+
+def test_nothing_configured_is_a_problem(tmp_path: Path) -> None:
+    """A configuration with no slicer set up cannot slice anything."""
+    config = write_config(tmp_path, {"orca": {"executable": "", "datadir": ""}})
+
+    problems, lines = _report(DoctorOptions(config=config.path))
+
+    assert problems == 1
+    assert any("No slicer is configured" in line for line in lines)
+
+
+def test_unreadable_profiles_are_a_problem(tmp_path: Path) -> None:
+    """A hand-edited profiles file with a mistake is reported."""
+    profiles = tmp_path / "profiles.yaml"
+    profiles.write_text("bad:\n  printr: x\n")
+    config = write_config(
+        tmp_path / "settings",
+        {
+            "creality_print": {
+                "executable": _program(tmp_path / "bin" / "creality"),
+                "datadir": _creality_data(tmp_path / "creality", printers=["K2 Plus"]),
+            },
+            "paths": {"profiles": profiles},
+        },
+    )
+
+    problems, lines = _report(DoctorOptions(config=config.path))
+
+    assert problems == 1
+    assert any("unknown settings: printr" in line for line in lines)

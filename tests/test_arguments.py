@@ -117,3 +117,11 @@ def test_profile_and_last_cannot_be_combined(capsys: pytest.CaptureFixture[str])
 
     assert raised.value.code == 2
     assert "not allowed with argument" in capsys.readouterr().err
+
+
+def test_doctor_command_options() -> None:
+    """'doctor' selects the doctor command, optionally with --config."""
+    from batchslicer.cli.doctor import DoctorOptions
+
+    assert parse_arguments(["doctor"]) == DoctorOptions()
+    assert parse_arguments(["doctor", "--config", "c.yaml"]) == DoctorOptions(config=Path("c.yaml"))
