@@ -12,7 +12,7 @@ from orcabatch.backends.slicers import SlicerDefinition
 
 
 class SlicerSelectionError(Exception):
-    """Raised when no slicer can be chosen, or the user stops the prompt."""
+    """Raised when a slicer or preset cannot be chosen, or the user stops the prompt."""
 
 
 def prompt_for_slicer(
