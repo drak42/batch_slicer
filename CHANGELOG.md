@@ -6,6 +6,22 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Profiles**: save a run's choices with `--save-profile NAME`, reuse them with
+  `--profile NAME` (other options override the profile), and repeat the last
+  run with `--last`; every run is remembered automatically. Interactive runs
+  without options offer the saved profiles first. `--list-profiles` and
+  `--delete-profile` manage them; they are stored in
+  `~/.local/share/batchslicer/profiles.yaml`.
+- A failed slice's reason now includes the slicer's own validation message
+  (for example OrcaSlicer's "Too small line width").
+
+### Fixed
+
+- Slicers run inside the job's output folder, so files they write on failure
+  (such as OrcaSlicer's `00000.log`) no longer appear in the current folder.
+
 ## [0.2.0] - 2026-11-20
 
 The first usable release: slice single models or whole folder trees with

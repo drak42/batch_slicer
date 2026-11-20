@@ -209,6 +209,7 @@ paths:              # all optional; empty means the default
   output: ""        # default output folder        (default ~/BatchSlicer/output)
   logs: ""          # log files                    (default ~/.local/state/batchslicer)
   data: ""          # BatchSlicer's working cache  (default ~/.cache/batchslicer)
+  profiles: ""      # saved profiles file          (default ~/.local/share/batchslicer/profiles.yaml)
 ```
 
 Paths may start with `~` for your home folder. Relative paths are relative to
@@ -305,6 +306,11 @@ asking; anything you leave out is still asked for, unless you add
 | `--output PATH` | output folder; created if missing; defaults to the configured `output` folder |
 | `--no-prompt` | never ask anything; a missing choice is an error that names the option to add |
 | `--list-presets` | list preset names, then exit (see below) |
+| `--profile NAME` | start from a saved profile (see [Profiles](#profiles)) |
+| `--last` | repeat the last run |
+| `--save-profile NAME` | save this run's choices as a profile |
+| `--list-profiles`, `--delete-profile NAME` | list or delete saved profiles |
+| `--config PATH` | use a specific configuration file |
 | `--help`, `--version` | show help or the version |
 
 Preset names must match the slicer's name exactly, except that upper/lower case
@@ -366,6 +372,39 @@ the configuration is not in `~/.config/batchslicer/`:
   --input ~/BatchSlicer/incoming --output ~/BatchSlicer/output/nightly --no-prompt
 ```
 
+## Profiles
+
+A profile is a named set of choices (slicer, printer, filament, process, input
+and output) that you can reuse instead of typing them again.
+
+```bash
+# slice as usual and save the choices under a name
+batchslicer --slicer creality --printer "Creality K2 Plus 0.4 nozzle" \
+  --filament "Generic PETG @Creality K2 Plus 0.4 nozzle" \
+  --process "0.20mm Standard @Creality K2 Plus 0.4 nozzle" \
+  --input ~/BatchSlicer/incoming/brackets --save-profile k2-petg
+
+# reuse it; any option you add overrides the profile's choice
+batchslicer --profile k2-petg --no-prompt
+batchslicer --profile k2-petg --input ~/BatchSlicer/incoming/wheels --no-prompt
+
+# repeat the last run exactly
+batchslicer --last --no-prompt
+
+batchslicer --list-profiles
+batchslicer --delete-profile k2-petg
+```
+
+- Every run's choices are saved automatically as the profile `last`, which
+  `--last` repeats.
+- When you start `batchslicer` with no options and have saved profiles, it
+  first offers them; press Enter to choose everything yourself instead.
+- Profile names match ignoring case and may contain letters, digits, spaces,
+  dots, dashes and underscores.
+- Profiles are kept in `~/.local/share/batchslicer/profiles.yaml` (set
+  `paths.profiles` in the configuration to move it). It is plain YAML and can
+  be edited by hand.
+
 ## Output
 
 Each run creates a new folder inside the output folder, so earlier results are
@@ -401,6 +440,9 @@ output/
 - Two models with the same name in one folder (`part.stl` and `part.3mf`) get
   separate folders (`part` and `part-2`).
 - A model that fails still gets its folder, with `result.json` explaining why.
+  The slicer runs inside that folder, so any extra files it writes (such as
+  OrcaSlicer's `00000.log`) stay there, and their reason is added to the
+  failure message.
 
 ## Exit status and logs
 
