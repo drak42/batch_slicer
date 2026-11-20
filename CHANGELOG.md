@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- feat(app): Ctrl+C stops cleanly with exit status 130; an interrupted batch keeps the models already sliced and reports what was not started. Unexpected errors print one line and the log location, with the full traceback in the log. Error messages go to stderr.
+- ci: GitHub Actions runs ruff, mypy and pytest on Python 3.12 and 3.13 for every push to main and every pull request. ruff and mypy versions are pinned in the dev extra.
+- test: the suite keeps BatchSlicer's default log and cache folders out of the real home folder.
 - feat(setup): `batchslicer setup` finds installed slicers (AppImages in the usual folders, programs on PATH), recommends the newest stable version, finds each slicer's settings folder, and writes the configuration. Existing configuration is only replaced after confirmation (or `--force`) and kept as `.bak`.
 - feat(config): configuration is found via `--config`, `BATCHSLICER_CONFIG`, `./config/config.yaml`, then `~/.config/batchslicer/config.yaml`. Paths may use `~`, relative paths are relative to the configuration file, and folders default to `~/BatchSlicer/{incoming,output}`, `~/.local/state/batchslicer` (logs) and `~/.cache/batchslicer` (cache). BatchSlicer no longer depends on the folder it is run from.
 - fix(logging): logs are written to the configured logs folder.

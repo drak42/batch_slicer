@@ -388,8 +388,20 @@ output/
 | Exit status | Meaning |
 |---|---|
 | `0` | everything sliced successfully |
-| `1` | a model failed to slice, or BatchSlicer stopped (missing option, unknown preset, failed check, cancelled) |
+| `1` | a model failed to slice, or BatchSlicer stopped (missing option, unknown preset, failed check, a question was cancelled, or an unexpected error) |
 | `2` | invalid command-line option (for example an unknown `--slicer`) |
+| `130` | stopped with Ctrl+C |
+
+Progress and results are printed to standard output; error messages go to
+standard error, so a script can capture them separately (`2> errors.txt`).
+
+**Stopping a run.** Press Ctrl+C at any time. During a batch, BatchSlicer stops
+after cancelling the model being sliced, keeps every model already finished,
+and reports what was done and what was not started.
+
+**Unexpected errors.** If BatchSlicer hits a problem it does not expect (a
+bug), it prints one line describing it and the location of the log; the full
+technical details are in the log. Please include them when reporting a problem.
 
 A log of every run is written to `batchslicer.log` in the logs folder
 (`~/.local/state/batchslicer/` by default), including the choices
@@ -430,11 +442,16 @@ contains its settings still works.
 
 ## Testing
 
-Run the automated tests:
+Run the same checks as the automated build (GitHub Actions runs them on every
+push to `main` and on every pull request, with Python 3.12 and 3.13):
 
 ```bash
-.venv/bin/pytest
+.venv/bin/ruff check src tests   # lint: errors, import order, likely bugs
+.venv/bin/mypy                   # type check
+.venv/bin/pytest                 # tests
 ```
+
+The tests never touch your real BatchSlicer folders or configuration.
 
 Some tests run your real slicers (checking that every option BatchSlicer uses
 is accepted, and slicing a test cube with your real presets). They are skipped
