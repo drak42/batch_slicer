@@ -18,6 +18,9 @@ dev = [
     "pytest>=8.0",
 ]
 
+[project.scripts]
+batchslicer = "batchslicer.app:main"
+
 [project.urls]
 Repository = "https://github.com/drak42/batch_slicer"
 

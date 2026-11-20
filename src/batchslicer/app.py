@@ -1,90 +1,61 @@
 """Coordinate the BatchSlicer application lifecycle.
 
-Startup shows the banner, configures logging, loads configuration, asks the
-user which slicer to use, verifies the environment for that slicer, and asks
-for the printer, filament and process presets where the slicer supports it.
-The user then chooses one model file or a folder of models (subfolders
-included) and an output folder, and the models are sliced into job folders.
-Each step waits for the user's choice before the next begins.
+Startup configures logging, loads configuration, selects the slicer, verifies
+the environment for it, and selects the printer, filament and process presets
+where the slicer supports it. The models to slice (one file, or a folder and
+its subfolders) and the output folder are then selected, and the models are
+sliced into job folders. Each choice comes from the command line when given
+there, and is otherwise asked for (unless ``--no-prompt`` is used).
 """
 
+from collections.abc import Sequence
+import logging
 from pathlib import Path
 
 from batchslicer.backends.orca import OrcaBackend
 from batchslicer.backends.presets import PresetError, PresetLibrary
 from batchslicer.backends.profiles import find_system_profiles
-from batchslicer.backends.slicers import SLICERS, is_configured
+from batchslicer.backends.slicers import SLICERS, SlicerDefinition, get_slicer, is_configured
 from batchslicer.banner import get_banner
-from batchslicer.cli.file_prompt import SliceInput, prompt_for_input
-from batchslicer.cli.output_prompt import prompt_for_output
-from batchslicer.cli.preset_prompt import prompt_for_presets
+from batchslicer.cli.arguments import RunOptions, parse_arguments
+from batchslicer.cli.file_prompt import SliceInput, input_from_path, prompt_for_input
+from batchslicer.cli.output_prompt import output_from_path, prompt_for_output
+from batchslicer.cli.preset_prompt import find_preset, select_presets
 from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slicer
-from batchslicer.core.config import get_config
+from batchslicer.core.config import Config, get_config
 from batchslicer.core.environment import EnvironmentService
 from batchslicer.core.logging import configure_logging
-from batchslicer.domain.presets import PresetSelection
+from batchslicer.domain.presets import PresetKind, PresetSelection
 from batchslicer.services.slicing import BatchOutcome, SliceOutcome, SlicingService
 
 
-def main() -> int:
-    """Start BatchSlicer and return a process exit status."""
-    print(get_banner(), end="")
-    logger = None
+class _StartupFailed(Exception):
+    """Raised when startup stops after its reason has already been shown."""
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run BatchSlicer with command-line ``argv`` and return a process exit status."""
+    options = parse_arguments(argv)
+    if not options.list_presets:
+        print(get_banner(), end="")
+    logger: logging.Logger | None = None
 
     try:
         logger = configure_logging()
         config = get_config()
-        configured = [slicer for slicer in SLICERS if is_configured(slicer, config)]
-        slicer = prompt_for_slicer(SLICERS, configured)
+        slicer = _select_slicer(options, config)
         logger.info("Selected slicer: %s", slicer.display_name)
-        results = EnvironmentService(
-            config=config,
-            logger=logger,
-            slicer=slicer,
-        ).run_checks()
+        _verify_environment(config, logger, slicer)
+        library = _preset_library(slicer, config, logger)
 
-        failed = [result for result in results if not result.passed]
-        if failed:
-            logger.error("BatchSlicer startup failed environment verification.")
-            print("BatchSlicer startup failed: environment verification failed.")
-            for result in failed:
-                print(f"  - {result.name}: {result.message}")
-            return 1
+        if options.list_presets:
+            _list_presets(slicer, library, options)
+            return 0
 
-        selection: PresetSelection | None = None
-        library: PresetLibrary | None = None
-        if slicer.supports_preset_selection:
-            data_directory = Path(config.get(slicer.key, "datadir"))
-            system_directory = find_system_profiles(
-                Path(config.get(slicer.key, "executable")),
-                data_directory,
-                Path(config.get("paths", "data")) / "slicer-profiles",
-                logger=logger,
-            )
-            library = PresetLibrary(
-                data_directory,
-                str(slicer.app_config_name),
-                system_directory=system_directory,
-                logger=logger,
-            )
-            selection = prompt_for_presets(library)
-            logger.info(
-                "Selected presets: printer=%s, filament=%s, process=%s",
-                selection.printer.name,
-                selection.filament.name,
-                selection.process.name,
-            )
-        else:
-            print(f"Preset selection is not available for {slicer.display_name} yet.")
-
-        print(f"BatchSlicer ready. Slicer: {slicer.display_name}.")
-        if selection is not None:
-            print(f"  Printer:  {selection.printer.name}")
-            print(f"  Filament: {selection.filament.name}")
-            print(f"  Process:  {selection.process.name}")
-
-        slice_input = prompt_for_input(Path(config.get("paths", "incoming")))
-        output_directory = prompt_for_output(Path(config.get("paths", "output")))
+        selection = _select_presets(options, slicer, library, logger)
+        _show_ready(slicer, selection)
+        slice_input = _select_input(options, config)
+        output_directory = _select_output(options, config)
         logger.info(
             "Selected %d model(s) from %s; output to %s",
             len(slice_input.models),
@@ -99,6 +70,8 @@ def main() -> int:
             model = slice_input.models[0]
             print(f"Slicing {model.name} with {slicer.display_name}...")
             outcome = service.slice(model, output_directory, selection)
+    except _StartupFailed:
+        return 1
     except (
         SlicerSelectionError,
         PresetError,
@@ -117,6 +90,150 @@ def main() -> int:
         return 0 if not batch.failed else 1
     _report(outcome)
     return 0 if outcome.success else 1
+
+
+def _select_slicer(options: RunOptions, config: Config) -> SlicerDefinition:
+    """Return the slicer named on the command line, or ask for one."""
+    configured = [slicer for slicer in SLICERS if is_configured(slicer, config)]
+    if options.slicer is not None:
+        slicer = get_slicer(options.slicer)
+        if slicer not in configured:
+            raise SlicerSelectionError(
+                f"{slicer.display_name} is not configured. Set {slicer.key}.executable "
+                f"and {slicer.key}.datadir in config/config.yaml."
+            )
+        return slicer
+    if options.no_prompt:
+        raise SlicerSelectionError("--slicer is required when --no-prompt is used.")
+    return prompt_for_slicer(SLICERS, configured)
+
+
+def _verify_environment(
+    config: Config,
+    logger: logging.Logger,
+    slicer: SlicerDefinition,
+) -> None:
+    """Run the environment checks, showing each failure and stopping if any fail."""
+    results = EnvironmentService(config=config, logger=logger, slicer=slicer).run_checks()
+    failed = [result for result in results if not result.passed]
+    if failed:
+        logger.error("BatchSlicer startup failed environment verification.")
+        print("BatchSlicer startup failed: environment verification failed.")
+        for result in failed:
+            print(f"  - {result.name}: {result.message}")
+        raise _StartupFailed
+
+
+def _preset_library(
+    slicer: SlicerDefinition,
+    config: Config,
+    logger: logging.Logger,
+) -> PresetLibrary | None:
+    """Return the slicer's preset library, or None if presets are not supported for it."""
+    if not slicer.supports_preset_selection:
+        return None
+    data_directory = Path(config.get(slicer.key, "datadir"))
+    system_directory = find_system_profiles(
+        Path(config.get(slicer.key, "executable")),
+        data_directory,
+        Path(config.get("paths", "data")) / "slicer-profiles",
+        logger=logger,
+    )
+    return PresetLibrary(
+        data_directory,
+        str(slicer.app_config_name),
+        system_directory=system_directory,
+        logger=logger,
+    )
+
+
+def _select_presets(
+    options: RunOptions,
+    slicer: SlicerDefinition,
+    library: PresetLibrary | None,
+    logger: logging.Logger,
+) -> PresetSelection | None:
+    """Return the presets named on the command line, asking for any not named."""
+    named = [options.printer, options.filament, options.process]
+    if library is None:
+        if any(name is not None for name in named):
+            raise SlicerSelectionError(
+                f"Preset selection is not available for {slicer.display_name} yet; "
+                "remove --printer, --filament and --process."
+            )
+        print(f"Preset selection is not available for {slicer.display_name} yet.")
+        return None
+
+    selection = select_presets(
+        library,
+        printer=options.printer,
+        filament=options.filament,
+        process=options.process,
+        prompt=not options.no_prompt,
+    )
+    logger.info(
+        "Selected presets: printer=%s, filament=%s, process=%s",
+        selection.printer.name,
+        selection.filament.name,
+        selection.process.name,
+    )
+    return selection
+
+
+def _list_presets(
+    slicer: SlicerDefinition,
+    library: PresetLibrary | None,
+    options: RunOptions,
+) -> None:
+    """Print preset names usable with --printer, --filament and --process."""
+    if library is None:
+        raise SlicerSelectionError(
+            f"Preset selection is not available for {slicer.display_name} yet."
+        )
+    if options.printer is None:
+        print(f"Printers for {slicer.display_name} (use with --printer):")
+        _print_names(library.printers())
+        return
+    printer = find_preset(PresetKind.PRINTER, library.printers(), options.printer)
+    print(f"Filaments for {printer.name} (use with --filament):")
+    _print_names(library.filaments_for(printer))
+    print(f"Processes for {printer.name} (use with --process):")
+    _print_names(library.processes_for(printer))
+
+
+def _print_names(presets: Sequence[object]) -> None:
+    """Print one preset name per line, marking the user's own presets."""
+    for preset in presets:
+        mine = "  (mine)" if getattr(preset, "is_user", False) else ""
+        print(f"  {getattr(preset, 'name')}{mine}")
+
+
+def _show_ready(slicer: SlicerDefinition, selection: PresetSelection | None) -> None:
+    """Show the slicer and presets that will be used."""
+    print(f"BatchSlicer ready. Slicer: {slicer.display_name}.")
+    if selection is not None:
+        print(f"  Printer:  {selection.printer.name}")
+        print(f"  Filament: {selection.filament.name}")
+        print(f"  Process:  {selection.process.name}")
+
+
+def _select_input(options: RunOptions, config: Config) -> SliceInput:
+    """Return the models given with --input, or ask what to slice."""
+    if options.input is not None:
+        return input_from_path(options.input)
+    if options.no_prompt:
+        raise SlicerSelectionError("--input is required when --no-prompt is used.")
+    return prompt_for_input(Path(config.get("paths", "incoming")))
+
+
+def _select_output(options: RunOptions, config: Config) -> Path:
+    """Return the --output folder, the default folder without prompts, or ask."""
+    if options.output is not None:
+        return output_from_path(options.output)
+    default = Path(config.get("paths", "output"))
+    if options.no_prompt:
+        return output_from_path(default)
+    return prompt_for_output(default)
 
 
 def _slice_folder(

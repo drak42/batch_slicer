@@ -73,7 +73,7 @@ def test_successful_startup_returns_zero_and_reports_ready(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Successful startup displays the banner and readiness message."""
-    result = app.main()
+    result = app.main([])
 
     assert result == 0
     output = capsys.readouterr().out
@@ -88,7 +88,7 @@ def test_environment_failure_returns_nonzero_without_ready_message(
     """Failed environment checks prevent the application from becoming ready."""
     startup_mocks[2].return_value.run_checks.return_value = [_Result(passed=False)]
 
-    result = app.main()
+    result = app.main([])
 
     assert result != 0
     assert "BatchSlicer ready." not in capsys.readouterr().out
@@ -101,7 +101,7 @@ def test_configuration_failure_is_handled_cleanly(
     """Expected configuration failures return a status without a traceback."""
     startup_mocks[1].side_effect = FileNotFoundError("missing config")
 
-    result = app.main()
+    result = app.main([])
 
     assert result != 0
     assert "BatchSlicer startup failed: missing config" in capsys.readouterr().out
@@ -113,7 +113,7 @@ def test_startup_uses_services_in_order(
     """Startup delegates configuration and environment work to existing services."""
     configure_logging, get_config, environment_service, logger = startup_mocks
 
-    app.main()
+    app.main([])
 
     configure_logging.assert_called_once_with()
     get_config.assert_called_once_with()
@@ -147,7 +147,7 @@ def test_slicer_is_chosen_before_environment_checks(
 
     monkeypatch.setattr(app, "prompt_for_slicer", prompt)
 
-    assert app.main() == 0
+    assert app.main([]) == 0
     assert calls == ["prompt"]
 
 
@@ -164,7 +164,7 @@ def test_no_slicer_selected_stops_startup(
         Mock(side_effect=SlicerSelectionError("No slicer selected.")),
     )
 
-    assert app.main() == 1
+    assert app.main([]) == 1
     assert not environment_service.called
     output = capsys.readouterr().out
     assert "BatchSlicer startup failed: No slicer selected." in output
@@ -180,7 +180,7 @@ def test_environment_failure_lists_failed_checks(
     failed.name = "slicer_executable"
     startup_mocks[2].return_value.run_checks.return_value = [failed]
 
-    app.main()
+    app.main([])
 
     assert "slicer_executable: Bambu Studio executable not found: /x" in capsys.readouterr().out
 
@@ -208,14 +208,14 @@ def test_presets_are_chosen_after_checks_for_supported_slicers(
     library = Mock()
     monkeypatch.setattr(app, "PresetLibrary", library)
 
-    def prompt(source: object) -> PresetSelection:
+    def prompt(source: object, **kwargs: object) -> PresetSelection:
         assert environment_service.return_value.run_checks.called
         assert source is library.return_value
         return _selection()
 
-    monkeypatch.setattr(app, "prompt_for_presets", prompt)
+    monkeypatch.setattr(app, "select_presets", prompt)
 
-    assert app.main() == 0
+    assert app.main([]) == 0
     get_config.return_value.get.assert_any_call("creality_print", "datadir")
     assert library.call_args.args == (Path("/data/creality"), "Creality.conf")
     assert library.call_args.kwargs["system_directory"] == Path("/profiles")
@@ -233,9 +233,9 @@ def test_preset_selection_is_skipped_with_a_note_for_other_slicers(
 ) -> None:
     """Slicers without preset support say so and still start."""
     prompt = Mock()
-    monkeypatch.setattr(app, "prompt_for_presets", prompt)
+    monkeypatch.setattr(app, "select_presets", prompt)
 
-    assert app.main() == 0
+    assert app.main([]) == 0
     assert not prompt.called
     assert "Preset selection is not available for Bambu Studio yet." in capsys.readouterr().out
 
@@ -251,11 +251,11 @@ def test_cancelled_preset_selection_stops_startup(
     monkeypatch.setattr(app, "PresetLibrary", Mock())
     monkeypatch.setattr(
         app,
-        "prompt_for_presets",
+        "select_presets",
         Mock(side_effect=SlicerSelectionError("No filament selected.")),
     )
 
-    assert app.main() == 1
+    assert app.main([]) == 1
     output = capsys.readouterr().out
     assert "BatchSlicer startup failed: No filament selected." in output
     assert "BatchSlicer ready." not in output
@@ -271,7 +271,7 @@ def test_model_is_chosen_from_incoming_and_sliced_into_output(
     paths = {("paths", "incoming"): "incoming", ("paths", "output"): "output"}
     get_config.return_value.get.side_effect = lambda section, key: paths[(section, key)]
 
-    assert app.main() == 0
+    assert app.main([]) == 0
 
     app.prompt_for_input.assert_called_once_with(Path("incoming"))
     app.prompt_for_output.assert_called_once_with(Path("output"))
@@ -296,9 +296,9 @@ def test_presets_and_library_are_used_for_slicing(
     library = Mock()
     monkeypatch.setattr(app, "PresetLibrary", library)
     selection = _selection()
-    monkeypatch.setattr(app, "prompt_for_presets", Mock(return_value=selection))
+    monkeypatch.setattr(app, "select_presets", Mock(return_value=selection))
 
-    app.main()
+    app.main([])
 
     assert app.SlicingService.call_args.kwargs["presets"] is library.return_value
     assert app.SlicingService.return_value.slice.call_args.args[2] is selection
@@ -313,7 +313,7 @@ def test_failed_slice_reports_the_slicers_reason(
         success=False, message="The input model file to the slicer can not be parsed."
     )
 
-    assert app.main() == 1
+    assert app.main([]) == 1
     output = capsys.readouterr().out
     assert "Slicing cube.stl failed: The input model file to the slicer can not be parsed." in output
     assert "Details: /out/cube-20261120-120000" in output
@@ -330,7 +330,7 @@ def test_cancelled_model_choice_stops_before_slicing(
         Mock(side_effect=SlicerSelectionError("No model file selected.")),
     )
 
-    assert app.main() == 1
+    assert app.main([]) == 1
     assert not app.SlicingService.return_value.slice.called
 
 
@@ -357,7 +357,7 @@ def test_folder_is_sliced_as_a_batch_with_progress_and_summary(
 
     app.SlicingService.return_value.slice_batch.side_effect = slice_batch
 
-    assert app.main() == 1
+    assert app.main([]) == 1
 
     call = app.SlicingService.return_value.slice_batch.call_args
     assert call.args[:3] == (models, Path("/models"), Path("/out"))
@@ -384,4 +384,142 @@ def test_successful_batch_exits_zero(
         Path("/out/b"), (_outcome(success=True),)
     )
 
-    assert app.main() == 0
+    assert app.main([]) == 0
+
+
+def _no_prompts(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make every interactive prompt fail the test if it is used."""
+    for name in ("prompt_for_slicer", "prompt_for_input", "prompt_for_output"):
+        monkeypatch.setattr(app, name, Mock(side_effect=AssertionError(f"{name} was called")))
+
+
+def test_command_line_run_needs_no_prompts(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """With every choice on the command line, nothing is asked and slicing runs."""
+    _no_prompts(monkeypatch)
+    library = Mock()
+    monkeypatch.setattr(app, "PresetLibrary", library)
+    select_presets = Mock(return_value=_selection())
+    monkeypatch.setattr(app, "select_presets", select_presets)
+    single = _single_input()
+    input_from_path = Mock(return_value=single)
+    output_from_path = Mock(return_value=Path("/out/k2"))
+    monkeypatch.setattr(app, "input_from_path", input_from_path)
+    monkeypatch.setattr(app, "output_from_path", output_from_path)
+
+    result = app.main(
+        [
+            "--slicer", "creality",
+            "--printer", "K2 Plus",
+            "--filament", "Generic PETG",
+            "--process", "0.12mm PETG",
+            "--input", "models/cube.stl",
+            "--output", "/out/k2",
+            "--no-prompt",
+        ]
+    )
+
+    assert result == 0
+    assert select_presets.call_args.kwargs == {
+        "printer": "K2 Plus",
+        "filament": "Generic PETG",
+        "process": "0.12mm PETG",
+        "prompt": False,
+    }
+    input_from_path.assert_called_once_with(Path("models/cube.stl"))
+    output_from_path.assert_called_once_with(Path("/out/k2"))
+    app.SlicingService.return_value.slice.assert_called_once_with(
+        single.models[0], Path("/out/k2"), select_presets.return_value
+    )
+    assert "Sliced cube.stl" in capsys.readouterr().out
+
+
+def test_no_prompt_uses_the_configured_output_folder_by_default(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without --output, --no-prompt slices into the configured output folder."""
+    _no_prompts(monkeypatch)
+    monkeypatch.setattr(app, "input_from_path", Mock(return_value=_single_input()))
+    output_from_path = Mock(return_value=Path("/out"))
+    monkeypatch.setattr(app, "output_from_path", output_from_path)
+
+    assert app.main(["--slicer", "bambu", "--input", "cube.stl", "--no-prompt"]) == 0
+    output_from_path.assert_called_once_with(Path("configured-path"))
+
+
+@pytest.mark.parametrize(
+    ("arguments", "message"),
+    [
+        (["--no-prompt"], "--slicer is required when --no-prompt is used."),
+        (["--slicer", "bambu", "--no-prompt"], "--input is required when --no-prompt is used."),
+        (["--slicer", "bambu", "--printer", "X1C"], "Preset selection is not available for Bambu Studio"),
+    ],
+)
+def test_missing_or_unusable_options_stop_with_a_reason(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    arguments: list[str],
+    message: str,
+) -> None:
+    """Options that cannot be satisfied stop startup with a clear message."""
+    _no_prompts(monkeypatch)
+
+    assert app.main(arguments) == 1
+    assert message in capsys.readouterr().out
+    assert not app.SlicingService.called
+
+
+def test_unconfigured_slicer_on_the_command_line_is_refused(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Naming a slicer without config says what to set."""
+    monkeypatch.setattr(app, "is_configured", Mock(return_value=False))
+
+    assert app.main(["--slicer", "orca"]) == 1
+    assert "OrcaSlicer is not configured. Set orca.executable" in capsys.readouterr().out
+
+
+def test_list_presets_prints_printers_then_exits(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--list-presets prints printer names, without the banner, and slices nothing."""
+    library = Mock()
+    selection = _selection()
+    library.return_value.printers.return_value = [selection.printer]
+    monkeypatch.setattr(app, "PresetLibrary", library)
+
+    assert app.main(["--slicer", "creality", "--list-presets"]) == 0
+
+    output = capsys.readouterr().out
+    assert output == "Printers for Creality Print (use with --printer):\n  K2 Plus\n"
+    assert not app.SlicingService.called
+
+
+def test_list_presets_for_a_printer_prints_filaments_and_processes(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """With --printer, the compatible filament and process names are listed."""
+    selection = _selection()
+    library = Mock()
+    library.return_value.printers.return_value = [selection.printer]
+    library.return_value.filaments_for.return_value = [selection.filament]
+    library.return_value.processes_for.return_value = [selection.process]
+    monkeypatch.setattr(app, "PresetLibrary", library)
+
+    assert app.main(["--slicer", "creality", "--printer", "k2 plus", "--list-presets"]) == 0
+
+    assert capsys.readouterr().out == (
+        "Filaments for K2 Plus (use with --filament):\n  Generic PETG\n"
+        "Processes for K2 Plus (use with --process):\n  0.12mm PETG\n"
+    )
