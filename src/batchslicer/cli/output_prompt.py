@@ -36,6 +36,21 @@ def find_destinations(output_root: Path) -> list[Path]:
     return [output_root, *subfolders]
 
 
+def output_from_path(path: Path) -> Path:
+    """Return the absolute output folder given on the command line, creating it if needed.
+
+    Raises :class:`SlicerSelectionError` if the path is a file or cannot be created.
+    """
+    folder = path.expanduser().absolute()
+    if folder.exists() and not folder.is_dir():
+        raise SlicerSelectionError(f"Output is not a folder: {folder}")
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise SlicerSelectionError(f"Could not create output folder {folder}: {error}") from error
+    return folder
+
+
 def prompt_for_output(
     output_root: Path,
     *,

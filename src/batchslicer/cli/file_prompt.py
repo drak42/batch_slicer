@@ -66,6 +66,27 @@ def is_model_file(path: Path) -> bool:
     return path.suffix.lower() in MODEL_SUFFIXES and path.is_file()
 
 
+def input_from_path(path: Path) -> SliceInput:
+    """Return the models for a path given on the command line.
+
+    A model file is sliced on its own; a folder means every model in it and its
+    subfolders. Raises :class:`SlicerSelectionError` if there is nothing to slice.
+    """
+    path = path.expanduser().absolute()
+    if path.is_dir():
+        models = find_models(path, recursive=True)
+        if not models:
+            raise SlicerSelectionError(
+                f"No model files ({_SUPPORTED}) found in {path} or its subfolders."
+            )
+        return SliceInput(root=path, models=tuple(models), is_folder=True)
+    if is_model_file(path):
+        return SliceInput(root=path.parent, models=(path,), is_folder=False)
+    if path.exists():
+        raise SlicerSelectionError(f"Not a {_SUPPORTED} model file: {path}")
+    raise SlicerSelectionError(f"Input not found: {path}")
+
+
 def prompt_for_input(
     incoming: Path,
     *,

@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from batchslicer.cli.output_prompt import find_destinations, prompt_for_output
+from batchslicer.cli.output_prompt import (
+    find_destinations,
+    output_from_path,
+    prompt_for_output,
+)
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
 
 
@@ -118,3 +122,20 @@ def test_end_of_input_stops_selection(output: Path) -> None:
     """Closing input stops instead of looping."""
     with pytest.raises(SlicerSelectionError, match="No output folder selected"):
         prompt_for_output(output, read_line=_answers(), write=lambda _: None)
+
+
+def test_output_path_is_created_without_asking(tmp_path: Path) -> None:
+    """An --output folder that does not exist is created."""
+    target = tmp_path / "new" / "k2"
+
+    assert output_from_path(target) == target
+    assert target.is_dir()
+
+
+def test_output_path_that_is_a_file_is_refused(tmp_path: Path) -> None:
+    """--output must be a folder."""
+    target = tmp_path / "file.txt"
+    target.write_text("x")
+
+    with pytest.raises(SlicerSelectionError, match="not a folder"):
+        output_from_path(target)

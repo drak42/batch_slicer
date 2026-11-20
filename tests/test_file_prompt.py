@@ -7,6 +7,7 @@ import pytest
 
 from batchslicer.cli.file_prompt import (
     find_models,
+    input_from_path,
     prompt_for_folder,
     prompt_for_input,
     prompt_for_model,
@@ -195,3 +196,29 @@ def test_declining_the_batch_cancels(tree: Path) -> None:
     """Answering no to the confirmation stops without slicing."""
     with pytest.raises(SlicerSelectionError, match="Batch cancelled"):
         prompt_for_folder(tree, read_line=_answers("1", "n"), write=lambda _: None)
+
+
+def test_input_path_to_a_folder_slices_the_whole_tree(tree: Path) -> None:
+    """A folder given with --input includes every model beneath it, without asking."""
+    chosen = input_from_path(tree / "brackets")
+
+    assert chosen.is_folder
+    assert [path.name for path in chosen.models] == ["left.stl", "v1.obj", "right.3MF"]
+
+
+def test_input_path_to_a_model_slices_that_file(tree: Path) -> None:
+    """A model file given with --input is sliced on its own."""
+    chosen = input_from_path(tree / "top.stl")
+
+    assert not chosen.is_folder
+    assert chosen.models == ((tree / "top.stl").absolute(),)
+
+
+@pytest.mark.parametrize(
+    ("relative", "message"),
+    [("missing.stl", "Input not found"), ("empty/readme.txt", "Not a"), ("empty", "No model files")],
+)
+def test_bad_input_paths_are_explained(tree: Path, relative: str, message: str) -> None:
+    """Missing paths, non-model files and empty folders are refused with a reason."""
+    with pytest.raises(SlicerSelectionError, match=message):
+        input_from_path(tree / relative)

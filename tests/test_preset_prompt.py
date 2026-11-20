@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from batchslicer.cli.preset_prompt import choose_preset, prompt_for_presets
+from batchslicer.cli.preset_prompt import (
+    choose_preset,
+    find_preset,
+    prompt_for_presets,
+    select_presets,
+)
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
 from batchslicer.domain.presets import Preset, PresetKind
 
@@ -128,3 +133,59 @@ def test_printer_is_chosen_first_and_filters_the_rest() -> None:
     assert selection.printer.name == "K2"
     assert selection.filament.name == "PLA @K2"
     assert selection.process.name == "Fine @K2"
+
+
+def test_named_presets_are_used_without_asking() -> None:
+    """Names given on the command line are matched ignoring case; nothing is asked."""
+    source = _Source()
+
+    selection = select_presets(
+        source,
+        printer="k2",
+        filament="PLA @K2",
+        process="fine @k2",
+        prompt=False,
+        read_line=_answers(),
+        write=lambda _: None,
+    )
+
+    assert (selection.printer.name, selection.filament.name, selection.process.name) == (
+        "K2",
+        "PLA @K2",
+        "Fine @K2",
+    )
+
+
+def test_only_missing_presets_are_asked_for() -> None:
+    """A named printer is used and the filament and process are still asked for."""
+    selection = select_presets(
+        _Source(), printer="Ender", read_line=_answers("1", "1"), write=lambda _: None
+    )
+
+    assert selection.printer.name == "Ender"
+    assert selection.filament.name == "PLA @Ender"
+
+
+def test_missing_preset_without_prompts_names_the_option() -> None:
+    """With prompting off, a missing preset names the option to add."""
+    with pytest.raises(SlicerSelectionError, match="--filament is required"):
+        select_presets(_Source(), printer="K2", prompt=False, read_line=_answers(), write=print)
+
+
+def test_unknown_name_suggests_close_matches() -> None:
+    """A mistyped name is refused with suggestions and a pointer to --list-presets."""
+    with pytest.raises(SlicerSelectionError) as raised:
+        find_preset(PresetKind.FILAMENT, FILAMENTS, "Generic PTEG")
+
+    message = str(raised.value)
+    assert "No filament preset named 'Generic PTEG'" in message
+    assert "'Generic PETG'" in message
+    assert "--list-presets" in message
+
+
+def test_filament_for_another_printer_is_refused() -> None:
+    """A filament that exists but does not fit the chosen printer is not accepted."""
+    with pytest.raises(SlicerSelectionError, match="compatible with K2"):
+        select_presets(
+            _Source(), printer="K2", filament="PLA @Ender", process="Fine @K2", prompt=False
+        )
