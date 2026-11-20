@@ -36,3 +36,4 @@ def _isolate_user_folders(
     base = tmp_path_factory.mktemp("xdg")
     monkeypatch.setenv("XDG_STATE_HOME", str(base / "state"))
     monkeypatch.setenv("XDG_CACHE_HOME", str(base / "cache"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(base / "data"))

@@ -207,6 +207,8 @@ def render_config(
         '  output: ""         # default output folder        (default ~/BatchSlicer/output)',
         '  logs: ""           # log files                    (default ~/.local/state/batchslicer)',
         '  data: ""           # BatchSlicer\'s working cache  (default ~/.cache/batchslicer)',
+        '  profiles: ""       # saved profiles file          '
+        "(default ~/.local/share/batchslicer/profiles.yaml)",
         "",
     ]
     return "\n".join(lines)

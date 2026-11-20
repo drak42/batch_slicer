@@ -98,3 +98,21 @@ def test_setup_defaults_to_the_user_config_file(monkeypatch: pytest.MonkeyPatch,
 def test_config_option_for_runs() -> None:
     """--config is accepted for normal runs."""
     assert parse_arguments(["--config", "my.yaml"]).config == Path("my.yaml")
+
+
+def test_profile_options() -> None:
+    """Profile options are parsed; --last means the 'last' profile."""
+    assert parse_arguments(["--profile", "k2-petg"]).profile == "k2-petg"
+    assert parse_arguments(["--last"]).profile == "last"
+    assert parse_arguments(["--save-profile", "k2"]).save_profile == "k2"
+    assert parse_arguments(["--list-profiles"]).list_profiles
+    assert parse_arguments(["--delete-profile", "old"]).delete_profile == "old"
+
+
+def test_profile_and_last_cannot_be_combined(capsys: pytest.CaptureFixture[str]) -> None:
+    """--profile and --last both choose a starting profile, so only one may be given."""
+    with pytest.raises(SystemExit) as raised:
+        parse_arguments(["--profile", "k2", "--last"])
+
+    assert raised.value.code == 2
+    assert "not allowed with argument" in capsys.readouterr().err

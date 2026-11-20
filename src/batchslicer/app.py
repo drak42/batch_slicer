@@ -17,6 +17,7 @@ import logging
 import sys
 import traceback
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 
 from batchslicer.backends.orca import OrcaBackend
@@ -28,12 +29,15 @@ from batchslicer.cli.arguments import RunOptions, parse_arguments
 from batchslicer.cli.file_prompt import SliceInput, input_from_path, prompt_for_input
 from batchslicer.cli.output_prompt import output_from_path, prompt_for_output
 from batchslicer.cli.preset_prompt import find_preset, select_presets
+from batchslicer.cli.profile_prompt import prompt_for_profile
 from batchslicer.cli.setup import SetupOptions, run_setup
 from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slicer
 from batchslicer.core.config import Config, find_config_file, get_config
 from batchslicer.core.environment import EnvironmentService
 from batchslicer.core.logging import configure_logging, current_log_file
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
+from batchslicer.domain.profiles import CHOICE_FIELDS, LAST_RUN, Profile, is_valid_name
+from batchslicer.infrastructure.profiles import ProfileError, ProfileStore
 from batchslicer.services.slicing import BatchOutcome, SliceOutcome, SlicingService
 
 EXIT_SUCCESS = 0
@@ -63,14 +67,29 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 def _run(options: RunOptions) -> int:
     """Run the slicing workflow and return a process exit status."""
-    if not options.list_presets:
+    listing = options.list_presets or options.list_profiles or options.delete_profile
+    if not listing:
         print(get_banner(), end="")
     logger: logging.Logger | None = None
 
     try:
+        if options.save_profile is not None and not is_valid_name(options.save_profile):
+            raise ProfileError(
+                f"Invalid profile name '{options.save_profile}': use letters, digits, "
+                "spaces, dots, dashes and underscores (up to 64 characters)."
+            )
         config = get_config(find_config_file(options.config))
         logger = configure_logging(log_directory=config.get_path("paths", "logs"))
         logger.info("Using configuration %s", config.path)
+        profiles = ProfileStore(config.get_path("paths", "profiles"))
+        if options.list_profiles:
+            _list_profiles(profiles)
+            return EXIT_SUCCESS
+        if options.delete_profile is not None:
+            deleted = profiles.delete(options.delete_profile)
+            print(f"Deleted profile '{deleted.name}'.")
+            return EXIT_SUCCESS
+        options = _apply_profile(options, profiles, logger)
         slicer = _select_slicer(options, config)
         logger.info("Selected slicer: %s", slicer.display_name)
         _verify_environment(config, logger, slicer)
@@ -90,6 +109,9 @@ def _run(options: RunOptions) -> int:
             slice_input.root,
             output_directory,
         )
+        _remember_choices(
+            profiles, options, slicer, selection, slice_input, output_directory, logger
+        )
         backend = OrcaBackend(slicer=slicer, config=config, logger=logger)
         service = SlicingService(backend, presets=library, logger=logger)
         if slice_input.is_folder:
@@ -103,6 +125,7 @@ def _run(options: RunOptions) -> int:
     except (
         SlicerSelectionError,
         PresetError,
+        ProfileError,
         FileNotFoundError,
         KeyError,
         OSError,
@@ -150,6 +173,79 @@ def _setup(options: SetupOptions) -> int:
         _error(f"BatchSlicer setup failed: {error}")
         return EXIT_FAILURE
     return EXIT_SUCCESS
+
+
+def _apply_profile(
+    options: RunOptions,
+    profiles: ProfileStore,
+    logger: logging.Logger,
+) -> RunOptions:
+    """Fill choices not given on the command line from the chosen profile.
+
+    The profile comes from --profile/--last, or is offered interactively when
+    no choices were given and profiles have been saved.
+    """
+    profile: Profile | None = None
+    if options.profile is not None:
+        profile = profiles.get(options.profile)
+    elif not options.has_choices() and not options.no_prompt and not options.list_presets:
+        saved = profiles.load()
+        if saved:
+            profile = prompt_for_profile(saved)
+    if profile is None:
+        return options
+
+    print(f"Using profile '{profile.name}': {profile.summary()}")
+    logger.info("Using profile %s: %s", profile.name, profile.summary())
+    filled = {
+        key: getattr(profile, key)
+        for key in CHOICE_FIELDS
+        if getattr(options, key) is None and getattr(profile, key) is not None
+    }
+    return replace(options, **filled)
+
+
+def _remember_choices(
+    profiles: ProfileStore,
+    options: RunOptions,
+    slicer: SlicerDefinition,
+    selection: PresetSelection | None,
+    slice_input: SliceInput,
+    output_directory: Path,
+    logger: logging.Logger,
+) -> None:
+    """Save this run's choices as the last run, and as --save-profile if given."""
+    choices = Profile(
+        name=LAST_RUN,
+        slicer=slicer.key,
+        printer=selection.printer.name if selection else None,
+        filament=selection.filament.name if selection else None,
+        process=selection.process.name if selection else None,
+        input=slice_input.root if slice_input.is_folder else slice_input.models[0],
+        output=output_directory,
+    )
+    try:
+        profiles.save(choices)
+    except ProfileError as error:
+        logger.warning("Could not remember this run: %s", error)
+    if options.save_profile is not None:
+        profiles.save(replace(choices, name=options.save_profile))
+        print(f"Saved these choices as profile '{options.save_profile}'.")
+        logger.info("Saved profile %s", options.save_profile)
+
+
+def _list_profiles(profiles: ProfileStore) -> None:
+    """Print the saved profiles, the last run first."""
+    saved = profiles.load()
+    if not saved:
+        print(f"No saved profiles yet ({profiles.path}).")
+        return
+    print(f"Saved profiles ({profiles.path}):")
+    for profile in sorted(
+        saved.values(), key=lambda item: (item.name != LAST_RUN, item.name.casefold())
+    ):
+        name = f"{profile.name} (used by --last)" if profile.name == LAST_RUN else profile.name
+        print(f"  {name}: {profile.summary()}")
 
 
 def _select_slicer(options: RunOptions, config: Config) -> SlicerDefinition:

@@ -1,8 +1,9 @@
 """Name the standard per-user locations BatchSlicer uses.
 
 Locations follow the XDG Base Directory conventions used on Linux: settings
-under ``~/.config``, logs under ``~/.local/state`` and caches under ``~/.cache``,
-each honouring its ``XDG_*`` environment variable. Models and results go in a
+under ``~/.config``, saved profiles under ``~/.local/share``, logs under
+``~/.local/state`` and caches under ``~/.cache``, each honouring its ``XDG_*``
+environment variable. Models and results go in a
 visible ``~/BatchSlicer`` folder because users work with them directly. This
 module only names locations; it does not create folders or read configuration.
 """
@@ -31,6 +32,9 @@ def default_paths(environ: Mapping[str, str] | None = None) -> dict[str, Path]:
         "output": home / "BatchSlicer" / "output",
         "logs": _base("XDG_STATE_HOME", Path(".local") / "state", environ) / APP_NAME,
         "data": _base("XDG_CACHE_HOME", Path(".cache"), environ) / APP_NAME,
+        "profiles": _base("XDG_DATA_HOME", Path(".local") / "share", environ)
+        / APP_NAME
+        / "profiles.yaml",
     }
 
 

@@ -17,6 +17,7 @@ from pathlib import Path
 from batchslicer.backends.slicers import SLICERS
 from batchslicer.cli.setup import SetupOptions
 from batchslicer.core.locations import user_config_file
+from batchslicer.domain.profiles import LAST_RUN
 from batchslicer.version import get_version_string
 
 _SLICER_ALIASES = {
@@ -48,6 +49,28 @@ class RunOptions:
     config: Path | None = None
     """Configuration file given with --config, if any."""
 
+    profile: str | None = None
+    """Saved profile to start from (--profile, or "last" for --last)."""
+
+    save_profile: str | None = None
+    list_profiles: bool = False
+    delete_profile: str | None = None
+
+    def has_choices(self) -> bool:
+        """Return whether any run choice was given on the command line."""
+        return any(
+            value is not None
+            for value in (
+                self.slicer,
+                self.printer,
+                self.filament,
+                self.process,
+                self.input,
+                self.output,
+                self.profile,
+            )
+        )
+
 
 def parse_arguments(argv: Sequence[str] | None = None) -> RunOptions | SetupOptions:
     """Return the options in ``argv`` (default: the process arguments).
@@ -69,6 +92,10 @@ def parse_arguments(argv: Sequence[str] | None = None) -> RunOptions | SetupOpti
         no_prompt=namespace.no_prompt,
         list_presets=namespace.list_presets,
         config=namespace.config,
+        profile=LAST_RUN if namespace.last else namespace.profile,
+        save_profile=namespace.save_profile,
+        list_profiles=namespace.list_profiles,
+        delete_profile=namespace.delete_profile,
     )
 
 
@@ -167,6 +194,33 @@ def _parser() -> argparse.ArgumentParser:
         "--no-prompt",
         action="store_true",
         help="never ask questions; fail if a required choice is missing",
+    )
+    profiles = parser.add_argument_group("profiles (saved choices)")
+    starting = profiles.add_mutually_exclusive_group()
+    starting.add_argument(
+        "--profile",
+        metavar="NAME",
+        help="start from a saved profile; other options override its choices",
+    )
+    starting.add_argument(
+        "--last",
+        action="store_true",
+        help="repeat the last run (its choices are saved automatically)",
+    )
+    profiles.add_argument(
+        "--save-profile",
+        metavar="NAME",
+        help="save this run's choices as a profile",
+    )
+    profiles.add_argument(
+        "--list-profiles",
+        action="store_true",
+        help="list saved profiles, then exit",
+    )
+    profiles.add_argument(
+        "--delete-profile",
+        metavar="NAME",
+        help="delete a saved profile, then exit",
     )
     parser.add_argument(
         "--list-presets",

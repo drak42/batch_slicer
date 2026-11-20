@@ -64,6 +64,9 @@ def startup_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, Mock, Mock, Mo
     )
     config.path = Path("/settings/config.yaml")
     monkeypatch.setattr(app, "find_config_file", Mock(return_value=Path("/settings/config.yaml")))
+    profile_store = Mock()
+    profile_store.return_value.load.return_value = {}
+    monkeypatch.setattr(app, "ProfileStore", profile_store)
     environment_service = Mock()
     environment_service.return_value.run_checks.return_value = [_Result(passed=True)]
 
@@ -287,6 +290,7 @@ def test_model_is_chosen_from_incoming_and_sliced_into_output(
         ("paths", "incoming"): "incoming",
         ("paths", "output"): "output",
         ("paths", "logs"): "logs",
+        ("paths", "profiles"): "profiles.yaml",
     }
     get_config.return_value.get.side_effect = lambda section, key: paths[(section, key)]
 
@@ -685,3 +689,135 @@ def test_unexpected_error_before_logging_shows_the_traceback(
     assert "unexpected error" in err
     assert "Traceback" in err
     assert "RuntimeError: config exploded" in err
+
+
+def _store_with(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *profiles: object) -> Path:
+    """Use a real profile store in ``tmp_path`` holding ``profiles``."""
+    from batchslicer.infrastructure.profiles import ProfileStore
+
+    path = tmp_path / "profiles.yaml"
+    store = ProfileStore(path)
+    for profile in profiles:
+        store.save(profile)  # type: ignore[arg-type]
+    monkeypatch.setattr(app, "ProfileStore", ProfileStore)
+    original_get_path = app.get_config.return_value.get_path.side_effect
+
+    def get_path(section: str, key: str) -> Path:
+        if (section, key) == ("paths", "profiles"):
+            return path
+        return original_get_path(section, key)
+
+    app.get_config.return_value.get_path.side_effect = get_path
+    return path
+
+
+def test_each_run_is_remembered_and_can_be_saved_by_name(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The run's choices are saved as 'last', and under --save-profile's name."""
+    from batchslicer.infrastructure.profiles import ProfileStore
+
+    path = _store_with(monkeypatch, tmp_path)
+
+    assert app.main(["--save-profile", "bambu-cube"]) == 0
+
+    saved = ProfileStore(path).load()
+    assert set(saved) == {"last", "bambu-cube"}
+    assert saved["last"].slicer == "bambu_studio"
+    assert saved["last"].input == Path("/models/cube.stl")
+    assert saved["last"].output == Path("/out")
+    assert "Saved these choices as profile 'bambu-cube'." in capsys.readouterr().out
+
+
+def test_profile_fills_choices_and_options_override_it(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """A profile supplies choices; options on the command line win."""
+    from batchslicer.domain.profiles import Profile
+
+    _store_with(
+        monkeypatch,
+        tmp_path,
+        Profile(name="k2", slicer="creality_print", printer="K2 Plus", filament="PETG",
+                process="Fine", input=Path("/models/brackets"), output=Path("/out/k2")),
+    )
+    monkeypatch.setattr(app, "PresetLibrary", Mock())
+    select_presets = Mock(return_value=_selection())
+    monkeypatch.setattr(app, "select_presets", select_presets)
+    input_from_path = Mock(return_value=_single_input())
+    monkeypatch.setattr(app, "input_from_path", input_from_path)
+    output_from_path = Mock(return_value=Path("/out/k2"))
+    monkeypatch.setattr(app, "output_from_path", output_from_path)
+    _no_prompts(monkeypatch)
+
+    assert app.main(["--profile", "K2", "--process", "Draft", "--no-prompt"]) == 0
+
+    assert select_presets.call_args.kwargs == {
+        "printer": "K2 Plus",
+        "filament": "PETG",
+        "process": "Draft",
+        "prompt": False,
+    }
+    input_from_path.assert_called_once_with(Path("/models/brackets"))
+    output_from_path.assert_called_once_with(Path("/out/k2"))
+
+
+def test_saved_profiles_are_offered_when_no_choices_are_given(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Interactive runs without options start by offering the saved profiles."""
+    from batchslicer.domain.profiles import Profile
+
+    _store_with(monkeypatch, tmp_path, Profile(name="last", slicer="bambu_studio"))
+    offered = Mock(return_value=None)
+    monkeypatch.setattr(app, "prompt_for_profile", offered)
+
+    app.main([])
+    assert offered.call_count == 1
+
+    app.main(["--slicer", "bambu"])
+    app.main(["--no-prompt", "--slicer", "bambu", "--input", "x.stl"])
+    assert offered.call_count == 1
+
+
+def test_list_and_delete_profiles(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--list-profiles shows them (last run first); --delete-profile removes one."""
+    from batchslicer.domain.profiles import Profile
+
+    path = _store_with(
+        monkeypatch, tmp_path, Profile(name="k2", slicer="creality_print"), Profile(name="last", slicer="orca")
+    )
+
+    assert app.main(["--list-profiles"]) == 0
+    assert capsys.readouterr().out == (
+        f"Saved profiles ({path}):\n"
+        "  last (used by --last): orca\n"
+        "  k2: creality_print\n"
+    )
+
+    assert app.main(["--delete-profile", "k2"]) == 0
+    assert "Deleted profile 'k2'." in capsys.readouterr().out
+    assert app.main(["--delete-profile", "k2"]) == 1
+    assert "No profile named 'k2'" in capsys.readouterr().err
+
+
+def test_invalid_profile_name_is_refused_before_anything_runs(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A bad --save-profile name stops at once, before any questions."""
+    assert app.main(["--save-profile", "a/b"]) == 1
+    assert "Invalid profile name 'a/b'" in capsys.readouterr().err
+    assert not app.find_config_file.called
