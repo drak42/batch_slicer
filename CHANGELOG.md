@@ -6,6 +6,23 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **`batchslicer doctor`** checks the configuration, folders and each
+  configured slicer (does it run, does it accept BatchSlicer's commands, how
+  many printers it offers) and saved profiles, and reports any problems with
+  what to do about them. Exit status 0 or 1.
+- A weekly GitHub Actions job tests BatchSlicer against the newest release of
+  OrcaSlicer, Creality Print and Bambu Studio.
+- `docs/Vision.md`, `docs/Roadmap.md` and `docs/Startup.md`.
+
+### Changed
+
+- The log file is rotated at about 1 MB, keeping the three most recent old
+  logs.
+- "One model file" mode also lists models in subfolders of the incoming folder.
+  Text containing `/` is now a search unless it names an existing file.
+
 ## [0.3.0] - 2026-11-20
 
 Reuse your choices and slice for several printers at once.

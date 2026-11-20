@@ -38,6 +38,7 @@ repeats the same run.
 - [Output](#output)
 - [Exit status and logs](#exit-status-and-logs)
 - [Troubleshooting](#troubleshooting)
+- [Checking your setup: `batchslicer doctor`](#checking-your-setup-batchslicer-doctor)
 - [Testing](#testing)
 - [Current limitations](#current-limitations)
 
@@ -310,8 +311,9 @@ What would you like to slice?
   2) Every model in a folder (including subfolders)
 ```
 
-- **One model file** lists the models directly in the incoming folder. You can also type
-  the path to a model anywhere else.
+- **One model file** lists the models in the incoming folder and its subfolders
+  (shown as `brackets/left.stl`). You can also type the path to a model
+  anywhere else.
 - **Every model in a folder** lists the incoming folder and every folder beneath it that
   contains models, with a count for each. You can also type any folder path.
   BatchSlicer shows how many files it found and asks you to confirm.
@@ -563,9 +565,13 @@ technical details are in the log. Please include them when reporting a problem.
 A log of every run is written to `batchslicer.log` in the logs folder
 (`~/.local/state/batchslicer/` by default), including the choices
 made, each slicer command and its result, and the slicer's error output when a
-model fails.
+model fails. When it reaches about 1 MB it is renamed `batchslicer.log.1` and a
+new one is started; the three most recent old logs are kept.
 
 ## Troubleshooting
+
+Start with `batchslicer doctor` (see below): it checks the configuration,
+folders and each slicer, and names any problem it finds.
 
 **"X is not configured"**: set both `executable` and `datadir` for that slicer
 in the configuration, or run `batchslicer setup` again.
@@ -604,6 +610,22 @@ multi-printer run, save it as its own profile and pass each with `--profile`.
 [limitations](#current-limitations). Slicing a `.3mf` project that already
 contains its settings still works.
 
+## Checking your setup: `batchslicer doctor`
+
+```bash
+batchslicer doctor
+```
+
+Shows the BatchSlicer and Python versions, which configuration file is used and
+how it was found, where BatchSlicer keeps its files, and for each configured
+slicer whether its program runs and accepts BatchSlicer's commands, whether its
+settings folder exists, and how many printers it offers. It also checks that
+saved profiles can be read. It ends with "No problems found." or a list of
+problems and what to do about them, and exits with status 0 or 1.
+
+When reporting a problem, please include the output of `batchslicer doctor`.
+Use `--config PATH` to check a specific configuration file.
+
 ## Testing
 
 Run the same checks as the automated build (GitHub Actions runs them on every
@@ -632,6 +654,12 @@ BATCHSLICER_TEST_BAMBU_EXECUTABLE=~/Apps/BambuStudio.AppImage \
 
 Re-run these after updating a slicer.
 
+GitHub Actions also runs these tests every week against the newest release of
+each slicer, using a minimal stand-in settings folder created by
+`scripts/make_test_slicer_data.py`, so a slicer update that changes its
+command line is noticed quickly. It can be started by hand from the Actions
+tab ("Latest slicers").
+
 ## Current limitations
 
 - **Bambu Studio presets** are not selectable yet; slicing works, but without
@@ -647,8 +675,6 @@ Re-run these after updating a slicer.
   another, and several models are not arranged onto one plate.
 - **Flatpak installs are not detected** by `batchslicer setup`; configure them
   by hand.
-- **"One model file" mode** lists only the models directly in the incoming folder, not
-  in its subfolders (type a path, or use folder mode).
 
 See `docs/Architecture.md` for the design and planned features, and
 `CHANGELOG.md` for what has changed.

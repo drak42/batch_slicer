@@ -132,67 +132,15 @@ Lower layers should never depend on higher layers.
 
 # 5. Application Lifecycle
 
-Application startup follows a deterministic sequence.
-
-```
-main()
-
-↓
-
-Create Application
-
-↓
-
-Load Configuration
-
-↓
-
-Configure Logging
-
-↓
-
-Initialise Database
-
-↓
-
-Discover Backends
-
-↓
-
-Select Slicer (user is prompted; startup waits for a configured choice)
-
-↓
-Verify Environment (for the selected slicer)
-
-↓
-
-Select Presets (printer, then compatible filament and process; Creality Print and OrcaSlicer)
-
-↓
-Select Input (one model file, or every model in a folder and its subfolders)
-
-↓
-
-Select Output Folder (default, existing subfolder, or a new folder created on confirmation)
-
-↓
-
-Slice (one model: a new job folder; a folder: one batch folder mirroring the source tree,
-one folder per model, presets saved once; failures do not stop the batch)
-
-↓
-
-Initialise Services
-
-↓
-
-Ready
-```
+A run follows a deterministic sequence: options, configuration, logging,
+profiles, then for each target the slicer, environment check and presets,
+then input, output and slicing. [Startup](Startup.md) describes each step and
+where its code lives.
 
 Every stage must complete successfully before the next begins.
 
-Each selection stage takes its value from the command line when given
-(`cli/arguments.py`) and otherwise prompts, unless `--no-prompt` is used.
+Each selection stage takes its value from the command line or a profile when
+given (`cli/arguments.py`) and otherwise prompts, unless `--no-prompt` is used.
 
 Startup failures should clearly identify the failing stage.
 
