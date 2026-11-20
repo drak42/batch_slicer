@@ -61,7 +61,7 @@ farms spend less time managing printers and more time creating.
 A run goes through these steps. Each choice comes from the command line if you
 gave it there, and is asked for otherwise.
 
-1. **Choose a slicer.** Only slicers set up in `config/config.yaml` can be
+1. **Choose a slicer.** Only slicers set up in the configuration can be
    chosen.
 2. **Check the environment.** The Python version, the configuration, the
    working folders and the chosen slicer's program and data folder are checked.
@@ -87,7 +87,7 @@ those files with the job, and passes them to the slicer.
 **OrcaSlicer's built-in presets.** OrcaSlicer 2.4 keeps its built-in presets in
 a packed internal format. The same presets ship as plain files inside the
 OrcaSlicer AppImage, so BatchSlicer extracts the vendors you use (for example
-Creality) once, caches them in `data/slicer-profiles/`, and extracts again
+Creality) once, caches them in `~/.cache/batchslicer/slicer-profiles/`, and extracts again
 automatically when OrcaSlicer is updated. This takes well under a second.
 
 ## Requirements
@@ -111,36 +111,92 @@ python3 -m venv .venv
 This creates a private Python environment in `.venv` and installs BatchSlicer
 into it, along with the `batchslicer` command and the test tools.
 
+Then let BatchSlicer find your slicers and create its configuration:
+
+```bash
+.venv/bin/batchslicer setup
+```
+
 ## Configuration
 
-Edit `config/config.yaml`. Each slicer you want to use needs two paths:
+### Setting up with `batchslicer setup`
 
-- `executable`: the slicer program (for example its AppImage)
+`setup` looks for slicer AppImages in `~/Apps`, `~/Applications`,
+`~/AppImages`, `~/Downloads`, `~/Desktop` and `~/.local/bin` (and one folder
+below each), in `/opt`, and for slicer programs on your PATH. For each slicer
+it shows what it found and recommends the newest stable version:
+
+```
+OrcaSlicer:
+  1) ~/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.4.0.AppImage  (version 2.4.0, recommended)
+  2) ~/Downloads/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage  (version 2.3.1)
+  3) ~/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.5.0-alpha.AppImage  (version 2.5.0, pre-release)
+  4) Don't use OrcaSlicer
+Enter for 1, or a number 1-4:
+```
+
+Press Enter for the recommendation, pick another version, or skip the slicer.
+Setup also finds each slicer's settings folder (for Creality Print, the one
+matching the program's version). A slicer that has never been opened is
+skipped with a note: open it once, add your printers, and run setup again.
+
+Setup writes `~/.config/batchslicer/config.yaml` and creates
+`~/BatchSlicer/incoming` and `~/BatchSlicer/output`. If a configuration already
+exists it asks before replacing it and keeps the old one as `config.yaml.bak`.
+
+| Option | Meaning |
+|---|---|
+| `--config PATH` | write the configuration somewhere else |
+| `--no-prompt` | accept the recommended version of each slicer without asking |
+| `--force` | replace an existing configuration (needed with `--no-prompt`) |
+
+Flatpak installs are not detected; point the configuration at the slicer
+program yourself if you use one.
+
+### Where the configuration lives
+
+BatchSlicer uses the first of these that applies:
+
+1. the file given with `--config PATH`
+2. the file named by the `BATCHSLICER_CONFIG` environment variable
+3. `config/config.yaml` in the current folder (handy when working in a copy of
+   this project)
+4. `~/.config/batchslicer/config.yaml` (where `setup` writes it)
+
+### Editing it by hand
+
+`config/config.example.yaml` is a commented template. Each slicer you use needs
+two paths; leave both empty for a slicer you do not use:
+
+- `executable`: the slicer program (for example its AppImage, or just a program
+  name such as `orca-slicer` if it is on your PATH)
 - `datadir`: the folder where the slicer keeps its settings and presets
-
-Leave both empty for a slicer you do not use.
 
 ```yaml
 orca:
-  executable: "/home/you/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.4.0.AppImage"
-  datadir: "/home/you/.config/OrcaSlicer"
+  executable: "~/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.4.0.AppImage"
+  datadir: "~/.config/OrcaSlicer"
 
 creality_print:
-  executable: "/home/you/Apps/CrealityPrint-V7.3.0.6157-x86_64-Release.AppImage"
-  datadir: "/home/you/.config/Creality/Creality Print/7.3"
+  executable: "~/Apps/CrealityPrint-V7.3.0.6157-x86_64-Release.AppImage"
+  datadir: "~/.config/Creality/Creality Print/7.3"
 
 bambu_studio:
-  executable: "/home/you/Apps/BambuStudio_ubu24-v02.08.04.57.AppImage"
-  datadir: "/home/you/.config/BambuStudio"
+  executable: ""
+  datadir: ""
 
-paths:
-  incoming: "incoming"   # where BatchSlicer looks for models to offer
-  output: "output"       # default output folder
-  logs: "logs"           # log files
-  data: "data"           # BatchSlicer's own working data (preset cache)
+paths:              # all optional; empty means the default
+  incoming: ""      # models offered for slicing   (default ~/BatchSlicer/incoming)
+  output: ""        # default output folder        (default ~/BatchSlicer/output)
+  logs: ""          # log files                    (default ~/.local/state/batchslicer)
+  data: ""          # BatchSlicer's working cache  (default ~/.cache/batchslicer)
 ```
 
-Typical settings folders on Linux:
+Paths may start with `~` for your home folder. Relative paths are relative to
+the folder the configuration file is in, so BatchSlicer behaves the same
+whichever folder you run it from. Folders are created when needed.
+
+Typical slicer settings folders on Linux:
 
 | Slicer | `datadir` |
 |---|---|
@@ -148,14 +204,10 @@ Typical settings folders on Linux:
 | Creality Print | `~/.config/Creality/Creality Print/<version>` (for example `7.3`) |
 | Bambu Studio | `~/.config/BambuStudio` |
 
-Write the full path in the config (for example `/home/you/...`, not `~`).
-The `paths` entries are relative to the folder you run BatchSlicer from, which
-should be the project folder. They are created automatically if missing, and
-git ignores them.
-
 ## Using BatchSlicer interactively
 
-Put the models you want to slice in `incoming/` (subfolders are fine), then run:
+Put the models you want to slice in your incoming folder
+(`~/BatchSlicer/incoming` by default; subfolders are fine), then run:
 
 ```bash
 .venv/bin/batchslicer
@@ -199,9 +251,9 @@ What would you like to slice?
   2) Every model in a folder (including subfolders)
 ```
 
-- **One model file** lists the models directly in `incoming/`. You can also type
+- **One model file** lists the models directly in the incoming folder. You can also type
   the path to a model anywhere else.
-- **Every model in a folder** lists `incoming/` and every folder beneath it that
+- **Every model in a folder** lists the incoming folder and every folder beneath it that
   contains models, with a count for each. You can also type any folder path.
   BatchSlicer shows how many files it found and asks you to confirm.
 
@@ -215,7 +267,7 @@ Folder number, a new folder name or path, or Enter for the default:
 ```
 
 Press Enter for the default, pick an existing folder by number, or type a new
-name (created inside `output/`) or a full path (used as typed). BatchSlicer asks
+name (created inside the output folder) or a full path (used as typed). BatchSlicer asks
 before creating a folder.
 
 ## Using the command line
@@ -286,13 +338,13 @@ Set the slicer and printer, and be asked for everything else:
 .venv/bin/batchslicer --slicer orca --printer "Creality K2 Plus 0.4 nozzle"
 ```
 
-Run on a schedule (for example from cron). Change to the project folder first,
-because the configuration is found relative to it:
+Run on a schedule (for example from cron). Use full paths, and `--config` if
+the configuration is not in `~/.config/batchslicer/`:
 
 ```bash
-cd ~/projects/batch_slicer && .venv/bin/batchslicer --slicer creality \
+/path/to/batch_slicer/.venv/bin/batchslicer --slicer creality \
   --printer "..." --filament "..." --process "..." \
-  --input incoming --output output/nightly --no-prompt >> logs/nightly.txt 2>&1
+  --input ~/BatchSlicer/incoming --output ~/BatchSlicer/output/nightly --no-prompt
 ```
 
 ## Output
@@ -339,14 +391,18 @@ output/
 | `1` | a model failed to slice, or BatchSlicer stopped (missing option, unknown preset, failed check, cancelled) |
 | `2` | invalid command-line option (for example an unknown `--slicer`) |
 
-A log of every run is written to `logs/batchslicer.log`, including the choices
+A log of every run is written to `batchslicer.log` in the logs folder
+(`~/.local/state/batchslicer/` by default), including the choices
 made, each slicer command and its result, and the slicer's error output when a
 model fails.
 
 ## Troubleshooting
 
 **"X is not configured"**: set both `executable` and `datadir` for that slicer
-in `config/config.yaml`.
+in the configuration, or run `batchslicer setup` again.
+
+**"No configuration file found"**: run `batchslicer setup`, or pass
+`--config PATH`. The message lists where BatchSlicer looked.
 
 **"environment verification failed"**: the list underneath names each problem,
 usually a wrong path to the slicer program or its settings folder.
@@ -366,7 +422,7 @@ damaged or not a valid STL/3MF/OBJ. Open it in the slicer to check.
 combination of presets. Some built-in presets do not suit every nozzle (for
 example OrcaSlicer's "0.20mm Standard" for the Ender-3 V3 SE 0.2 mm nozzle uses
 layers thicker than that nozzle allows). Try another process preset, and check
-`logs/batchslicer.log` for the slicer's detailed output.
+`batchslicer.log` (see [logs](#exit-status-and-logs)) for the slicer's detailed output.
 
 **Bambu Studio says "Preset selection is not available"**: see
 [limitations](#current-limitations). Slicing a `.3mf` project that already
@@ -404,9 +460,7 @@ Re-run these after updating a slicer.
   need several filaments and are not supported yet.
 - **One set of presets per run.** A batch uses the same printer, filament and
   process for every model.
-- **Run from the project folder.** The configuration and working folders are
-  found relative to the current folder.
-- **"One model file" mode** lists only the models directly in `incoming/`, not
+- **"One model file" mode** lists only the models directly in the incoming folder, not
   in its subfolders (type a path, or use folder mode).
 
 See `docs/Architecture.md` for the design and planned features, and

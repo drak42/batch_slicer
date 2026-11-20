@@ -389,6 +389,20 @@ The flow should remain easy to follow.
 
 Configuration is loaded once during startup.
 
+The configuration file is found by `core/config.py` in this order: `--config`,
+the `BATCHSLICER_CONFIG` environment variable, `config/config.yaml` in the
+current folder (a project checkout), then `~/.config/batchslicer/config.yaml`.
+All path settings are read through `Config.get_path()` / `get_program()`:
+`~` is expanded, relative paths are relative to the configuration file, and
+missing `paths` settings use standard per-user locations (`core/locations.py`,
+following the XDG conventions): models and results in `~/BatchSlicer`, logs in
+`~/.local/state/batchslicer`, caches in `~/.cache/batchslicer`. BatchSlicer
+therefore behaves the same from any working folder.
+
+`batchslicer setup` (`cli/setup.py`) creates the configuration: it detects
+installed slicers and their settings folders (`backends/detection.py`) and
+writes the file (`render_config`), keeping a backup of any file it replaces.
+
 No module should read configuration files directly.
 
 Configuration changes should be visible and traceable.

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- feat(setup): `batchslicer setup` finds installed slicers (AppImages in the usual folders, programs on PATH), recommends the newest stable version, finds each slicer's settings folder, and writes the configuration. Existing configuration is only replaced after confirmation (or `--force`) and kept as `.bak`.
+- feat(config): configuration is found via `--config`, `BATCHSLICER_CONFIG`, `./config/config.yaml`, then `~/.config/batchslicer/config.yaml`. Paths may use `~`, relative paths are relative to the configuration file, and folders default to `~/BatchSlicer/{incoming,output}`, `~/.local/state/batchslicer` (logs) and `~/.cache/batchslicer` (cache). BatchSlicer no longer depends on the folder it is run from.
+- fix(logging): logs are written to the configured logs folder.
+- chore(config): `config/config.yaml` is no longer tracked; `config/config.example.yaml` is the documented template. Removed the unused `Config.validate()`.
 - feat(cli): command-line options for every choice (`--slicer`, `--printer`, `--filament`, `--process`, `--input`, `--output`), `--no-prompt` for unattended runs, and `--list-presets` to find preset names. Unknown preset names suggest close matches. Adds a `batchslicer` command.
 - feat(presets): preset selection for OrcaSlicer. Built-in presets are extracted once from the OrcaSlicer AppImage (its data folder only has packed `.opc` files) and cached in `data/slicer-profiles/`. Verified with real OrcaSlicer 2.4 slices.
 - feat(presets): filament lists only show built-in filaments made visible in the slicer, matching its own menus (applies to Creality Print too).
