@@ -10,6 +10,18 @@ reliable, maintainable automation. Batch slicing is the first step towards a
 dependable automation platform that helps makers, professionals and print
 farms spend less time managing printers and more time creating.
 
+## Quick start
+
+```bash
+pipx install ./batchslicer-*-py3-none-any.whl   # from the latest release
+batchslicer setup                                # find your slicers, write the configuration
+cp ~/Downloads/*.stl ~/BatchSlicer/incoming/     # put some models where BatchSlicer looks
+batchslicer                                      # answer a few questions, get G-code
+```
+
+Results appear in `~/BatchSlicer/output`. Next time, `batchslicer --last`
+repeats the same run.
+
 ---
 
 ## Contents
@@ -21,6 +33,8 @@ farms spend less time managing printers and more time creating.
 - [Configuration](#configuration)
 - [Using BatchSlicer interactively](#using-batchslicer-interactively)
 - [Using the command line](#using-the-command-line)
+- [Profiles](#profiles)
+- [Slicing for several printers](#slicing-for-several-printers)
 - [Output](#output)
 - [Exit status and logs](#exit-status-and-logs)
 - [Troubleshooting](#troubleshooting)
@@ -45,8 +59,13 @@ farms spend less time managing printers and more time creating.
   folder, which also records the exact presets that were used.
 - **Explains failures.** A model that fails does not stop the batch; the
   summary lists each failure with the slicer's own reason.
-- **Runs unattended.** Every choice can be given as a command-line option, so it
-  can be scripted or scheduled.
+- **Slices for several printers at once.** One run can slice the same models
+  for different printers, each with its own slicer and presets, into separate
+  folders.
+- **Remembers your choices.** Save a run as a named profile, or repeat the last
+  run with `--last`.
+- **Runs unattended.** Every choice can be given as a command-line option or a
+  profile, so it can be scripted or scheduled.
 - **Leaves your slicers alone.** BatchSlicer only reads the slicers' settings
   folders; it never changes them.
 
@@ -58,25 +77,30 @@ farms spend less time managing printers and more time creating.
 
 ## How it works
 
-A run goes through these steps. Each choice comes from the command line if you
-gave it there, and is asked for otherwise.
+A run goes through these steps. Each choice comes from the command line or a
+profile if you gave it there, and is asked for otherwise.
 
-1. **Choose a slicer.** Only slicers set up in the configuration can be
+1. **Start from a profile (optional).** If you have saved profiles and gave no
+   options, BatchSlicer offers them first; Enter skips this.
+2. **Choose a slicer.** Only slicers set up in the configuration can be
    chosen.
-2. **Check the environment.** The Python version, the configuration, the
+3. **Check the environment.** The Python version, the configuration, the
    working folders and the chosen slicer's program and data folder are checked.
    If anything is wrong, each problem is listed and BatchSlicer stops.
-3. **Choose presets: printer, filament, process.**
+4. **Choose presets: printer, filament, process.**
    - Printers are the ones you have added in the slicer, plus printer presets
      you saved yourself.
    - Filaments and processes are limited to those compatible with the chosen
      printer. Built-in filaments are limited to those you have made visible in
      the slicer, so the lists match the slicer's own menus.
-4. **Choose what to slice:** one model file, or every model in a folder and its
+5. **Add another printer (optional).** Repeat steps 2 to 4 for each extra
+   printer to slice for.
+6. **Choose what to slice:** one model file, or every model in a folder and its
    subfolders.
-5. **Choose the output folder.**
-6. **Slice.** BatchSlicer runs the slicer's command-line mode for each model and
-   collects the G-code.
+7. **Choose the output folder.**
+8. **Slice.** BatchSlicer runs the slicer's command-line mode for each model
+   (and each printer) and collects the G-code. The run's choices are saved as
+   the profile `last`.
 
 **Why preset files are prepared first.** Presets saved in a slicer usually store
 only the settings that differ from the preset they are based on, and the
@@ -125,8 +149,9 @@ python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
 ```
 
-This installs BatchSlicer into `.venv` together with the test and lint tools;
-run it as `.venv/bin/batchslicer`.
+This installs BatchSlicer into `.venv` together with the test and lint tools.
+Run it as `.venv/bin/batchslicer` (or activate the environment with
+`source .venv/bin/activate`); the examples below just say `batchslicer`.
 
 ### First run
 
@@ -230,10 +255,20 @@ Put the models you want to slice in your incoming folder
 (`~/BatchSlicer/incoming` by default; subfolders are fine), then run:
 
 ```bash
-.venv/bin/batchslicer
+batchslicer
 ```
 
-BatchSlicer asks one question at a time:
+BatchSlicer asks one question at a time. If you have saved profiles, it first
+offers them (press Enter to skip):
+
+```
+Start from a saved profile?
+  1) last run: creality_print, Creality K2 Plus 0.4 nozzle, ...
+  2) k2-petg: creality_print, Creality K2 Plus 0.4 nozzle, ...
+Profile number 1-2, or Enter to choose everything yourself:
+```
+
+Otherwise it starts with the slicer and presets:
 
 ```
 Select a slicer:
@@ -263,7 +298,11 @@ How the menus work:
 - **Ctrl+C** (or Ctrl+D) at any question stops BatchSlicer without slicing
   anything.
 
-After the presets you choose what to slice:
+After the presets, BatchSlicer asks `Slice for another printer as well? [y/N]`.
+Press Enter to continue with one printer, or `y` to add another (see
+[Slicing for several printers](#slicing-for-several-printers)).
+
+Then you choose what to slice:
 
 ```
 What would you like to slice?
@@ -320,10 +359,10 @@ does not matter. Put names containing spaces or `@` in quotes.
 
 ```bash
 # printers for a slicer
-.venv/bin/batchslicer --slicer creality --list-presets
+batchslicer --slicer creality --list-presets
 
 # filaments and processes for one printer
-.venv/bin/batchslicer --slicer creality --printer "Creality K2 Plus 0.4 nozzle" --list-presets
+batchslicer --slicer creality --printer "Creality K2 Plus 0.4 nozzle" --list-presets
 ```
 
 If you mistype a name, BatchSlicer suggests the closest matches:
@@ -338,19 +377,19 @@ compatible with Creality K2 Plus 0.4 nozzle. Did you mean: 'Generic PETG @Creali
 Slice a whole folder, fully unattended:
 
 ```bash
-.venv/bin/batchslicer --slicer creality \
+batchslicer --slicer creality \
   --printer "Creality K2 Plus 0.4 nozzle" \
   --filament "Generic PETG @Creality K2 Plus 0.4 nozzle" \
   --process "0.20mm Standard @Creality K2 Plus 0.4 nozzle" \
-  --input incoming/brackets \
-  --output output/k2-petg \
+  --input ~/BatchSlicer/incoming/brackets \
+  --output ~/BatchSlicer/output/k2-petg \
   --no-prompt
 ```
 
 Slice one file with OrcaSlicer into the default output folder:
 
 ```bash
-.venv/bin/batchslicer --slicer orca \
+batchslicer --slicer orca \
   --printer "Creality K2 Plus 0.4 nozzle" \
   --filament "Generic PLA @System" \
   --process "0.20mm Standard @Creality K2 Plus 0.4 nozzle" \
@@ -360,16 +399,17 @@ Slice one file with OrcaSlicer into the default output folder:
 Set the slicer and printer, and be asked for everything else:
 
 ```bash
-.venv/bin/batchslicer --slicer orca --printer "Creality K2 Plus 0.4 nozzle"
+batchslicer --slicer orca --printer "Creality K2 Plus 0.4 nozzle"
 ```
 
-Run on a schedule (for example from cron). Use full paths, and `--config` if
-the configuration is not in `~/.config/batchslicer/`:
+Run on a schedule (for example from cron). Save the choices as a profile once,
+then run it unattended. Cron has a minimal PATH, so give the full path to
+`batchslicer` (`command -v batchslicer` shows it), and `--config` if the
+configuration is not in `~/.config/batchslicer/`:
 
 ```bash
-/path/to/batch_slicer/.venv/bin/batchslicer --slicer creality \
-  --printer "..." --filament "..." --process "..." \
-  --input ~/BatchSlicer/incoming --output ~/BatchSlicer/output/nightly --no-prompt
+# crontab -e: slice everything in incoming at 02:00 every night
+0 2 * * * $HOME/.local/bin/batchslicer --profile nightly --no-prompt >> $HOME/batchslicer-cron.txt 2>&1
 ```
 
 ## Profiles
@@ -553,6 +593,13 @@ example OrcaSlicer's "0.20mm Standard" for the Ender-3 V3 SE 0.2 mm nozzle uses
 layers thicker than that nozzle allows). Try another process preset, and check
 `batchslicer.log` (see [logs](#exit-status-and-logs)) for the slicer's detailed output.
 
+**"No profile named ..."**: the message lists the saved profiles; check the
+spelling with `batchslicer --list-profiles`.
+
+**"... cannot be combined with several printers"**: `--slicer`, `--printer`,
+`--filament` and `--process` describe one printer. To change a printer in a
+multi-printer run, save it as its own profile and pass each with `--profile`.
+
 **Bambu Studio says "Preset selection is not available"**: see
 [limitations](#current-limitations). Slicing a `.3mf` project that already
 contains its settings still works.
@@ -590,10 +637,16 @@ Re-run these after updating a slicer.
 - **Bambu Studio presets** are not selectable yet; slicing works, but without
   preset selection. This needs Bambu Studio's settings folder, which exists
   after it has been opened and set up once.
-- **One filament per job.** Multi-material setups (Creality CFS, Bambu AMS)
+- **Linux only.** Windows and macOS are not supported yet.
+- **One filament per printer.** Multi-material setups (Creality CFS, Bambu AMS)
   need several filaments and are not supported yet.
-- **One set of presets per run.** A batch uses the same printer, filament and
-  process for every model.
+- **The same presets for every model.** Within a run, each printer uses one
+  filament and process for all models; to vary them, use separate runs or
+  profiles.
+- **One model at a time, one model per plate.** Models are sliced one after
+  another, and several models are not arranged onto one plate.
+- **Flatpak installs are not detected** by `batchslicer setup`; configure them
+  by hand.
 - **"One model file" mode** lists only the models directly in the incoming folder, not
   in its subfolders (type a path, or use folder mode).
 
