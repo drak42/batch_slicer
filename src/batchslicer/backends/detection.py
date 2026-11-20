@@ -8,15 +8,14 @@ looks; it does not write configuration or run slicers. Flatpak installs are
 not detected, because a Flatpak app is not a single program file.
 """
 
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
 import os
-from pathlib import Path
 import re
 import shutil
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+from pathlib import Path
 
 from batchslicer.backends.slicers import BAMBU_STUDIO, CREALITY_PRINT, ORCASLICER
-
 
 SEARCH_FOLDERS = ("Apps", "Applications", "AppImages", "Downloads", "Desktop", ".local/bin")
 """Folders under the home folder searched for AppImages."""

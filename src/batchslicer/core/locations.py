@@ -7,10 +7,9 @@ visible ``~/BatchSlicer`` folder because users work with them directly. This
 module only names locations; it does not create folders or read configuration.
 """
 
-from collections.abc import Mapping
 import os
+from collections.abc import Mapping
 from pathlib import Path
-
 
 APP_NAME = "batchslicer"
 CONFIG_FILE_NAME = "config.yaml"

@@ -16,15 +16,14 @@ It does not modify the slicer's data directory, read account credentials, or
 evaluate ``compatible_printers_condition`` expressions.
 """
 
-from collections.abc import Iterable
 import json
 import logging
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
 from batchslicer.core.logging import get_logger
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
-
 
 _DEFAULT_USER_DIRECTORY = "default"
 

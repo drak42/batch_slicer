@@ -9,11 +9,11 @@ configuration file (used by ``batchslicer setup``). It does not edit existing
 configuration or check that configured paths exist.
 """
 
+import os
+import shutil
 from collections.abc import Mapping
 from functools import lru_cache
-import os
 from pathlib import Path
-import shutil
 from typing import Any
 
 import yaml
@@ -118,6 +118,7 @@ class Config:
         """Return cached configuration data, loading it on first access."""
         if self._data is None:
             self.load()
+        assert self._data is not None  # load() either sets the data or raises
         return self._data
 
 

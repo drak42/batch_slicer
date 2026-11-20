@@ -7,15 +7,14 @@ does not print output, launch external processes, validate databases, validate
 presets, or create configuration files.
 """
 
-from dataclasses import dataclass
 import logging
-from pathlib import Path
 import sys
+from dataclasses import dataclass
+from pathlib import Path
 
 from batchslicer.backends.slicers import ORCASLICER, SlicerDefinition
 from batchslicer.core.config import Config, get_config
 from batchslicer.core.logging import get_logger
-
 
 _PYTHON_MINIMUM = (3, 12)
 

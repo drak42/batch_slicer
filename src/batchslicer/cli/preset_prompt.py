@@ -6,8 +6,8 @@ Presets named on the command line are looked up instead of asked for. This
 module only handles choosing; it does not read preset files.
 """
 
-from collections.abc import Callable, Sequence
 import difflib
+from collections.abc import Callable, Sequence
 from typing import Protocol
 
 from batchslicer.cli.menu import choose

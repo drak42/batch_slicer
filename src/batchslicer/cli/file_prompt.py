@@ -13,7 +13,6 @@ from pathlib import Path
 from batchslicer.cli.menu import choose, confirm
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
 
-
 MODEL_SUFFIXES = frozenset({".stl", ".3mf", ".obj"})
 """File types the slicers' command lines accept as models."""
 

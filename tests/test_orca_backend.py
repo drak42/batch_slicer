@@ -1,10 +1,9 @@
 """Tests for the OrcaSlicer backend."""
 
-from pathlib import Path
-from unittest.mock import Mock
-
 import os
 import subprocess
+from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 
@@ -35,7 +34,7 @@ def test_orca_result_is_immutable() -> None:
 
     assert result.success
     with pytest.raises(AttributeError):
-        setattr(result, "success", False)
+        result.success = False
 
 
 def test_run_captures_success_and_exact_command(

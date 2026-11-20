@@ -15,19 +15,18 @@ directory therefore run from a temporary directory so the file never lands in
 the caller's working directory.
 """
 
-from collections.abc import Sequence
-from dataclasses import dataclass
 import logging
-from pathlib import Path
 import subprocess
 import tempfile
 import time
+from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
 from typing import TypeAlias
 
 from batchslicer.backends.slicers import ORCASLICER, SlicerDefinition
 from batchslicer.core.config import Config, get_config
 from batchslicer.core.logging import get_logger
-
 
 PathLike: TypeAlias = str | Path
 

@@ -7,13 +7,12 @@ Folders that do not exist are created only after the user confirms. Job folders
 BatchSlicer created earlier are not offered as destinations.
 """
 
+import re
 from collections.abc import Callable
 from pathlib import Path
-import re
 
 from batchslicer.cli.menu import confirm
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
-
 
 _JOB_FOLDER_PATTERN = re.compile(r"-\d{8}-\d{6}(-\d+)?$")
 """Names of job folders created by the slicing service (``<name>-YYYYMMDD-HHMMSS``)."""

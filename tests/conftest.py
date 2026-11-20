@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 from batchslicer.core.config import Config
@@ -23,3 +24,15 @@ def write_config(directory: Path, sections: dict[str, dict[str, object]]) -> Con
     config = Config(path)
     config.load()
     return config
+
+
+
+@pytest.fixture(autouse=True)
+def _isolate_user_folders(
+    tmp_path_factory: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Keep BatchSlicer's default log and cache folders out of the real home folder."""
+    base = tmp_path_factory.mktemp("xdg")
+    monkeypatch.setenv("XDG_STATE_HOME", str(base / "state"))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(base / "cache"))

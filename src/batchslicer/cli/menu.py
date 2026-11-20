@@ -11,7 +11,6 @@ from typing import TypeVar
 
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
 
-
 ItemT = TypeVar("ItemT")
 
 

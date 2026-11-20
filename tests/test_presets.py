@@ -12,9 +12,8 @@ from batchslicer.backends.orca import OrcaBackend
 from batchslicer.backends.presets import PresetError, PresetLibrary
 from batchslicer.backends.profiles import find_system_profiles
 from batchslicer.backends.slicers import CREALITY_PRINT, ORCASLICER, SlicerDefinition
-from conftest import write_config
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
-
+from conftest import write_config
 
 K2 = "Creality K2 Plus 0.4 nozzle"
 ENDER = "Creality Ender-3 V3 SE 0.4 nozzle"

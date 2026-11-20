@@ -9,16 +9,15 @@ paths exist.
 """
 
 import argparse
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-import sys
 
 from batchslicer.backends.slicers import SLICERS
 from batchslicer.cli.setup import SetupOptions
 from batchslicer.core.locations import user_config_file
 from batchslicer.version import get_version_string
-
 
 _SLICER_ALIASES = {
     "orca": "orca",

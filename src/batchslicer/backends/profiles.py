@@ -10,14 +10,13 @@ presets or modify the slicer's data directory.
 """
 
 import logging
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 from batchslicer.backends.presets import PresetError
 from batchslicer.core.logging import get_logger
-
 
 _APPIMAGE_MAGIC = b"AI\x02"
 _APPIMAGE_MAGIC_OFFSET = 8

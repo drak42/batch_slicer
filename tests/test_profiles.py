@@ -1,7 +1,7 @@
 """Tests for locating a slicer's built-in presets."""
 
-from pathlib import Path
 import subprocess
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest

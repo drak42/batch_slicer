@@ -3,8 +3,7 @@
 from collections.abc import Sequence
 from typing import Generic, Protocol, TypeVar
 
-
-ResultT = TypeVar("ResultT")
+ResultT = TypeVar("ResultT", covariant=True)
 
 
 class Backend(Protocol, Generic[ResultT]):
