@@ -1,6 +1,7 @@
 """Parse BatchSlicer's command-line options.
 
 Every choice the interactive prompts ask for can be given on the command line.
+``batchslicer setup`` has its own options for creating the configuration.
 Choices left out are still prompted for, unless ``--no-prompt`` is given, in
 which case a missing required choice is an error. This module only parses and
 checks the shape of the options; it does not check that slicers, presets or
@@ -11,8 +12,11 @@ import argparse
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+import sys
 
 from batchslicer.backends.slicers import SLICERS
+from batchslicer.cli.setup import SetupOptions
+from batchslicer.core.locations import user_config_file
 from batchslicer.version import get_version_string
 
 
@@ -42,14 +46,20 @@ class RunOptions:
     output: Path | None = None
     no_prompt: bool = False
     list_presets: bool = False
+    config: Path | None = None
+    """Configuration file given with --config, if any."""
 
 
-def parse_arguments(argv: Sequence[str] | None = None) -> RunOptions:
+def parse_arguments(argv: Sequence[str] | None = None) -> RunOptions | SetupOptions:
     """Return the options in ``argv`` (default: the process arguments).
 
-    Invalid options print a usage message and exit with status 2.
+    ``setup`` as the first argument selects the setup command. Invalid options
+    print a usage message and exit with status 2.
     """
-    namespace = _parser().parse_args(argv)
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ["setup"]:
+        return _parse_setup(arguments[1:])
+    namespace = _parser().parse_args(arguments)
     return RunOptions(
         slicer=namespace.slicer,
         printer=namespace.printer,
@@ -59,6 +69,41 @@ def parse_arguments(argv: Sequence[str] | None = None) -> RunOptions:
         output=namespace.output,
         no_prompt=namespace.no_prompt,
         list_presets=namespace.list_presets,
+        config=namespace.config,
+    )
+
+
+def _parse_setup(arguments: Sequence[str]) -> SetupOptions:
+    """Return the options for ``batchslicer setup``."""
+    parser = argparse.ArgumentParser(
+        prog="batchslicer setup",
+        description=(
+            "Find installed slicers and write BatchSlicer's configuration file. "
+            "Each slicer must have been opened at least once."
+        ),
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        metavar="PATH",
+        default=None,
+        help=f"configuration file to write (default: {user_config_file()})",
+    )
+    parser.add_argument(
+        "--no-prompt",
+        action="store_true",
+        help="use the recommended copy of each slicer without asking",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="replace an existing configuration file (a .bak backup is kept)",
+    )
+    namespace = parser.parse_args(arguments)
+    return SetupOptions(
+        config=namespace.config or user_config_file(),
+        no_prompt=namespace.no_prompt,
+        force=namespace.force,
     )
 
 
@@ -78,7 +123,8 @@ def _parser() -> argparse.ArgumentParser:
         prog="batchslicer",
         description=(
             f"Slice 3D models with {slicers}. Choices not given here are asked "
-            "for interactively, unless --no-prompt is used."
+            "for interactively, unless --no-prompt is used. First time? Run "
+            "'batchslicer setup' to find your slicers and create the configuration."
         ),
         epilog=(
             "Example: batchslicer --slicer creality --printer 'Creality K2 Plus 0.4 nozzle' "
@@ -88,6 +134,15 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--version", action="version", version=get_version_string())
+    parser.add_argument(
+        "--config",
+        type=Path,
+        metavar="PATH",
+        help=(
+            "configuration file (default: $BATCHSLICER_CONFIG, ./config/config.yaml, "
+            "or ~/.config/batchslicer/config.yaml)"
+        ),
+    )
     parser.add_argument(
         "--slicer",
         type=_slicer_key,

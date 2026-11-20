@@ -21,8 +21,9 @@ from batchslicer.cli.arguments import RunOptions, parse_arguments
 from batchslicer.cli.file_prompt import SliceInput, input_from_path, prompt_for_input
 from batchslicer.cli.output_prompt import output_from_path, prompt_for_output
 from batchslicer.cli.preset_prompt import find_preset, select_presets
+from batchslicer.cli.setup import SetupOptions, run_setup
 from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slicer
-from batchslicer.core.config import Config, get_config
+from batchslicer.core.config import Config, find_config_file, get_config
 from batchslicer.core.environment import EnvironmentService
 from batchslicer.core.logging import configure_logging
 from batchslicer.domain.presets import PresetKind, PresetSelection
@@ -36,13 +37,16 @@ class _StartupFailed(Exception):
 def main(argv: Sequence[str] | None = None) -> int:
     """Run BatchSlicer with command-line ``argv`` and return a process exit status."""
     options = parse_arguments(argv)
+    if isinstance(options, SetupOptions):
+        return _setup(options)
     if not options.list_presets:
         print(get_banner(), end="")
     logger: logging.Logger | None = None
 
     try:
-        logger = configure_logging()
-        config = get_config()
+        config = get_config(find_config_file(options.config))
+        logger = configure_logging(log_directory=config.get_path("paths", "logs"))
+        logger.info("Using configuration %s", config.path)
         slicer = _select_slicer(options, config)
         logger.info("Selected slicer: %s", slicer.display_name)
         _verify_environment(config, logger, slicer)
@@ -92,6 +96,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0 if outcome.success else 1
 
 
+def _setup(options: SetupOptions) -> int:
+    """Run ``batchslicer setup`` and return a process exit status."""
+    print(get_banner(), end="")
+    try:
+        run_setup(options)
+    except (SlicerSelectionError, OSError) as error:
+        print(f"BatchSlicer setup failed: {error}")
+        return 1
+    return 0
+
+
 def _select_slicer(options: RunOptions, config: Config) -> SlicerDefinition:
     """Return the slicer named on the command line, or ask for one."""
     configured = [slicer for slicer in SLICERS if is_configured(slicer, config)]
@@ -100,7 +115,7 @@ def _select_slicer(options: RunOptions, config: Config) -> SlicerDefinition:
         if slicer not in configured:
             raise SlicerSelectionError(
                 f"{slicer.display_name} is not configured. Set {slicer.key}.executable "
-                f"and {slicer.key}.datadir in config/config.yaml."
+                f"and {slicer.key}.datadir in {config.path}."
             )
         return slicer
     if options.no_prompt:
@@ -132,11 +147,11 @@ def _preset_library(
     """Return the slicer's preset library, or None if presets are not supported for it."""
     if not slicer.supports_preset_selection:
         return None
-    data_directory = Path(config.get(slicer.key, "datadir"))
+    data_directory = config.get_path(slicer.key, "datadir")
     system_directory = find_system_profiles(
-        Path(config.get(slicer.key, "executable")),
+        config.get_program(slicer.key),
         data_directory,
-        Path(config.get("paths", "data")) / "slicer-profiles",
+        config.get_path("paths", "data") / "slicer-profiles",
         logger=logger,
     )
     return PresetLibrary(
@@ -223,14 +238,14 @@ def _select_input(options: RunOptions, config: Config) -> SliceInput:
         return input_from_path(options.input)
     if options.no_prompt:
         raise SlicerSelectionError("--input is required when --no-prompt is used.")
-    return prompt_for_input(Path(config.get("paths", "incoming")))
+    return prompt_for_input(config.get_path("paths", "incoming"))
 
 
 def _select_output(options: RunOptions, config: Config) -> Path:
     """Return the --output folder, the default folder without prompts, or ask."""
     if options.output is not None:
         return output_from_path(options.output)
-    default = Path(config.get("paths", "output"))
+    default = config.get_path("paths", "output")
     if options.no_prompt:
         return output_from_path(default)
     return prompt_for_output(default)

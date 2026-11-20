@@ -49,7 +49,14 @@ def startup_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, Mock, Mock, Mo
     logger = Mock()
     configure_logging = Mock(return_value=logger)
     get_config = Mock(return_value=Mock())
-    get_config.return_value.get.return_value = "configured-path"
+    config = get_config.return_value
+    config.get.return_value = "configured-path"
+    config.get_path.side_effect = lambda section, key: Path(config.get(section, key))
+    config.get_program.side_effect = lambda section, key="executable": Path(
+        config.get(section, key)
+    )
+    config.path = Path("/settings/config.yaml")
+    monkeypatch.setattr(app, "find_config_file", Mock(return_value=Path("/settings/config.yaml")))
     environment_service = Mock()
     environment_service.return_value.run_checks.return_value = [_Result(passed=True)]
 
@@ -115,8 +122,9 @@ def test_startup_uses_services_in_order(
 
     app.main([])
 
-    configure_logging.assert_called_once_with()
-    get_config.assert_called_once_with()
+    app.find_config_file.assert_called_once_with(None)
+    get_config.assert_called_once_with(Path("/settings/config.yaml"))
+    configure_logging.assert_called_once_with(log_directory=Path("configured-path"))
     environment_service.assert_called_once_with(
         config=get_config.return_value,
         logger=logger,
@@ -268,7 +276,11 @@ def test_model_is_chosen_from_incoming_and_sliced_into_output(
 ) -> None:
     """After setup, the chosen model is sliced into the chosen output folder."""
     _, get_config, _, logger = startup_mocks
-    paths = {("paths", "incoming"): "incoming", ("paths", "output"): "output"}
+    paths = {
+        ("paths", "incoming"): "incoming",
+        ("paths", "output"): "output",
+        ("paths", "logs"): "logs",
+    }
     get_config.return_value.get.side_effect = lambda section, key: paths[(section, key)]
 
     assert app.main([]) == 0
@@ -523,3 +535,46 @@ def test_list_presets_for_a_printer_prints_filaments_and_processes(
         "Filaments for K2 Plus (use with --filament):\n  Generic PETG\n"
         "Processes for K2 Plus (use with --process):\n  0.12mm PETG\n"
     )
+
+
+def test_config_option_is_used_to_find_the_configuration(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+) -> None:
+    """--config is passed to the configuration lookup."""
+    app.main(["--config", "~/my-batchslicer.yaml"])
+
+    app.find_config_file.assert_called_once_with(Path("~/my-batchslicer.yaml"))
+
+
+def test_missing_configuration_is_explained(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Without a configuration file, startup stops with the lookup's explanation."""
+    monkeypatch.setattr(
+        app,
+        "find_config_file",
+        Mock(side_effect=FileNotFoundError("No configuration file found. Run 'batchslicer setup'.")),
+    )
+
+    assert app.main([]) == 1
+    assert "Run 'batchslicer setup'" in capsys.readouterr().out
+
+
+def test_setup_command_runs_setup_instead_of_slicing(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """'batchslicer setup' runs setup and does not load a configuration."""
+    run_setup = Mock()
+    monkeypatch.setattr(app, "run_setup", run_setup)
+
+    assert app.main(["setup", "--no-prompt", "--config", "/tmp/c.yaml"]) == 0
+    assert run_setup.call_args.args[0].config == Path("/tmp/c.yaml")
+    assert not app.find_config_file.called
+
+    run_setup.side_effect = SlicerSelectionError("No usable slicer was found.")
+    assert app.main(["setup"]) == 1
+    assert "BatchSlicer setup failed: No usable slicer was found." in capsys.readouterr().out

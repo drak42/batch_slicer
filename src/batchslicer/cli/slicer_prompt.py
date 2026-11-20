@@ -31,7 +31,7 @@ def prompt_for_slicer(
         sections = ", ".join(f"{slicer.key}:" for slicer in slicers)
         raise SlicerSelectionError(
             "No slicer is configured. Set executable and datadir for at least one "
-            f"of {sections} in config/config.yaml."
+            f"of {sections} in your BatchSlicer configuration file."
         )
 
     write("Select a slicer:")
@@ -52,7 +52,7 @@ def prompt_for_slicer(
                 return chosen
             write(
                 f"{chosen.display_name} is not configured. Set {chosen.key}.executable "
-                f"and {chosen.key}.datadir in config/config.yaml, or choose another slicer."
+                f"and {chosen.key}.datadir in your BatchSlicer configuration file, or choose another slicer."
             )
         else:
             write(f"Please enter a number from 1 to {len(slicers)}.")

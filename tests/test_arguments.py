@@ -75,3 +75,26 @@ def test_version_flag(capsys: pytest.CaptureFixture[str]) -> None:
 
     assert raised.value.code == 0
     assert "BatchSlicer v" in capsys.readouterr().out
+
+
+def test_setup_command_options(tmp_path: Path) -> None:
+    """'setup' selects the setup command with its own options."""
+    from batchslicer.cli.setup import SetupOptions
+
+    options = parse_arguments(["setup", "--config", str(tmp_path / "c.yaml"), "--no-prompt", "--force"])
+
+    assert options == SetupOptions(config=tmp_path / "c.yaml", no_prompt=True, force=True)
+
+
+def test_setup_defaults_to_the_user_config_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Without --config, setup writes the per-user configuration file."""
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+
+    options = parse_arguments(["setup"])
+
+    assert options.config == tmp_path / "xdg" / "batchslicer" / "config.yaml"
+
+
+def test_config_option_for_runs() -> None:
+    """--config is accepted for normal runs."""
+    assert parse_arguments(["--config", "my.yaml"]).config == Path("my.yaml")
