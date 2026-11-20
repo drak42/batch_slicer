@@ -3,9 +3,12 @@
 from pathlib import Path
 from unittest.mock import Mock
 
+import os
+import subprocess
+
 import pytest
 
-from orcabatch.backends.orca import OrcaBackend, OrcaResult
+from orcabatch.backends.orca import DEFAULT_TIMEOUT_SECONDS, OrcaBackend, OrcaResult
 from orcabatch.core.config import Config
 
 
@@ -46,7 +49,11 @@ def test_run_captures_success_and_exact_command(
     assert result.elapsed >= 0
     assert result.command == ("orca", "--help")
     run.assert_called_once_with(
-        ("orca", "--help"), capture_output=True, text=True, check=False
+        ("orca", "--help"),
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=DEFAULT_TIMEOUT_SECONDS,
     )
 
 
@@ -60,12 +67,60 @@ def test_run_captures_nonzero_exit_and_stderr(
         Mock(return_value=Mock(returncode=2, stdout="partial", stderr="bad input")),
     )
 
-    result = backend.run(("orca", "--slice", "part.stl"))
+    result = backend.run(("orca", "--slice", "0", "part.stl"))
 
     assert not result.success
     assert result.exit_code == 2
     assert result.stdout == "partial"
     assert result.stderr == "bad input"
+
+
+def test_run_logs_stderr_when_command_fails(
+    backend: OrcaBackend,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Failed commands log Orca's error output so failures can be diagnosed."""
+    monkeypatch.setattr(
+        "orcabatch.backends.orca.subprocess.run",
+        Mock(return_value=Mock(returncode=2, stdout="", stderr="no printer preset")),
+    )
+
+    backend.run(("orca", "--slice", "0", "part.stl"))
+
+    logged = backend._logger.error.call_args.args
+    assert "no printer preset" in logged
+
+
+def test_run_stops_commands_that_exceed_the_timeout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A hung OrcaSlicer process becomes an unsuccessful result, not a hang."""
+    config = Mock(spec=Config)
+    logger = Mock()
+    backend = OrcaBackend(config=config, logger=logger, timeout_seconds=5)
+    run = Mock(
+        side_effect=subprocess.TimeoutExpired(
+            cmd=("orca",), timeout=5, output=b"partial", stderr=b"still slicing"
+        )
+    )
+    monkeypatch.setattr("orcabatch.backends.orca.subprocess.run", run)
+
+    result = backend.run(("orca", "--slice", "0", "part.stl"))
+
+    assert run.call_args.kwargs["timeout"] == 5
+    assert not result.success
+    assert result.exit_code == -1
+    assert result.stdout == "partial"
+    assert "still slicing" in result.stderr
+    assert "timed out after 5 seconds" in result.stderr
+    logger.error.assert_called_once()
+
+
+def test_timeout_must_be_positive() -> None:
+    """A zero or negative timeout is rejected."""
+    with pytest.raises(ValueError):
+        OrcaBackend(config=Mock(spec=Config), logger=Mock(), timeout_seconds=0)
 
 
 def test_run_handles_process_start_failure(
@@ -85,10 +140,9 @@ def test_run_handles_process_start_failure(
     assert result.stderr == "orca missing"
 
 
-def test_help_and_version_commands(backend: OrcaBackend) -> None:
-    """Help and version use the configured base command."""
+def test_help_command(backend: OrcaBackend) -> None:
+    """Help uses the configured base command."""
     assert backend.build_help_command()[-1] == "--help"
-    assert backend.build_version_command()[-1] == "--version"
     assert backend.build_help_command()[0].endswith("Orca Slicer")
     assert backend.build_help_command()[1] == "--datadir"
     assert backend.build_help_command()[2].endswith("Orca Data")
@@ -97,10 +151,11 @@ def test_help_and_version_commands(backend: OrcaBackend) -> None:
 def test_configured_paths_accept_strings_and_paths() -> None:
     """Configured string and Path values are returned as pathlib Paths."""
     config = Mock(spec=Config)
-    config.get.side_effect = {
+    values = {
         ("orca", "executable"): "orca",
         ("orca", "datadir"): Path("orca-data"),
-    }.get
+    }
+    config.get.side_effect = lambda section, key: values[(section, key)]
     backend = OrcaBackend(config=config, logger=Mock())
 
     assert backend._configured_path("executable") == Path("orca")
@@ -116,11 +171,11 @@ def test_export_settings_command(backend: OrcaBackend, tmp_path: Path) -> None:
     assert command[-2:] == ("--export-settings", str(output))
 
 
-def test_slice_command_includes_input_output_and_requested_options(
+def test_slice_command_follows_orca_cli_contract(
     backend: OrcaBackend,
     tmp_path: Path,
 ) -> None:
-    """Slice construction preserves paths and all supported optional flags."""
+    """Slice selects a plate, passes option values, and ends with the model file."""
     command = backend.build_slice_command(
         tmp_path / "model file.stl",
         tmp_path / "output folder",
@@ -129,32 +184,71 @@ def test_slice_command_includes_input_output_and_requested_options(
         enable_timelapse=True,
         skip_modified_gcodes=True,
         no_check=True,
-        load_settings=[tmp_path / "one.json", tmp_path / "two.json"],
+        load_settings=[tmp_path / "machine.json", tmp_path / "process.json"],
         load_filaments=[tmp_path / "filament.json"],
     )
 
     assert command[0].endswith("Orca Slicer")
     assert command[1] == "--datadir"
     assert command[2].endswith("Orca Data")
-    assert command[3:7] == (
+    assert command[3:] == (
         "--slice",
-        str(tmp_path / "model file.stl"),
+        "0",
         "--outputdir",
         str(tmp_path / "output folder"),
-    )
-    assert command[7:] == (
         "--orient",
+        "1",
         "--arrange",
-        "--enable-timelapse",
+        "1",
         "--skip-modified-gcodes",
+        "1",
+        "--enable-timelapse",
         "--no-check",
         "--load-settings",
-        str(tmp_path / "one.json"),
-        "--load-settings",
-        str(tmp_path / "two.json"),
+        f"{tmp_path / 'machine.json'};{tmp_path / 'process.json'}",
         "--load-filaments",
         str(tmp_path / "filament.json"),
+        str(tmp_path / "model file.stl"),
     )
+
+
+def test_minimal_slice_command(backend: OrcaBackend, tmp_path: Path) -> None:
+    """Without options, slicing all plates needs only the plate, output and model."""
+    command = backend.build_slice_command(tmp_path / "model.stl", tmp_path / "out")
+
+    assert command[3:] == (
+        "--slice",
+        "0",
+        "--outputdir",
+        str(tmp_path / "out"),
+        str(tmp_path / "model.stl"),
+    )
+
+
+def test_slice_command_selects_a_single_plate(backend: OrcaBackend, tmp_path: Path) -> None:
+    """A specific plate number is passed to --slice."""
+    command = backend.build_slice_command(tmp_path / "model.3mf", tmp_path / "out", plate=2)
+
+    assert command[3:5] == ("--slice", "2")
+
+
+def test_slice_command_rejects_negative_plate(backend: OrcaBackend, tmp_path: Path) -> None:
+    """Negative plate numbers are invalid for OrcaSlicer."""
+    with pytest.raises(ValueError):
+        backend.build_slice_command(tmp_path / "model.stl", tmp_path / "out", plate=-1)
+
+
+def test_slice_command_rejects_paths_containing_the_list_separator(
+    backend: OrcaBackend,
+    tmp_path: Path,
+) -> None:
+    """A ';' in a settings path would be split by OrcaSlicer, so it is refused."""
+    with pytest.raises(ValueError):
+        backend.build_slice_command(
+            tmp_path / "model.stl",
+            tmp_path / "out",
+            load_settings=[tmp_path / "bad;name.json"],
+        )
 
 
 def test_slice_executes_the_constructed_command(
@@ -168,4 +262,46 @@ def test_slice_executes_the_constructed_command(
 
     backend.slice(tmp_path / "model.stl", tmp_path / "output", orient=True)
 
-    assert run.call_args.args[0][-1] == "--orient"
+    executed = run.call_args.args[0]
+    assert executed[-1] == str(tmp_path / "model.stl")
+    assert ("--orient", "1") == executed[-3:-1]
+
+
+_REAL_ORCA = os.environ.get("ORCABATCH_TEST_ORCA_EXECUTABLE")
+
+
+@pytest.mark.skipif(
+    not _REAL_ORCA,
+    reason="Set ORCABATCH_TEST_ORCA_EXECUTABLE to check against a real OrcaSlicer.",
+)
+def test_every_option_used_is_accepted_by_real_orca(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Every option this backend emits appears in the real OrcaSlicer help text."""
+    monkeypatch.chdir(tmp_path)  # OrcaSlicer writes result.json to the working directory.
+    config = Mock(spec=Config)
+    values = {
+        ("orca", "executable"): _REAL_ORCA,
+        ("orca", "datadir"): tmp_path / "orca-data",
+    }
+    config.get.side_effect = lambda section, key: values[(section, key)]
+    backend = OrcaBackend(config=config, logger=Mock(), timeout_seconds=120)
+
+    help_text = backend.help().stdout
+    command = backend.build_slice_command(
+        tmp_path / "model.stl",
+        tmp_path / "out",
+        orient=True,
+        arrange=True,
+        enable_timelapse=True,
+        skip_modified_gcodes=True,
+        no_check=True,
+        load_settings=[tmp_path / "machine.json"],
+        load_filaments=[tmp_path / "filament.json"],
+    ) + backend.build_export_settings_command(tmp_path / "settings.json")
+
+    options = {argument for argument in command if argument.startswith("--")}
+    assert "--slice option" in help_text
+    for option in options:
+        assert f" {option} " in help_text or f" {option}\n" in help_text, option
