@@ -18,7 +18,7 @@ def _profile(name: str = "k2-petg", **choices: object) -> Profile:
         "process": "0.20mm Standard @Creality K2 Plus 0.4 nozzle",
     }
     values.update(choices)
-    return Profile(name=name, **values)  # type: ignore[arg-type]
+    return Profile.single(name, **values)  # type: ignore[arg-type]
 
 
 def test_missing_file_means_no_profiles(tmp_path: Path) -> None:
@@ -41,11 +41,11 @@ def test_unset_choices_are_not_written(tmp_path: Path) -> None:
     """A profile holding only some choices stays small and loads with the rest unset."""
     store = ProfileStore(tmp_path / "profiles.yaml")
 
-    store.save(Profile(name="orca-only", slicer="orca"))
+    store.save(Profile.single("orca-only", slicer="orca"))
 
     stored = yaml.safe_load((tmp_path / "profiles.yaml").read_text())
     assert stored == {"orca-only": {"slicer": "orca"}}
-    assert store.get("orca-only") == Profile(name="orca-only", slicer="orca")
+    assert store.get("orca-only") == Profile.single("orca-only", slicer="orca")
 
 
 def test_names_match_ignoring_case_and_saving_replaces(tmp_path: Path) -> None:
@@ -55,7 +55,7 @@ def test_names_match_ignoring_case_and_saving_replaces(tmp_path: Path) -> None:
     store.save(_profile("k2-petg", process="0.12mm Fine"))
 
     assert list(store.load()) == ["k2-petg"]
-    assert store.get("K2-petg").process == "0.12mm Fine"
+    assert store.get("K2-petg").targets[0].process == "0.12mm Fine"
 
 
 def test_unknown_profile_lists_saved_ones(tmp_path: Path) -> None:
@@ -120,3 +120,92 @@ def test_summary_describes_the_choices() -> None:
         "0.20mm Standard @Creality K2 Plus 0.4 nozzle, output /out"
     )
     assert Profile(name="empty").summary() == "no choices saved"
+
+
+def test_multi_printer_profile_round_trip(tmp_path: Path) -> None:
+    """A profile with several targets is stored as a 'targets' list and read back."""
+    from batchslicer.domain.profiles import Target
+
+    store = ProfileStore(tmp_path / "profiles.yaml")
+    profile = Profile(
+        name="both",
+        targets=(
+            Target(slicer="creality_print", printer="K2 Plus", filament="PETG", process="Fine"),
+            Target(slicer="orca", printer="Ender", filament="PLA", process="Draft"),
+        ),
+        input=tmp_path / "models",
+    )
+
+    store.save(profile)
+
+    stored = yaml.safe_load((tmp_path / "profiles.yaml").read_text())
+    assert stored == {
+        "both": {
+            "targets": [
+                {"slicer": "creality_print", "printer": "K2 Plus", "filament": "PETG", "process": "Fine"},
+                {"slicer": "orca", "printer": "Ender", "filament": "PLA", "process": "Draft"},
+            ],
+            "input": str(tmp_path / "models"),
+        }
+    }
+    assert store.get("both") == profile
+    assert profile.summary() == f"2 printers: K2 Plus; Ender, input {tmp_path / 'models'}"
+
+
+def test_single_printer_profiles_keep_the_flat_format(tmp_path: Path) -> None:
+    """Profiles saved before multi-printer support still load unchanged."""
+    path = tmp_path / "profiles.yaml"
+    path.write_text("k2:\n  slicer: creality_print\n  printer: K2 Plus\n  output: /out\n")
+
+    profile = ProfileStore(path).get("k2")
+
+    assert not profile.is_multi
+    assert profile.targets[0].printer == "K2 Plus"
+    assert profile.output == Path("/out")
+
+
+def test_malformed_targets_are_reported(tmp_path: Path) -> None:
+    """Mixing flat choices with a targets list, or a bad list, is explained."""
+    path = tmp_path / "profiles.yaml"
+    path.write_text("x:\n  printer: A\n  targets:\n    - printer: B\n")
+    with pytest.raises(ProfileError, match="sets both 'targets'"):
+        ProfileStore(path).load()
+
+    path.write_text("x:\n  targets: []\n")
+    with pytest.raises(ProfileError, match="must be a list"):
+        ProfileStore(path).load()
+
+    path.write_text("x:\n  targets:\n    - printr: A\n")
+    with pytest.raises(ProfileError, match="unknown target settings: printr"):
+        ProfileStore(path).load()
+
+
+def test_combine_merges_targets_and_takes_the_first_input() -> None:
+    """Combining profiles keeps every printer; input and output come from the first that sets them."""
+    from batchslicer.domain.profiles import combine
+
+    first = Profile.single("a", slicer="orca", printer="Ender")
+    second = Profile.single("b", slicer="creality_print", printer="K2", input=Path("/m"), output=Path("/o"))
+    third = Profile.single("c", slicer="orca", printer="X", input=Path("/other"))
+
+    combined = combine("run", [first, second, third])
+
+    assert [target.printer for target in combined.targets] == ["Ender", "K2", "X"]
+    assert combined.input == Path("/m")
+    assert combined.output == Path("/o")
+
+
+def test_summary_names_the_slicer_when_a_printer_repeats() -> None:
+    """The same printer with two slicers is told apart in the summary."""
+    from batchslicer.domain.profiles import combine
+
+    both = combine(
+        "run",
+        [
+            Profile.single("a", slicer="creality_print", printer="K2"),
+            Profile.single("b", slicer="orca", printer="K2"),
+            Profile.single("c", slicer="orca", printer="Ender"),
+        ],
+    )
+
+    assert both.summary() == "3 printers: K2 (creality_print); K2 (orca); Ender"

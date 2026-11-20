@@ -23,9 +23,9 @@ def _answers(*values: str) -> Callable[[str], str]:
 
 
 PROFILES = {
-    "zebra": Profile(name="zebra", slicer="orca"),
-    "last": Profile(name="last", slicer="creality_print"),
-    "alpha": Profile(name="alpha", slicer="bambu_studio"),
+    "zebra": Profile.single("zebra", slicer="orca"),
+    "last": Profile.single("last", slicer="creality_print"),
+    "alpha": Profile.single("alpha", slicer="bambu_studio"),
 }
 
 

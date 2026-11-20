@@ -14,10 +14,11 @@ one line with the full details written to the log. Exit statuses: 0 success,
 """
 
 import logging
+import re
 import sys
 import traceback
 from collections.abc import Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from batchslicer.backends.orca import OrcaBackend
@@ -27,6 +28,7 @@ from batchslicer.backends.slicers import SLICERS, SlicerDefinition, get_slicer, 
 from batchslicer.banner import get_banner
 from batchslicer.cli.arguments import RunOptions, parse_arguments
 from batchslicer.cli.file_prompt import SliceInput, input_from_path, prompt_for_input
+from batchslicer.cli.menu import confirm
 from batchslicer.cli.output_prompt import output_from_path, prompt_for_output
 from batchslicer.cli.preset_prompt import find_preset, select_presets
 from batchslicer.cli.profile_prompt import prompt_for_profile
@@ -36,7 +38,7 @@ from batchslicer.core.config import Config, find_config_file, get_config
 from batchslicer.core.environment import EnvironmentService
 from batchslicer.core.logging import configure_logging, current_log_file
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
-from batchslicer.domain.profiles import CHOICE_FIELDS, LAST_RUN, Profile, is_valid_name
+from batchslicer.domain.profiles import LAST_RUN, Profile, Target, combine, is_valid_name
 from batchslicer.infrastructure.profiles import ProfileError, ProfileStore
 from batchslicer.services.slicing import BatchOutcome, SliceOutcome, SlicingService
 
@@ -89,18 +91,19 @@ def _run(options: RunOptions) -> int:
             deleted = profiles.delete(options.delete_profile)
             print(f"Deleted profile '{deleted.name}'.")
             return EXIT_SUCCESS
-        options = _apply_profile(options, profiles, logger)
-        slicer = _select_slicer(options, config)
-        logger.info("Selected slicer: %s", slicer.display_name)
-        _verify_environment(config, logger, slicer)
-        library = _preset_library(slicer, config, logger)
+        options, specs, offered_more = _plan_targets(options, profiles, logger)
 
         if options.list_presets:
-            _list_presets(slicer, library, options)
-            return 0
+            if len(specs) > 1:
+                raise SlicerSelectionError("--list-presets works with one printer at a time.")
+            spec = specs[0]
+            slicer = _select_slicer(spec.slicer, options.no_prompt, config)
+            _verify_environment(config, logger, slicer)
+            _list_presets(slicer, _preset_library(slicer, config, logger), spec.printer)
+            return EXIT_SUCCESS
 
-        selection = _select_presets(options, slicer, library, logger)
-        _show_ready(slicer, selection)
+        targets = _resolve_targets(specs, offered_more, options.no_prompt, config, logger)
+        _show_ready(targets)
         slice_input = _select_input(options, config)
         output_directory = _select_output(options, config)
         logger.info(
@@ -109,17 +112,8 @@ def _run(options: RunOptions) -> int:
             slice_input.root,
             output_directory,
         )
-        _remember_choices(
-            profiles, options, slicer, selection, slice_input, output_directory, logger
-        )
-        backend = OrcaBackend(slicer=slicer, config=config, logger=logger)
-        service = SlicingService(backend, presets=library, logger=logger)
-        if slice_input.is_folder:
-            batch = _slice_folder(service, slice_input, output_directory, selection)
-        else:
-            model = slice_input.models[0]
-            print(f"Slicing {model.name} with {slicer.display_name}...")
-            outcome = service.slice(model, output_directory, selection)
+        _remember_choices(profiles, options, targets, slice_input, output_directory, logger)
+        return _slice_targets(targets, slice_input, output_directory, config, logger)
     except _StartupFailed:
         return EXIT_FAILURE
     except (
@@ -135,14 +129,6 @@ def _run(options: RunOptions) -> int:
         if logger is not None:
             logger.error("BatchSlicer startup failed: %s", error)
         return EXIT_FAILURE
-
-    if slice_input.is_folder:
-        _report_batch(batch)
-        if batch.interrupted:
-            return EXIT_INTERRUPTED
-        return EXIT_SUCCESS if not batch.failed else EXIT_FAILURE
-    _report(outcome)
-    return EXIT_SUCCESS if outcome.success else EXIT_FAILURE
 
 
 def _error(message: str) -> None:
@@ -175,41 +161,131 @@ def _setup(options: SetupOptions) -> int:
     return EXIT_SUCCESS
 
 
-def _apply_profile(
+@dataclass(frozen=True, slots=True)
+class _ResolvedTarget:
+    """A target whose slicer and presets have been chosen and checked."""
+
+    slicer: SlicerDefinition
+    library: PresetLibrary | None
+    selection: PresetSelection | None
+
+    def describe(self) -> str:
+        """Return the slicer and presets as one line."""
+        if self.selection is None:
+            return self.slicer.display_name
+        return (
+            f"{self.slicer.display_name}: {self.selection.printer.name} / "
+            f"{self.selection.filament.name} / {self.selection.process.name}"
+        )
+
+    def folder_name(self) -> str:
+        """Return a folder name for this target's results in a multi-printer run."""
+        name = self.selection.printer.name if self.selection else self.slicer.display_name
+        return re.sub(r'[\\/:*?"<>|]+', "-", name).strip(" .") or self.slicer.key
+
+    def as_target(self) -> Target:
+        """Return the choices to remember for this target."""
+        return Target(
+            slicer=self.slicer.key,
+            printer=self.selection.printer.name if self.selection else None,
+            filament=self.selection.filament.name if self.selection else None,
+            process=self.selection.process.name if self.selection else None,
+        )
+
+
+def _plan_targets(
     options: RunOptions,
     profiles: ProfileStore,
     logger: logging.Logger,
-) -> RunOptions:
-    """Fill choices not given on the command line from the chosen profile.
+) -> tuple[RunOptions, list[Target], bool]:
+    """Return the options with profile choices filled in, the targets to slice for,
+    and whether to offer adding more printers.
 
-    The profile comes from --profile/--last, or is offered interactively when
-    no choices were given and profiles have been saved.
+    Profiles come from --profile/--last (several combine their printers), or one
+    is offered interactively when nothing was given and profiles exist.
+    Command-line slicer and preset options override a single target's choices.
     """
-    profile: Profile | None = None
-    if options.profile is not None:
-        profile = profiles.get(options.profile)
-    elif not options.has_choices() and not options.no_prompt and not options.list_presets:
+    chosen: list[Profile] = [profiles.get(name) for name in options.profiles]
+    interactive = not options.no_prompt and not options.list_presets
+    if not chosen and interactive and not options.has_choices():
         saved = profiles.load()
         if saved:
-            profile = prompt_for_profile(saved)
-    if profile is None:
-        return options
+            picked = prompt_for_profile(saved)
+            if picked is not None:
+                chosen = [picked]
 
-    print(f"Using profile '{profile.name}': {profile.summary()}")
-    logger.info("Using profile %s: %s", profile.name, profile.summary())
-    filled = {
-        key: getattr(profile, key)
-        for key in CHOICE_FIELDS
-        if getattr(options, key) is None and getattr(profile, key) is not None
-    }
-    return replace(options, **filled)
+    targets = [Target()]
+    if chosen:
+        plan = combine("run", chosen)
+        for profile in chosen:
+            print(f"Using profile '{profile.name}': {profile.summary()}")
+            logger.info("Using profile %s: %s", profile.name, profile.summary())
+        targets = list(plan.targets)
+        options = replace(
+            options,
+            input=options.input if options.input is not None else plan.input,
+            output=options.output if options.output is not None else plan.output,
+        )
+
+    if len(targets) > 1:
+        if options.has_target_choices():
+            raise SlicerSelectionError(
+                "--slicer, --printer, --filament and --process describe one printer, so "
+                "they cannot be combined with several printers. Save each printer as "
+                "its own profile and list them with --profile."
+            )
+    else:
+        base = targets[0]
+        targets = [
+            Target(
+                slicer=options.slicer or base.slicer,
+                printer=options.printer or base.printer,
+                filament=options.filament or base.filament,
+                process=options.process or base.process,
+            )
+        ]
+    offer_more = interactive and not options.profiles and not options.has_target_choices()
+    return options, targets, offer_more
+
+
+def _resolve_targets(
+    specs: list[Target],
+    offer_more: bool,
+    no_prompt: bool,
+    config: Config,
+    logger: logging.Logger,
+) -> list[_ResolvedTarget]:
+    """Choose and check the slicer and presets for each target.
+
+    Each slicer is checked once. When ``offer_more`` is true the user may add
+    more printers after the planned ones.
+    """
+    resolved: list[_ResolvedTarget] = []
+    libraries: dict[str, PresetLibrary | None] = {}
+    pending = list(specs)
+    while pending:
+        spec = pending.pop(0)
+        if resolved:
+            print(f"Printer {len(resolved) + 1}:")
+        slicer = _select_slicer(spec.slicer, no_prompt, config)
+        logger.info("Selected slicer: %s", slicer.display_name)
+        if slicer.key not in libraries:
+            _verify_environment(config, logger, slicer)
+            libraries[slicer.key] = _preset_library(slicer, config, logger)
+        library = libraries[slicer.key]
+        selection = _select_presets(spec, slicer, library, no_prompt, logger)
+        resolved.append(_ResolvedTarget(slicer, library, selection))
+        if not pending and offer_more and confirm(
+            "Slice for another printer as well?", read_line=input, write=print, default=False
+        ):
+            pending.append(Target())
+    return resolved
 
 
 def _remember_choices(
     profiles: ProfileStore,
     options: RunOptions,
-    slicer: SlicerDefinition,
-    selection: PresetSelection | None,
+    targets: list[_ResolvedTarget],
     slice_input: SliceInput,
     output_directory: Path,
     logger: logging.Logger,
@@ -217,10 +293,7 @@ def _remember_choices(
     """Save this run's choices as the last run, and as --save-profile if given."""
     choices = Profile(
         name=LAST_RUN,
-        slicer=slicer.key,
-        printer=selection.printer.name if selection else None,
-        filament=selection.filament.name if selection else None,
-        process=selection.process.name if selection else None,
+        targets=tuple(target.as_target() for target in targets),
         input=slice_input.root if slice_input.is_folder else slice_input.models[0],
         output=output_directory,
     )
@@ -248,18 +321,18 @@ def _list_profiles(profiles: ProfileStore) -> None:
         print(f"  {name}: {profile.summary()}")
 
 
-def _select_slicer(options: RunOptions, config: Config) -> SlicerDefinition:
-    """Return the slicer named on the command line, or ask for one."""
+def _select_slicer(key: str | None, no_prompt: bool, config: Config) -> SlicerDefinition:
+    """Return the named slicer, or ask for one."""
     configured = [slicer for slicer in SLICERS if is_configured(slicer, config)]
-    if options.slicer is not None:
-        slicer = get_slicer(options.slicer)
+    if key is not None:
+        slicer = get_slicer(key)
         if slicer not in configured:
             raise SlicerSelectionError(
                 f"{slicer.display_name} is not configured. Set {slicer.key}.executable "
                 f"and {slicer.key}.datadir in {config.path}."
             )
         return slicer
-    if options.no_prompt:
+    if no_prompt:
         raise SlicerSelectionError("--slicer is required when --no-prompt is used.")
     return prompt_for_slicer(SLICERS, configured)
 
@@ -304,13 +377,14 @@ def _preset_library(
 
 
 def _select_presets(
-    options: RunOptions,
+    spec: Target,
     slicer: SlicerDefinition,
     library: PresetLibrary | None,
+    no_prompt: bool,
     logger: logging.Logger,
 ) -> PresetSelection | None:
-    """Return the presets named on the command line, asking for any not named."""
-    named = [options.printer, options.filament, options.process]
+    """Return the presets named for the target, asking for any not named."""
+    named = [spec.printer, spec.filament, spec.process]
     if library is None:
         if any(name is not None for name in named):
             raise SlicerSelectionError(
@@ -322,10 +396,10 @@ def _select_presets(
 
     selection = select_presets(
         library,
-        printer=options.printer,
-        filament=options.filament,
-        process=options.process,
-        prompt=not options.no_prompt,
+        printer=spec.printer,
+        filament=spec.filament,
+        process=spec.process,
+        prompt=not no_prompt,
     )
     logger.info(
         "Selected presets: printer=%s, filament=%s, process=%s",
@@ -339,18 +413,18 @@ def _select_presets(
 def _list_presets(
     slicer: SlicerDefinition,
     library: PresetLibrary | None,
-    options: RunOptions,
+    printer_name: str | None,
 ) -> None:
     """Print preset names usable with --printer, --filament and --process."""
     if library is None:
         raise SlicerSelectionError(
             f"Preset selection is not available for {slicer.display_name} yet."
         )
-    if options.printer is None:
+    if printer_name is None:
         print(f"Printers for {slicer.display_name} (use with --printer):")
         _print_names(library.printers())
         return
-    printer = find_preset(PresetKind.PRINTER, library.printers(), options.printer)
+    printer = find_preset(PresetKind.PRINTER, library.printers(), printer_name)
     print(f"Filaments for {printer.name} (use with --filament):")
     _print_names(library.filaments_for(printer))
     print(f"Processes for {printer.name} (use with --process):")
@@ -364,13 +438,89 @@ def _print_names(presets: Sequence[Preset]) -> None:
         print(f"  {preset.name}{mine}")
 
 
-def _show_ready(slicer: SlicerDefinition, selection: PresetSelection | None) -> None:
-    """Show the slicer and presets that will be used."""
-    print(f"BatchSlicer ready. Slicer: {slicer.display_name}.")
-    if selection is not None:
-        print(f"  Printer:  {selection.printer.name}")
-        print(f"  Filament: {selection.filament.name}")
-        print(f"  Process:  {selection.process.name}")
+def _show_ready(targets: list[_ResolvedTarget]) -> None:
+    """Show the slicer(s) and presets that will be used."""
+    if len(targets) > 1:
+        print(f"BatchSlicer ready. Slicing for {len(targets)} printers:")
+        for number, target in enumerate(targets, start=1):
+            print(f"  {number}) {target.describe()}")
+        return
+    target = targets[0]
+    print(f"BatchSlicer ready. Slicer: {target.slicer.display_name}.")
+    if target.selection is not None:
+        print(f"  Printer:  {target.selection.printer.name}")
+        print(f"  Filament: {target.selection.filament.name}")
+        print(f"  Process:  {target.selection.process.name}")
+
+
+def _slice_targets(
+    targets: list[_ResolvedTarget],
+    slice_input: SliceInput,
+    output_directory: Path,
+    config: Config,
+    logger: logging.Logger,
+) -> int:
+    """Slice the input for every target and return the run's exit status.
+
+    With several targets, each one's results go into its own subfolder of the
+    output folder, named after the printer.
+    """
+    multi = len(targets) > 1
+    folders = _unique_folder_names(targets) if multi else [""]
+    results: list[tuple[_ResolvedTarget, bool]] = []
+    for number, (target, folder) in enumerate(zip(targets, folders, strict=True), start=1):
+        destination = output_directory / folder if multi else output_directory
+        if multi:
+            print("")
+            print(f"=== Printer {number} of {len(targets)}: {target.describe()} ===")
+        backend = OrcaBackend(slicer=target.slicer, config=config, logger=logger)
+        service = SlicingService(backend, presets=target.library, logger=logger)
+        if slice_input.is_folder:
+            batch = _slice_folder(service, slice_input, destination, target.selection)
+            _report_batch(batch)
+            if batch.interrupted:
+                skipped = len(targets) - number
+                if skipped:
+                    _error(f"{skipped} more printer(s) were not started.")
+                return EXIT_INTERRUPTED
+            results.append((target, not batch.failed))
+        else:
+            model = slice_input.models[0]
+            print(f"Slicing {model.name} with {target.slicer.display_name}...")
+            outcome = service.slice(model, destination, target.selection)
+            _report(outcome)
+            results.append((target, outcome.success))
+
+    if multi:
+        succeeded = sum(1 for _, ok in results if ok)
+        print("")
+        print(f"Finished {len(results)} printers: {succeeded} without problems.")
+        for target, ok in results:
+            print(f"  {'ok    ' if ok else 'FAILED'} {target.describe()}")
+    return EXIT_SUCCESS if all(ok for _, ok in results) else EXIT_FAILURE
+
+
+def _unique_folder_names(targets: list[_ResolvedTarget]) -> list[str]:
+    """Return one output subfolder name per target.
+
+    A printer used with more than one slicer gets the slicer's name added;
+    any remaining repeats (same printer and slicer twice) are numbered.
+    """
+    slicers_by_printer: dict[str, set[str]] = {}
+    for target in targets:
+        slicers_by_printer.setdefault(target.folder_name().casefold(), set()).add(target.slicer.key)
+
+    names: list[str] = []
+    for target in targets:
+        base = target.folder_name()
+        if len(slicers_by_printer[base.casefold()]) > 1:
+            base = f"{base} ({target.slicer.display_name})"
+        name, count = base, 2
+        while name.casefold() in (existing.casefold() for existing in names):
+            name = f"{base} ({count})"
+            count += 1
+        names.append(name)
+    return names
 
 
 def _select_input(options: RunOptions, config: Config) -> SliceInput:

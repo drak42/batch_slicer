@@ -49,8 +49,11 @@ class RunOptions:
     config: Path | None = None
     """Configuration file given with --config, if any."""
 
-    profile: str | None = None
-    """Saved profile to start from (--profile, or "last" for --last)."""
+    profiles: tuple[str, ...] = ()
+    """Saved profiles to start from (--profile, repeatable; "last" for --last).
+
+    Several profiles slice the same input for every printer they name.
+    """
 
     save_profile: str | None = None
     list_profiles: bool = False
@@ -67,8 +70,14 @@ class RunOptions:
                 self.process,
                 self.input,
                 self.output,
-                self.profile,
             )
+        ) or bool(self.profiles)
+
+    def has_target_choices(self) -> bool:
+        """Return whether a slicer or preset was given on the command line."""
+        return any(
+            value is not None
+            for value in (self.slicer, self.printer, self.filament, self.process)
         )
 
 
@@ -92,7 +101,7 @@ def parse_arguments(argv: Sequence[str] | None = None) -> RunOptions | SetupOpti
         no_prompt=namespace.no_prompt,
         list_presets=namespace.list_presets,
         config=namespace.config,
-        profile=LAST_RUN if namespace.last else namespace.profile,
+        profiles=(LAST_RUN,) if namespace.last else tuple(namespace.profile or ()),
         save_profile=namespace.save_profile,
         list_profiles=namespace.list_profiles,
         delete_profile=namespace.delete_profile,
@@ -200,7 +209,11 @@ def _parser() -> argparse.ArgumentParser:
     starting.add_argument(
         "--profile",
         metavar="NAME",
-        help="start from a saved profile; other options override its choices",
+        action="append",
+        help=(
+            "start from a saved profile; other options override its choices. Repeat "
+            "to slice the same input for several printers"
+        ),
     )
     starting.add_argument(
         "--last",

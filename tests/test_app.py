@@ -64,6 +64,7 @@ def startup_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, Mock, Mock, Mo
     )
     config.path = Path("/settings/config.yaml")
     monkeypatch.setattr(app, "find_config_file", Mock(return_value=Path("/settings/config.yaml")))
+    monkeypatch.setattr(app, "confirm", Mock(return_value=False))
     profile_store = Mock()
     profile_store.return_value.load.return_value = {}
     monkeypatch.setattr(app, "ProfileStore", profile_store)
@@ -726,7 +727,7 @@ def test_each_run_is_remembered_and_can_be_saved_by_name(
 
     saved = ProfileStore(path).load()
     assert set(saved) == {"last", "bambu-cube"}
-    assert saved["last"].slicer == "bambu_studio"
+    assert saved["last"].targets[0].slicer == "bambu_studio"
     assert saved["last"].input == Path("/models/cube.stl")
     assert saved["last"].output == Path("/out")
     assert "Saved these choices as profile 'bambu-cube'." in capsys.readouterr().out
@@ -743,7 +744,7 @@ def test_profile_fills_choices_and_options_override_it(
     _store_with(
         monkeypatch,
         tmp_path,
-        Profile(name="k2", slicer="creality_print", printer="K2 Plus", filament="PETG",
+        Profile.single("k2", slicer="creality_print", printer="K2 Plus", filament="PETG",
                 process="Fine", input=Path("/models/brackets"), output=Path("/out/k2")),
     )
     monkeypatch.setattr(app, "PresetLibrary", Mock())
@@ -775,7 +776,7 @@ def test_saved_profiles_are_offered_when_no_choices_are_given(
     """Interactive runs without options start by offering the saved profiles."""
     from batchslicer.domain.profiles import Profile
 
-    _store_with(monkeypatch, tmp_path, Profile(name="last", slicer="bambu_studio"))
+    _store_with(monkeypatch, tmp_path, Profile.single("last", slicer="bambu_studio"))
     offered = Mock(return_value=None)
     monkeypatch.setattr(app, "prompt_for_profile", offered)
 
@@ -797,7 +798,7 @@ def test_list_and_delete_profiles(
     from batchslicer.domain.profiles import Profile
 
     path = _store_with(
-        monkeypatch, tmp_path, Profile(name="k2", slicer="creality_print"), Profile(name="last", slicer="orca")
+        monkeypatch, tmp_path, Profile.single("k2", slicer="creality_print"), Profile.single("last", slicer="orca")
     )
 
     assert app.main(["--list-profiles"]) == 0
@@ -821,3 +822,185 @@ def test_invalid_profile_name_is_refused_before_anything_runs(
     assert app.main(["--save-profile", "a/b"]) == 1
     assert "Invalid profile name 'a/b'" in capsys.readouterr().err
     assert not app.find_config_file.called
+
+
+def _two_printer_store(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Save a Creality K2 profile and a Bambu profile."""
+    from batchslicer.domain.profiles import Profile
+
+    return _store_with(
+        monkeypatch,
+        tmp_path,
+        Profile.single("k2", slicer="creality_print", printer="K2 Plus", filament="PETG", process="Fine"),
+        Profile.single("bambu", slicer="bambu_studio", input=Path("/models/cube.stl")),
+    )
+
+
+def _two_targets_ready(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    """Make preset selection and input/output work without prompts; return select_presets."""
+    monkeypatch.setattr(app, "PresetLibrary", Mock())
+    select_presets = Mock(return_value=_selection())
+    monkeypatch.setattr(app, "select_presets", select_presets)
+    monkeypatch.setattr(app, "input_from_path", Mock(return_value=_single_input()))
+    monkeypatch.setattr(app, "output_from_path", Mock(return_value=Path("/out")))
+    return select_presets
+
+
+def test_several_profiles_slice_for_each_printer_into_its_own_folder(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Each printer gets its own subfolder, heading and summary line."""
+    _two_printer_store(monkeypatch, tmp_path)
+    _two_targets_ready(monkeypatch)
+    _no_prompts(monkeypatch)
+    slice_calls = app.SlicingService.return_value.slice
+
+    assert app.main(["--profile", "k2", "--profile", "bambu", "--no-prompt"]) == 0
+
+    destinations = [call.args[1] for call in slice_calls.call_args_list]
+    assert destinations == [Path("/out/K2 Plus"), Path("/out/Bambu Studio")]
+    slicers = [call.kwargs["slicer"].key for call in app.OrcaBackend.call_args_list]
+    assert slicers == ["creality_print", "bambu_studio"]
+    output = capsys.readouterr().out
+    assert "BatchSlicer ready. Slicing for 2 printers:" in output
+    assert "=== Printer 1 of 2: Creality Print: K2 Plus / Generic PETG / 0.12mm PETG ===" in output
+    assert "=== Printer 2 of 2: Bambu Studio ===" in output
+    assert "Finished 2 printers: 2 without problems." in output
+
+
+def test_a_failure_for_one_printer_fails_the_run(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The other printers still slice, the summary marks the failure, and the exit status is 1."""
+    _two_printer_store(monkeypatch, tmp_path)
+    _two_targets_ready(monkeypatch)
+    app.SlicingService.return_value.slice.side_effect = [
+        _outcome(success=False, message="bad"),
+        _outcome(success=True),
+    ]
+
+    assert app.main(["--profile", "k2", "--profile", "bambu", "--no-prompt"]) == 1
+
+    output = capsys.readouterr().out
+    assert "Finished 2 printers: 1 without problems." in output
+    assert "FAILED Creality Print: K2 Plus" in output
+    assert "ok     Bambu Studio" in output
+
+
+def test_interrupting_one_printer_stops_the_rest(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Ctrl+C during a batch for the first printer stops the run; the rest are not started."""
+    _two_printer_store(monkeypatch, tmp_path)
+    _two_targets_ready(monkeypatch)
+    folder = SliceInput(root=Path("/models"), models=(Path("/models/a.stl"),), is_folder=True)
+    monkeypatch.setattr(app, "input_from_path", Mock(return_value=folder))
+    app.SlicingService.return_value.slice_batch.return_value = BatchOutcome(
+        Path("/out/K2 Plus/models-1"), (), planned=1, interrupted_model=Path("/models/a.stl")
+    )
+
+    assert app.main(["--profile", "k2", "--profile", "bambu", "--no-prompt"]) == 130
+
+    assert "1 more printer(s) were not started." in capsys.readouterr().err
+    assert app.SlicingService.return_value.slice_batch.call_count == 1
+
+
+def test_single_printer_options_cannot_be_combined_with_several_printers(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--printer and friends describe one printer, so they are refused for several."""
+    _two_printer_store(monkeypatch, tmp_path)
+
+    assert app.main(["--profile", "k2", "--profile", "bambu", "--printer", "X"]) == 1
+    assert "cannot be combined with several printers" in capsys.readouterr().err
+
+
+def test_another_printer_can_be_added_interactively_and_is_remembered(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Answering yes adds a printer; the whole run is saved as 'last' with both."""
+    from batchslicer.infrastructure.profiles import ProfileStore
+
+    path = _store_with(monkeypatch, tmp_path)
+    monkeypatch.setattr(app, "confirm", Mock(side_effect=[True, False]))
+    monkeypatch.setattr(app, "prompt_for_slicer", Mock(side_effect=[BAMBU_STUDIO, CREALITY_PRINT]))
+    _two_targets_ready(monkeypatch)
+    monkeypatch.setattr(app, "prompt_for_input", Mock(return_value=_single_input()))
+
+    assert app.main([]) == 0
+
+    assert app.SlicingService.return_value.slice.call_count == 2
+    last = ProfileStore(path).get("last")
+    assert [target.slicer for target in last.targets] == ["bambu_studio", "creality_print"]
+    assert last.targets[1].printer == "K2 Plus"
+
+
+def test_extra_printers_are_not_offered_when_choices_were_given(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Runs set up on the command line are not interrupted by the extra-printer question."""
+    app.main(["--slicer", "bambu"])
+
+    assert not app.confirm.called
+
+
+def test_same_printer_twice_gets_numbered_folders(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Two targets for the same printer (say, two filaments) do not share a folder."""
+    from batchslicer.domain.profiles import Profile
+
+    _store_with(
+        monkeypatch,
+        tmp_path,
+        Profile.single("petg", slicer="creality_print", printer="K2 Plus", filament="PETG", process="Fine"),
+        Profile.single("pla", slicer="creality_print", printer="K2 Plus", filament="PLA", process="Fine"),
+    )
+    _two_targets_ready(monkeypatch)
+
+    app.main(["--profile", "petg", "--profile", "pla", "--no-prompt", "--input", "cube.stl"])
+
+    destinations = [call.args[1] for call in app.SlicingService.return_value.slice.call_args_list]
+    assert destinations == [Path("/out/K2 Plus"), Path("/out/K2 Plus (2)")]
+
+
+def test_same_printer_with_different_slicers_names_the_slicer(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """The same printer sliced by two slicers gets folders that say which slicer."""
+    from batchslicer.domain.profiles import Profile
+
+    _store_with(
+        monkeypatch,
+        tmp_path,
+        Profile.single("c", slicer="creality_print", printer="K2 Plus", filament="F", process="P"),
+        Profile.single("o", slicer="orca", printer="K2 Plus", filament="F", process="P"),
+    )
+    _two_targets_ready(monkeypatch)
+
+    app.main(["--profile", "c", "--profile", "o", "--no-prompt", "--input", "cube.stl"])
+
+    destinations = [call.args[1] for call in app.SlicingService.return_value.slice.call_args_list]
+    assert destinations == [
+        Path("/out/K2 Plus (Creality Print)"),
+        Path("/out/K2 Plus (OrcaSlicer)"),
+    ]

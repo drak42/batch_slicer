@@ -102,8 +102,9 @@ def test_config_option_for_runs() -> None:
 
 def test_profile_options() -> None:
     """Profile options are parsed; --last means the 'last' profile."""
-    assert parse_arguments(["--profile", "k2-petg"]).profile == "k2-petg"
-    assert parse_arguments(["--last"]).profile == "last"
+    assert parse_arguments(["--profile", "k2-petg"]).profiles == ("k2-petg",)
+    assert parse_arguments(["--profile", "k2", "--profile", "ender"]).profiles == ("k2", "ender")
+    assert parse_arguments(["--last"]).profiles == ("last",)
     assert parse_arguments(["--save-profile", "k2"]).save_profile == "k2"
     assert parse_arguments(["--list-profiles"]).list_profiles
     assert parse_arguments(["--delete-profile", "old"]).delete_profile == "old"

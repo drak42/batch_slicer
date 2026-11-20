@@ -1,41 +1,91 @@
-"""Describe a profile: a named, reusable set of choices for a slicing run.
+"""Describe targets and profiles: reusable choices for a slicing run.
 
-A profile can hold any of the choices a run needs (slicer, presets, input and
-output). Choices it leaves out are asked for, or given on the command line,
-as usual. This module only describes profiles; it does not store them.
+A *target* is one slicer with its printer, filament and process presets. A run
+slices its input for one or more targets. A *profile* names a set of targets
+together with the shared input and output, so a run can be repeated. Any
+choice may be left unset; unset choices are asked for, or given on the command
+line, as usual. This module only describes them; it does not store them.
 """
 
 import re
-from dataclasses import dataclass, fields
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 from pathlib import Path
 
 LAST_RUN = "last"
 """Name of the profile that remembers the most recent run."""
 
+TARGET_FIELDS = ("slicer", "printer", "filament", "process")
+"""The choices a target holds, in display order."""
+
+RUN_FIELDS = ("input", "output")
+"""The choices shared by every target in a run."""
+
 _NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$")
 
 
 @dataclass(frozen=True, slots=True)
-class Profile:
-    """A named set of run choices; ``None`` means "not set by this profile"."""
+class Target:
+    """One slicer and its presets; ``None`` means "not chosen yet"."""
 
-    name: str
     slicer: str | None = None
     """Configuration key of the slicer, for example ``creality_print``."""
 
     printer: str | None = None
     filament: str | None = None
     process: str | None = None
+
+    def summary(self) -> str:
+        """Return the target's choices as one line."""
+        parts = [getattr(self, key) for key in TARGET_FIELDS if getattr(self, key)]
+        return ", ".join(parts) if parts else "no choices saved"
+
+    def is_empty(self) -> bool:
+        """Return whether no choice is set."""
+        return not any(getattr(self, key) for key in TARGET_FIELDS)
+
+
+@dataclass(frozen=True, slots=True)
+class Profile:
+    """A named run: one or more targets and the input and output they share."""
+
+    name: str
+    targets: tuple[Target, ...] = field(default=(Target(),))
     input: Path | None = None
     output: Path | None = None
 
+    @classmethod
+    def single(
+        cls,
+        name: str,
+        *,
+        slicer: str | None = None,
+        printer: str | None = None,
+        filament: str | None = None,
+        process: str | None = None,
+        input: Path | None = None,  # noqa: A002 - matches the option name
+        output: Path | None = None,
+    ) -> "Profile":
+        """Return a profile with one target."""
+        target = Target(slicer=slicer, printer=printer, filament=filament, process=process)
+        return cls(name=name, targets=(target,), input=input, output=output)
+
+    @property
+    def is_multi(self) -> bool:
+        """Return whether the profile slices for more than one target."""
+        return len(self.targets) > 1
+
     def summary(self) -> str:
         """Return a one-line description of the choices this profile sets."""
-        parts = [
-            value
-            for value in (self.slicer, self.printer, self.filament, self.process)
-            if value
-        ]
+        if self.is_multi:
+            names = [target.printer or target.slicer or "?" for target in self.targets]
+            labels = [
+                f"{name} ({target.slicer})" if names.count(name) > 1 and target.slicer else name
+                for name, target in zip(names, self.targets, strict=True)
+            ]
+            parts = [f"{len(self.targets)} printers: " + "; ".join(labels)]
+        else:
+            parts = [] if self.targets[0].is_empty() else [self.targets[0].summary()]
         if self.input is not None:
             parts.append(f"input {self.input}")
         if self.output is not None:
@@ -43,8 +93,21 @@ class Profile:
         return ", ".join(parts) if parts else "no choices saved"
 
 
-CHOICE_FIELDS = tuple(field.name for field in fields(Profile) if field.name != "name")
-"""The choices a profile can hold, in display order."""
+def combine(name: str, profiles: Iterable[Profile]) -> Profile:
+    """Return one profile holding every target of ``profiles``.
+
+    Input and output come from the first profile that sets them.
+    """
+    chosen = list(profiles)
+    targets = tuple(
+        target for profile in chosen for target in profile.targets if not target.is_empty()
+    )
+    return Profile(
+        name=name,
+        targets=targets or (Target(),),
+        input=next((profile.input for profile in chosen if profile.input), None),
+        output=next((profile.output for profile in chosen if profile.output), None),
+    )
 
 
 def is_valid_name(name: str) -> bool:

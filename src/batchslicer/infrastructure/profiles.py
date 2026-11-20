@@ -13,7 +13,13 @@ from typing import Any
 
 import yaml
 
-from batchslicer.domain.profiles import CHOICE_FIELDS, Profile, is_valid_name
+from batchslicer.domain.profiles import (
+    RUN_FIELDS,
+    TARGET_FIELDS,
+    Profile,
+    Target,
+    is_valid_name,
+)
 
 
 class ProfileError(Exception):
@@ -84,37 +90,89 @@ class ProfileStore:
         return profile
 
     def _profile(self, name: str, values: Any) -> Profile:
-        """Return the Profile stored under ``name``."""
+        """Return the Profile stored under ``name``.
+
+        A profile with one target stores its choices directly; a profile with
+        several stores them as a ``targets`` list. ``input`` and ``output`` are
+        shared by every target.
+        """
         if not isinstance(values, dict):
             raise ProfileError(f"Profile '{name}' in {self._path} is not a mapping.")
-        unknown = set(values) - set(CHOICE_FIELDS)
+        allowed = {*TARGET_FIELDS, *RUN_FIELDS, "targets"}
+        unknown = set(values) - allowed
         if unknown:
             raise ProfileError(
                 f"Profile '{name}' in {self._path} has unknown settings: "
                 + ", ".join(sorted(str(key) for key in unknown))
             )
-        choices: dict[str, Any] = {}
-        for key in CHOICE_FIELDS:
-            value = values.get(key)
-            if value in (None, ""):
-                continue
-            text = str(value)
-            choices[key] = Path(text).expanduser() if key in ("input", "output") else text
-        return Profile(name=name, **choices)
+
+        if "targets" in values:
+            if any(key in values for key in TARGET_FIELDS):
+                raise ProfileError(
+                    f"Profile '{name}' in {self._path} sets both 'targets' and "
+                    "slicer/printer/filament/process; put those inside each target."
+                )
+            entries = values["targets"]
+            if not isinstance(entries, list) or not entries:
+                raise ProfileError(f"Profile '{name}' in {self._path}: 'targets' must be a list.")
+            targets = tuple(self._target(name, entry) for entry in entries)
+        else:
+            targets = (self._target(name, values),)
+
+        paths = {
+            key: Path(str(values[key])).expanduser()
+            for key in RUN_FIELDS
+            if values.get(key) not in (None, "")
+        }
+        return Profile(name=name, targets=targets, **paths)
+
+    def _target(self, name: str, values: Any) -> Target:
+        """Return one target from its stored settings."""
+        if not isinstance(values, dict):
+            raise ProfileError(f"Profile '{name}' in {self._path} has a target that is not a mapping.")
+        unknown = set(values) - set(TARGET_FIELDS) - set(RUN_FIELDS)
+        if unknown:
+            raise ProfileError(
+                f"Profile '{name}' in {self._path} has unknown target settings: "
+                + ", ".join(sorted(str(key) for key in unknown))
+            )
+        return Target(
+            **{
+                key: str(values[key])
+                for key in TARGET_FIELDS
+                if values.get(key) not in (None, "")
+            }
+        )
+
+    @staticmethod
+    def _stored(profile: Profile) -> dict[str, Any]:
+        """Return the settings written for ``profile``."""
+        def choices(target: Target) -> dict[str, str]:
+            return {
+                key: getattr(target, key) for key in TARGET_FIELDS if getattr(target, key)
+            }
+
+        stored: dict[str, Any] = (
+            {"targets": [choices(target) for target in profile.targets]}
+            if profile.is_multi
+            else choices(profile.targets[0])
+        )
+        for key in RUN_FIELDS:
+            value = getattr(profile, key)
+            if value is not None:
+                stored[key] = str(value)
+        return stored
 
     def _write(self, profiles: dict[str, Profile]) -> None:
         """Write all profiles, replacing the file atomically."""
         data = {
-            name: {
-                key: str(getattr(profile, key))
-                for key in CHOICE_FIELDS
-                if getattr(profile, key) is not None
-            }
+            name: self._stored(profile)
             for name, profile in sorted(profiles.items(), key=lambda item: item[0].casefold())
         }
         text = (
-            "# BatchSlicer profiles: saved choices for runs. Edit freely; each profile\n"
-            "# may set slicer, printer, filament, process, input and output.\n"
+            "# BatchSlicer profiles: saved choices for runs. Edit freely. A profile sets\n"
+            "# slicer, printer, filament and process (or a 'targets' list of them, to\n"
+            "# slice for several printers), plus input and output.\n"
             + yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
         )
         try:
