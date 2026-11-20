@@ -306,7 +306,7 @@ asking; anything you leave out is still asked for, unless you add
 | `--output PATH` | output folder; created if missing; defaults to the configured `output` folder |
 | `--no-prompt` | never ask anything; a missing choice is an error that names the option to add |
 | `--list-presets` | list preset names, then exit (see below) |
-| `--profile NAME` | start from a saved profile (see [Profiles](#profiles)) |
+| `--profile NAME` | start from a saved profile (see [Profiles](#profiles)); repeat it to slice for several printers |
 | `--last` | repeat the last run |
 | `--save-profile NAME` | save this run's choices as a profile |
 | `--list-profiles`, `--delete-profile NAME` | list or delete saved profiles |
@@ -404,6 +404,62 @@ batchslicer --delete-profile k2-petg
 - Profiles are kept in `~/.local/share/batchslicer/profiles.yaml` (set
   `paths.profiles` in the configuration to move it). It is plain YAML and can
   be edited by hand.
+
+## Slicing for several printers
+
+One run can slice the same models for more than one printer, each with its own
+slicer, filament and process.
+
+**Interactively**, after choosing the presets BatchSlicer asks:
+
+```
+Slice for another printer as well? [y/N]
+```
+
+Answer `y` to choose another slicer and printer; repeat as often as you like.
+
+**On the command line**, save each printer as a profile and list them:
+
+```bash
+batchslicer --profile k2-petg --profile ender-pla \
+  --input ~/BatchSlicer/incoming/brackets --no-prompt
+```
+
+- Each printer's results go into its own subfolder of the output folder, named
+  after the printer (with the slicer's name added if the same printer is used
+  with two slicers, and a number if it is used twice with one slicer):
+
+  ```
+  output/
+    Creality K2 Plus 0.4 nozzle/brackets-20261120-161654/...
+    Creality Ender-3 V3 SE 0.4 nozzle/brackets-20261120-161720/...
+  ```
+
+- Printers are sliced one after another; a failure for one does not stop the
+  others, and a summary at the end lists each printer as ok or FAILED.
+  Ctrl+C stops the current printer and skips the rest.
+- `--save-profile` saves all the printers as one profile, and `--last` repeats
+  the whole run.
+- `--slicer`, `--printer`, `--filament` and `--process` describe a single
+  printer, so they cannot be combined with several; use one profile per
+  printer instead.
+
+In the profiles file, a profile for several printers lists them under
+`targets`:
+
+```yaml
+k2-and-ender:
+  targets:
+  - slicer: creality_print
+    printer: Creality K2 Plus 0.4 nozzle
+    filament: Generic PETG @Creality K2 Plus 0.4 nozzle
+    process: 0.20mm Standard @Creality K2 Plus 0.4 nozzle
+  - slicer: orca
+    printer: Creality Ender-3 V3 SE 0.4 nozzle
+    filament: Generic PLA @System
+    process: 0.20mm Standard @Creality Ender3V3SE 0.4
+  input: ~/BatchSlicer/incoming/brackets
+```
 
 ## Output
 

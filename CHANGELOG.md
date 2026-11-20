@@ -14,6 +14,11 @@ All notable changes to BatchSlicer are recorded here. The format follows
   without options offer the saved profiles first. `--list-profiles` and
   `--delete-profile` manage them; they are stored in
   `~/.local/share/batchslicer/profiles.yaml`.
+- **Several printers per run**: repeat `--profile` (or answer "yes" to "Slice
+  for another printer as well?") to slice the same models for more than one
+  printer, each with its own slicer and presets, into its own output subfolder,
+  with a summary at the end. Such runs can be saved as one profile (a `targets`
+  list) and repeated with `--last`.
 - A failed slice's reason now includes the slicer's own validation message
   (for example OrcaSlicer's "Too small line width").
 
