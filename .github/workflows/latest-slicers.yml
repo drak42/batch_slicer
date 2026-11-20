@@ -1,0 +1,94 @@
+# Test BatchSlicer against the newest release of each slicer, so a slicer update
+# that changes its command line is noticed within a week rather than by users.
+# Runs every Monday and can be started by hand from the Actions tab.
+name: Latest slicers
+
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  slicer:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: OrcaSlicer
+            key: orca
+            env_prefix: ORCA
+            repo: OrcaSlicer/OrcaSlicer
+            pattern: "OrcaSlicer_Linux_AppImage_Ubuntu2404_V*.AppImage"
+            settings: true
+          - name: Creality Print
+            key: creality_print
+            env_prefix: CREALITY
+            repo: CrealityOfficial/CrealityPrint
+            pattern: "CrealityPrint-*-x86_64-Release.AppImage"
+            settings: true
+          - name: Bambu Studio
+            key: bambu_studio
+            env_prefix: BAMBU
+            repo: bambulab/BambuStudio
+            pattern: "BambuStudio_ubu24*.AppImage"
+            settings: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install system libraries the slicers need
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libfuse2t64 xvfb libgl1 libegl1 libglu1-mesa libgtk-3-0t64 \
+            libwebkit2gtk-4.1-0 libgstreamer1.0-0 libgstreamer-plugins-base1.0-0
+
+      - name: Install BatchSlicer
+        run: python -m pip install -e '.[dev]'
+
+      - name: Download the latest ${{ matrix.name }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p slicer
+          gh release download --repo "${{ matrix.repo }}" --pattern "${{ matrix.pattern }}" --dir slicer
+          files=(slicer/*.AppImage)
+          if [ "${#files[@]}" -ne 1 ]; then
+            echo "Expected one AppImage, found: ${files[*]}" >&2
+            exit 1
+          fi
+          chmod +x "${files[0]}"
+          tag=$(gh release view --repo "${{ matrix.repo }}" --json tagName --jq .tagName)
+          echo "SLICER_EXECUTABLE=$PWD/${files[0]}" >> "$GITHUB_ENV"
+          echo "Testing **${{ matrix.name }} $tag** (\`$(basename "${files[0]}")\`)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create test settings
+        if: matrix.settings
+        run: |
+          python scripts/make_test_slicer_data.py ${{ matrix.key }} "$SLICER_EXECUTABLE" "$RUNNER_TEMP/slicer-data"
+          echo "BATCHSLICER_TEST_${{ matrix.env_prefix }}_DATADIR=$RUNNER_TEMP/slicer-data" >> "$GITHUB_ENV"
+
+      - name: Run the real-slicer tests
+        shell: bash
+        run: |
+          export BATCHSLICER_TEST_${{ matrix.env_prefix }}_EXECUTABLE="$SLICER_EXECUTABLE"
+          tests=("tests/test_orca_backend.py::test_every_option_used_is_accepted_by_real_slicer[${{ matrix.key }}]")
+          if [ "${{ matrix.settings }}" = "true" ]; then
+            tests+=("tests/test_presets.py::test_real_slicer_slices_with_selected_presets[${{ matrix.key }}-built-in-presets]")
+          fi
+          set -o pipefail
+          xvfb-run -a pytest -v -rs "${tests[@]}" | tee pytest.txt
+          if grep -q -i "skipped" pytest.txt; then
+            echo "A real-slicer test was skipped, so ${{ matrix.name }} was not really tested" >&2
+            exit 1
+          fi
