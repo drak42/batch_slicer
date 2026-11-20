@@ -43,7 +43,11 @@ class SlicerDefinition:
         return option not in self.unsupported_options
 
 
-ORCASLICER = SlicerDefinition(key="orca", display_name="OrcaSlicer")
+ORCASLICER = SlicerDefinition(
+    key="orca",
+    display_name="OrcaSlicer",
+    app_config_name="OrcaSlicer.conf",
+)
 
 BAMBU_STUDIO = SlicerDefinition(key="bambu_studio", display_name="Bambu Studio")
 

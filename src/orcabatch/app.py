@@ -12,6 +12,7 @@ from pathlib import Path
 
 from orcabatch.backends.orca import OrcaBackend
 from orcabatch.backends.presets import PresetError, PresetLibrary
+from orcabatch.backends.profiles import find_system_profiles
 from orcabatch.backends.slicers import SLICERS, is_configured
 from orcabatch.banner import get_banner
 from orcabatch.cli.file_prompt import SliceInput, prompt_for_input
@@ -53,9 +54,17 @@ def main() -> int:
         selection: PresetSelection | None = None
         library: PresetLibrary | None = None
         if slicer.supports_preset_selection:
+            data_directory = Path(config.get(slicer.key, "datadir"))
+            system_directory = find_system_profiles(
+                Path(config.get(slicer.key, "executable")),
+                data_directory,
+                Path(config.get("paths", "data")) / "slicer-profiles",
+                logger=logger,
+            )
             library = PresetLibrary(
-                Path(config.get(slicer.key, "datadir")),
+                data_directory,
                 str(slicer.app_config_name),
+                system_directory=system_directory,
                 logger=logger,
             )
             selection = prompt_for_presets(library)

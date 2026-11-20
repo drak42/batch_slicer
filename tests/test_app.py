@@ -61,6 +61,7 @@ def startup_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, Mock, Mock, Mo
     monkeypatch.setattr(app, "prompt_for_input", Mock(return_value=_single_input()))
     monkeypatch.setattr(app, "prompt_for_output", Mock(return_value=Path("/out")))
     monkeypatch.setattr(app, "OrcaBackend", Mock())
+    monkeypatch.setattr(app, "find_system_profiles", Mock(return_value=Path("/profiles")))
     slicing_service = Mock()
     slicing_service.return_value.slice.return_value = _outcome(success=True)
     monkeypatch.setattr(app, "SlicingService", slicing_service)
@@ -217,6 +218,8 @@ def test_presets_are_chosen_after_checks_for_supported_slicers(
     assert app.main() == 0
     get_config.return_value.get.assert_any_call("creality_print", "datadir")
     assert library.call_args.args == (Path("/data/creality"), "Creality.conf")
+    assert library.call_args.kwargs["system_directory"] == Path("/profiles")
+    assert app.find_system_profiles.call_args.args[1] == Path("/data/creality")
     output = capsys.readouterr().out
     assert "Printer:  K2 Plus" in output
     assert "Filament: Generic PETG" in output
