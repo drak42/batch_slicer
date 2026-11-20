@@ -162,6 +162,25 @@ Discover Backends
 Select Slicer (user is prompted; startup waits for a configured choice)
 
 ↓
+Verify Environment (for the selected slicer)
+
+↓
+
+Select Presets (printer, then compatible filament and process; Creality Print only for now)
+
+↓
+Select Input (one model file, or every model in a folder and its subfolders)
+
+↓
+
+Select Output Folder (default, existing subfolder, or a new folder created on confirmation)
+
+↓
+
+Slice (one model: a new job folder; a folder: one batch folder mirroring the source tree,
+one folder per model, presets saved once; failures do not stop the batch)
+
+↓
 
 Initialise Services
 
@@ -244,6 +263,17 @@ Supported (all share the OrcaSlicer command-line interface, driven by one backen
 
 Each slicer has its own configuration section (`orca`, `creality_print`, `bambu_studio`)
 with `executable` and `datadir`. The user chooses one at startup.
+
+Presets are read from the slicer's data directory (`backends/presets.py`). Saved
+presets only store differences from the preset they inherit from, and the slicer
+CLI cannot load them as saved, so the chosen presets are written out as complete,
+self-contained files for `--load-settings` / `--load-filaments`. The slicer's data
+directory is never modified. Creality Print also needs `--need-gcode-file`, without
+which it reports success but writes no G-code.
+
+Preset selection is supported for Creality Print. OrcaSlicer 2.4 stores its
+built-in presets in a packed `.opc` format and Bambu Studio's layout has not been
+verified yet; both are planned.
 
 Future:
 
