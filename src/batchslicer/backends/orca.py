@@ -270,13 +270,12 @@ class OrcaBackend:
     def _base_command(self) -> tuple[str, ...]:
         """Return the executable, its launch arguments, and the data directory.
 
-        Paths are made absolute so commands behave the same from any working
-        directory. A bare executable name is kept so it is still found on PATH.
+        Paths come from the configuration service, which makes them absolute
+        (relative to the configuration file) and looks bare program names up
+        on PATH, so commands behave the same from any working directory.
         """
-        executable = self._configured_path("executable")
-        if len(executable.parts) > 1:
-            executable = executable.absolute()
-        datadir = self._configured_path("datadir").absolute()
+        executable = self._config.get_program(self._slicer.key)
+        datadir = self._config.get_path(self._slicer.key, "datadir")
         return (
             str(executable),
             *self._slicer.launch_arguments,
@@ -284,17 +283,6 @@ class OrcaBackend:
             str(datadir),
         )
 
-    def _configured_path(self, key: str) -> Path:
-        """Return one required configured path for the selected slicer."""
-        section = self._slicer.key
-        value = self._config.get(section, key)
-        if isinstance(value, str):
-            if not value:
-                raise ValueError(f"Configuration value {section}.{key} must not be empty.")
-            return Path(value)
-        if isinstance(value, Path):
-            return value
-        raise ValueError(f"Configuration value {section}.{key} must be a path.")
 
 
 def _join_file_list(paths: Sequence[PathLike]) -> str:

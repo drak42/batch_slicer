@@ -16,16 +16,16 @@ from batchslicer.backends.slicers import (
     SlicerDefinition,
 )
 from batchslicer.core.config import Config
+from conftest import write_config
 
 
 @pytest.fixture
 def backend(tmp_path: Path) -> OrcaBackend:
     """Create a backend with platform-independent temporary configuration."""
-    config = Mock(spec=Config)
-    config.get.side_effect = lambda section, key: {
-        ("orca", "executable"): tmp_path / "Orca Slicer",
-        ("orca", "datadir"): tmp_path / "Orca Data",
-    }[(section, key)]
+    config = write_config(
+        tmp_path,
+        {"orca": {"executable": tmp_path / "Orca Slicer", "datadir": tmp_path / "Orca Data"}},
+    )
     return OrcaBackend(config=config, logger=Mock())
 
 
@@ -155,20 +155,6 @@ def test_help_command(backend: OrcaBackend) -> None:
     assert backend.build_help_command()[2].endswith("Orca Data")
 
 
-def test_configured_paths_accept_strings_and_paths() -> None:
-    """Configured string and Path values are returned as pathlib Paths."""
-    config = Mock(spec=Config)
-    values = {
-        ("orca", "executable"): "orca",
-        ("orca", "datadir"): Path("orca-data"),
-    }
-    config.get.side_effect = lambda section, key: values[(section, key)]
-    backend = OrcaBackend(config=config, logger=Mock())
-
-    assert backend._configured_path("executable") == Path("orca")
-    assert backend._configured_path("datadir") == Path("orca-data")
-
-
 def test_export_settings_command(backend: OrcaBackend, tmp_path: Path) -> None:
     """Export settings includes its output path as one argument."""
     output = tmp_path / "settings file.json"
@@ -223,22 +209,20 @@ def test_relative_paths_are_made_absolute(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Relative configured paths still work when OrcaSlicer runs elsewhere."""
+    """Relative configured paths are relative to the configuration file, not the current folder."""
     monkeypatch.chdir(tmp_path)
-    config = Mock(spec=Config)
-    values = {
-        ("orca", "executable"): "bin/orca-slicer",
-        ("orca", "datadir"): "orca-data",
-    }
-    config.get.side_effect = lambda section, key: values[(section, key)]
+    settings = tmp_path / "settings"
+    config = write_config(
+        settings, {"orca": {"executable": "bin/orca-slicer", "datadir": "orca-data"}}
+    )
     backend = OrcaBackend(config=config, logger=Mock())
 
     command = backend.build_export_settings_command("settings.json")
 
     assert command == (
-        str(tmp_path / "bin" / "orca-slicer"),
+        str(settings / "bin" / "orca-slicer"),
         "--datadir",
-        str(tmp_path / "orca-data"),
+        str(settings / "orca-data"),
         "--export-settings",
         str(tmp_path / "settings.json"),
     )
@@ -250,12 +234,41 @@ def test_bare_executable_name_is_left_for_path_lookup(
 ) -> None:
     """An executable given only by name is still found on PATH."""
     monkeypatch.chdir(tmp_path)
-    config = Mock(spec=Config)
-    values = {("orca", "executable"): "orca-slicer", ("orca", "datadir"): "data"}
-    config.get.side_effect = lambda section, key: values[(section, key)]
+    monkeypatch.setenv("PATH", str(tmp_path / "empty-path"))
+    config = write_config(tmp_path, {"orca": {"executable": "orca-slicer", "datadir": "data"}})
     backend = OrcaBackend(config=config, logger=Mock())
 
     assert backend.build_help_command()[0] == "orca-slicer"
+
+
+def test_bare_executable_name_found_on_path_is_used(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A bare executable name found on PATH becomes its full path."""
+    bin_directory = tmp_path / "bin"
+    bin_directory.mkdir()
+    program = bin_directory / "orca-slicer"
+    program.write_text("#!/bin/sh\n")
+    program.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bin_directory))
+    config = write_config(tmp_path, {"orca": {"executable": "orca-slicer", "datadir": "data"}})
+
+    assert OrcaBackend(config=config, logger=Mock()).build_help_command()[0] == str(program)
+
+
+def test_home_folder_in_paths_is_expanded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Paths written with ~ point into the home folder."""
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    config = write_config(
+        tmp_path,
+        {"orca": {"executable": "~/Apps/Orca.AppImage", "datadir": "~/.config/OrcaSlicer"}},
+    )
+
+    command = OrcaBackend(config=config, logger=Mock()).build_help_command()
+
+    assert command[0] == str(tmp_path / "home" / "Apps" / "Orca.AppImage")
+    assert command[2] == str(tmp_path / "home" / ".config" / "OrcaSlicer")
 
 
 def test_slice_command_follows_orca_cli_contract(
@@ -356,12 +369,15 @@ def test_slice_executes_the_constructed_command(
 
 def _backend_for(slicer: SlicerDefinition, tmp_path: Path) -> OrcaBackend:
     """Create a backend whose config only has a section for ``slicer``."""
-    config = Mock(spec=Config)
-    values = {
-        (slicer.key, "executable"): tmp_path / slicer.display_name,
-        (slicer.key, "datadir"): tmp_path / f"{slicer.display_name} data",
-    }
-    config.get.side_effect = lambda section, key: values[(section, key)]
+    config = write_config(
+        tmp_path,
+        {
+            slicer.key: {
+                "executable": tmp_path / slicer.display_name,
+                "datadir": tmp_path / f"{slicer.display_name} data",
+            }
+        },
+    )
     return OrcaBackend(slicer=slicer, config=config, logger=Mock())
 
 
@@ -461,12 +477,10 @@ def test_every_option_used_is_accepted_by_real_slicer(
 ) -> None:
     """Every option the backend can send this slicer appears in its real help text."""
     monkeypatch.chdir(tmp_path)
-    config = Mock(spec=Config)
-    values = {
-        (slicer.key, "executable"): executable,
-        (slicer.key, "datadir"): tmp_path / "slicer-data",
-    }
-    config.get.side_effect = lambda section, key: values[(section, key)]
+    config = write_config(
+        tmp_path / "settings",
+        {slicer.key: {"executable": executable, "datadir": tmp_path / "slicer-data"}},
+    )
     backend = OrcaBackend(slicer=slicer, config=config, logger=Mock(), timeout_seconds=120)
 
     help_result = backend.help()

@@ -1,24 +1,43 @@
-"""Load and access BatchSlicer application configuration.
+"""Find, load and access BatchSlicer application configuration.
 
-This module provides the sole configuration access path. It reads YAML safely,
-caches loaded data, and validates configured Orca paths. It does not provide
-defaults, edit configuration, or read environment variables.
+This module provides the sole configuration access path. It finds the
+configuration file, reads YAML safely, caches loaded data, and turns path
+settings into absolute paths: ``~`` is expanded, relative paths are taken
+relative to the configuration file's folder, and missing ``paths`` settings
+fall back to the standard per-user locations. It can also render a new
+configuration file (used by ``batchslicer setup``). It does not edit existing
+configuration or check that configured paths exist.
 """
 
+from collections.abc import Mapping
 from functools import lru_cache
+import os
 from pathlib import Path
+import shutil
 from typing import Any
 
 import yaml
 
+from batchslicer.core.locations import (
+    CONFIG_ENVIRONMENT_VARIABLE,
+    PROJECT_CONFIG,
+    default_paths,
+    user_config_file,
+)
+
 
 class Config:
-    """Load, access, and validate one BatchSlicer configuration file."""
+    """Load and access one BatchSlicer configuration file."""
 
-    def __init__(self, path: Path = Path("config/config.yaml")) -> None:
+    def __init__(self, path: Path) -> None:
         """Store the path to the configuration file."""
         self._path = path
         self._data: dict[str, Any] | None = None
+
+    @property
+    def path(self) -> Path:
+        """Return the configuration file's path."""
+        return self._path
 
     def load(self) -> None:
         """Load and cache YAML configuration from the configured path."""
@@ -50,12 +69,50 @@ class Config:
         section_data = data.get(section)
         return isinstance(section_data, dict) and key in section_data
 
-    def validate(self) -> None:
-        """Verify that the configured Orca executable and data directory exist."""
-        for key in ("executable", "datadir"):
-            value = self.get("orca", key)
-            if not isinstance(value, str) or not value or not Path(value).exists():
-                raise FileNotFoundError(f"Configured Orca path not found: {value}")
+    def get_path(self, section: str, key: str) -> Path:
+        """Return a configured path as an absolute path.
+
+        ``~`` is expanded and relative paths are taken relative to the folder
+        holding the configuration file. A ``paths`` setting that is missing or
+        empty falls back to its standard per-user location; any other missing
+        or empty path raises ``KeyError`` or ``ValueError``.
+        """
+        if section == "paths" and not self._has_value(section, key):
+            defaults = default_paths()
+            if key not in defaults:
+                raise KeyError(key)
+            return defaults[key]
+
+        value = self.get(section, key)
+        if isinstance(value, Path):
+            path = value
+        elif isinstance(value, str) and value:
+            path = Path(value)
+        else:
+            raise ValueError(f"Configuration value {section}.{key} must not be empty.")
+        path = path.expanduser()
+        if not path.is_absolute():
+            # resolve() tidies "config/../output" into its plain form.
+            path = (self._path.absolute().parent / path).resolve()
+        return path
+
+    def get_program(self, section: str, key: str = "executable") -> Path:
+        """Return a configured program path.
+
+        A bare program name (no folder, such as ``orca-slicer``) is looked up on
+        PATH and returned unchanged if not found there; anything else is
+        resolved like :meth:`get_path`.
+        """
+        value = self.get(section, key)
+        if isinstance(value, str) and value and not value.startswith("~"):
+            if len(Path(value).parts) == 1:
+                found = shutil.which(value)
+                return Path(found) if found else Path(value)
+        return self.get_path(section, key)
+
+    def _has_value(self, section: str, key: str) -> bool:
+        """Return whether ``section.key`` is set to a non-empty value."""
+        return self.has(section, key) and self.get(section, key) not in (None, "")
 
     def _get_data(self) -> dict[str, Any]:
         """Return cached configuration data, loading it on first access."""
@@ -64,9 +121,91 @@ class Config:
         return self._data
 
 
-@lru_cache(maxsize=1)
-def get_config() -> Config:
-    """Return the cached Config instance for config/config.yaml."""
-    config = Config()
+def find_config_file(
+    explicit: Path | None = None,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> Path:
+    """Return the configuration file to use.
+
+    In order: ``explicit`` (from ``--config``), the ``BATCHSLICER_CONFIG``
+    environment variable, ``config/config.yaml`` in the current folder (a
+    project checkout), then the per-user ``~/.config/batchslicer/config.yaml``.
+    The first two are returned even if missing so the error names them.
+    Raises ``FileNotFoundError`` listing where it looked if none exists.
+    """
+    environ = os.environ if environ is None else environ
+    if explicit is not None:
+        return explicit.expanduser()
+    from_environment = environ.get(CONFIG_ENVIRONMENT_VARIABLE, "")
+    if from_environment:
+        return Path(from_environment).expanduser()
+
+    candidates = (PROJECT_CONFIG, user_config_file(environ))
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    searched = " or ".join(str(candidate.absolute()) for candidate in candidates)
+    raise FileNotFoundError(
+        f"No configuration file found (looked for {searched}). "
+        "Run 'batchslicer setup' to create one, or pass --config PATH."
+    )
+
+
+@lru_cache(maxsize=4)
+def get_config(path: Path | None = None) -> Config:
+    """Return the loaded Config for ``path``, or for the file found by find_config_file."""
+    config = Config(path if path is not None else find_config_file())
     config.load()
     return config
+
+
+_SLICER_SECTIONS = ("orca", "creality_print", "bambu_studio")
+
+
+def render_config(
+    slicers: Mapping[str, tuple[Path, Path]],
+    *,
+    home: Path | None = None,
+) -> str:
+    """Return the text of a new configuration file.
+
+    ``slicers`` maps slicer sections to ``(executable, datadir)``; slicers not
+    included are written with empty paths. Paths inside ``home`` are written
+    with ``~``. The ``paths`` settings are left empty so the defaults apply.
+    """
+    home = home or Path.home()
+
+    def show(path: Path) -> str:
+        try:
+            text = "~/" + str(path.relative_to(home))
+        except ValueError:
+            text = str(path)
+        return text.replace("\\", "\\\\").replace('"', '\\"')
+
+    lines = [
+        "# BatchSlicer configuration, created by `batchslicer setup`.",
+        "# Paths may start with ~ for your home folder; relative paths are",
+        "# relative to the folder this file is in.",
+        "",
+        "# Slicers: executable is the slicer program, datadir is the folder where it",
+        "# keeps its settings and presets. Leave both empty for a slicer you don't use.",
+    ]
+    for section in _SLICER_SECTIONS:
+        executable, datadir = slicers.get(section, (None, None))
+        lines += [
+            f"{section}:",
+            f'  executable: "{show(executable) if executable else ""}"',
+            f'  datadir: "{show(datadir) if datadir else ""}"',
+            "",
+        ]
+    lines += [
+        "# Folders. Leave empty to use the defaults shown.",
+        "paths:",
+        '  incoming: ""       # models offered for slicing   (default ~/BatchSlicer/incoming)',
+        '  output: ""         # default output folder        (default ~/BatchSlicer/output)',
+        '  logs: ""           # log files                    (default ~/.local/state/batchslicer)',
+        '  data: ""           # BatchSlicer\'s working cache  (default ~/.cache/batchslicer)',
+        "",
+    ]
+    return "\n".join(lines)

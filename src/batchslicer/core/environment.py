@@ -11,7 +11,6 @@ from dataclasses import dataclass
 import logging
 from pathlib import Path
 import sys
-from typing import Any
 
 from batchslicer.backends.slicers import ORCASLICER, SlicerDefinition
 from batchslicer.core.config import Config, get_config
@@ -204,11 +203,11 @@ class EnvironmentService:
         )
 
     def _get_configured_path(self, section: str, key: str) -> Path:
-        """Return a non-empty configured path value."""
-        value: Any = self._get_config_service().get(section, key)
-        if not isinstance(value, str) or not value:
-            raise ValueError(f"Configuration value {section}.{key} must not be empty.")
-        return Path(value)
+        """Return a configured path, resolved by the configuration service."""
+        config = self._get_config_service()
+        if key == "executable":
+            return config.get_program(section, key)
+        return config.get_path(section, key)
 
     def _get_config_service(self) -> Config:
         """Return the injected or shared configuration service."""

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from batchslicer.core.config import Config, get_config
+from batchslicer.core.config import Config, find_config_file, get_config
 
 
 def test_configuration_file_loads_successfully(tmp_path: Path) -> None:
@@ -63,49 +63,122 @@ def test_get_returns_the_configured_value(tmp_path: Path) -> None:
     assert config.get("paths", "output") == "output"
 
 
-def test_validate_succeeds_for_existing_orca_paths(tmp_path: Path) -> None:
-    """Validation accepts existing executable and data directory paths."""
-    executable = tmp_path / "orca"
-    datadir = tmp_path / "orca-data"
-    executable.touch()
-    datadir.mkdir()
-    config = Config(_write_config(tmp_path, executable=executable, datadir=datadir))
-
-    config.validate()
-
-
-def test_validate_raises_for_missing_orca_paths(tmp_path: Path) -> None:
-    """Validation rejects missing configured Orca paths."""
-    config = Config(
-        _write_config(
-            tmp_path,
-            executable=tmp_path / "missing-orca",
-            datadir=tmp_path / "missing-data",
-        )
-    )
-
-    with pytest.raises(FileNotFoundError):
-        config.validate()
-
-
-def test_get_config_returns_the_same_instance() -> None:
-    """The public accessor returns one cached Config instance."""
+def test_get_config_returns_the_same_instance(tmp_path: Path) -> None:
+    """The public accessor returns one cached Config instance per file."""
     get_config.cache_clear()
+    path = _write_config(tmp_path)
 
-    first_config = get_config()
-    second_config = get_config()
+    first_config = get_config(path)
+    second_config = get_config(path)
 
     assert first_config is second_config
+    assert first_config.path == path
     get_config.cache_clear()
+
+
+def test_relative_paths_are_relative_to_the_config_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Relative paths do not depend on the folder BatchSlicer is run from."""
+    config = Config(_write_config(tmp_path / "settings"))
+    monkeypatch.chdir(tmp_path)
+
+    assert config.get_path("paths", "output") == tmp_path / "settings" / "output"
+
+
+def test_home_folder_is_expanded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A leading ~ in a path means the home folder."""
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    config = Config(_write_config(tmp_path, datadir="~/.config/OrcaSlicer"))
+
+    assert config.get_path("orca", "datadir") == tmp_path / "home" / ".config" / "OrcaSlicer"
+
+
+def test_missing_paths_use_standard_locations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Without a paths section, standard per-user locations are used."""
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    for variable in ("XDG_STATE_HOME", "XDG_CACHE_HOME"):
+        monkeypatch.delenv(variable, raising=False)
+    path = tmp_path / "config.yaml"
+    path.write_text('orca:\n  executable: "/opt/orca"\n  datadir: "/data"\n')
+    config = Config(path)
+
+    assert config.get_path("paths", "incoming") == home / "BatchSlicer" / "incoming"
+    assert config.get_path("paths", "output") == home / "BatchSlicer" / "output"
+    assert config.get_path("paths", "logs") == home / ".local" / "state" / "batchslicer"
+    assert config.get_path("paths", "data") == home / ".cache" / "batchslicer"
+
+
+def test_empty_path_setting_uses_its_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """An empty paths value means 'use the default'; XDG variables are honoured."""
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    path = tmp_path / "config.yaml"
+    path.write_text('paths:\n  logs: ""\n')
+
+    assert Config(path).get_path("paths", "logs") == tmp_path / "state" / "batchslicer"
+
+
+def test_empty_slicer_path_is_an_error(tmp_path: Path) -> None:
+    """Slicer paths have no default, so an empty one is reported."""
+    path = tmp_path / "config.yaml"
+    path.write_text('orca:\n  datadir: ""\n')
+
+    with pytest.raises(ValueError, match="orca.datadir must not be empty"):
+        Config(path).get_path("orca", "datadir")
+
+
+def test_find_config_prefers_explicit_then_environment(tmp_path: Path) -> None:
+    """--config wins, then BATCHSLICER_CONFIG; both are used even if missing."""
+    explicit = tmp_path / "explicit.yaml"
+    from_environment = tmp_path / "environment.yaml"
+    environ = {"BATCHSLICER_CONFIG": str(from_environment)}
+
+    assert find_config_file(explicit, environ=environ) == explicit
+    assert find_config_file(environ=environ) == from_environment
+
+
+def test_find_config_uses_project_then_user_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without overrides, ./config/config.yaml wins over the per-user file."""
+    monkeypatch.chdir(tmp_path)
+    environ = {"XDG_CONFIG_HOME": str(tmp_path / "xdg")}
+    user = tmp_path / "xdg" / "batchslicer" / "config.yaml"
+    user.parent.mkdir(parents=True)
+    user.write_text("{}")
+
+    assert find_config_file(environ=environ) == user
+
+    project = tmp_path / "config" / "config.yaml"
+    project.parent.mkdir()
+    project.write_text("{}")
+    assert find_config_file(environ=environ) == Path("config/config.yaml")
+
+
+def test_find_config_explains_where_it_looked(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """With no configuration anywhere, the error lists the places and how to fix it."""
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(FileNotFoundError) as raised:
+        find_config_file(environ={"XDG_CONFIG_HOME": str(tmp_path / "xdg")})
+
+    message = str(raised.value)
+    assert str(tmp_path / "config" / "config.yaml") in message
+    assert str(tmp_path / "xdg" / "batchslicer" / "config.yaml") in message
+    assert "batchslicer setup" in message
 
 
 def _write_config(
     tmp_path: Path,
     *,
-    executable: Path | None = None,
-    datadir: Path | None = None,
+    executable: Path | str | None = None,
+    datadir: Path | str | None = None,
 ) -> Path:
     """Write a minimal configuration file for a test case."""
+    tmp_path.mkdir(parents=True, exist_ok=True)
     config_path = tmp_path / "config.yaml"
     executable_value = executable or tmp_path / "orca"
     datadir_value = datadir or tmp_path / "orca-data"

@@ -12,7 +12,7 @@ from batchslicer.backends.orca import OrcaBackend
 from batchslicer.backends.presets import PresetError, PresetLibrary
 from batchslicer.backends.profiles import find_system_profiles
 from batchslicer.backends.slicers import CREALITY_PRINT, ORCASLICER, SlicerDefinition
-from batchslicer.core.config import Config
+from conftest import write_config
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 
 
@@ -304,12 +304,10 @@ def test_real_slicer_slices_with_selected_presets(
     )
     model = tmp_path / "cube.stl"
     _write_cube(model)
-    config = Mock(spec=Config)
-    values = {
-        (slicer.key, "executable"): executable,
-        (slicer.key, "datadir"): data_directory,
-    }
-    config.get.side_effect = lambda section, key: values[(section, key)]
+    config = write_config(
+        tmp_path / "settings",
+        {slicer.key: {"executable": executable, "datadir": data_directory}},
+    )
     backend = OrcaBackend(slicer=slicer, config=config, logger=Mock(), timeout_seconds=300)
 
     result = backend.slice(

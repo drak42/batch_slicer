@@ -22,12 +22,12 @@ def test_configure_logging_creates_the_default_log_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Default configuration creates logs/batchslicer.log."""
-    monkeypatch.chdir(tmp_path)
+    """By default the log goes to the standard per-user state folder."""
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
 
     configure_logging()
 
-    assert (tmp_path / "logs" / "batchslicer.log").is_file()
+    assert (tmp_path / "state" / "batchslicer" / "batchslicer.log").is_file()
 
 
 def test_configure_logging_supports_a_custom_level(tmp_path: Path) -> None:

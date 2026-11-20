@@ -7,6 +7,8 @@ output, rotate logs, parse configuration files, or format structured logs.
 import logging
 from pathlib import Path
 
+from batchslicer.core.locations import default_paths
+
 
 _LOGGER_NAME = "batchslicer"
 _FILE_HANDLER_NAME = "batchslicer-file"
@@ -16,13 +18,16 @@ _LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
 def configure_logging(
     *,
-    log_directory: Path = Path("logs"),
+    log_directory: Path | None = None,
     level: int | str = logging.INFO,
 ) -> logging.Logger:
     """Configure and return the shared BatchSlicer file logger.
 
+    ``log_directory`` defaults to the standard per-user log folder.
     Repeated calls retain one BatchSlicer file handler and update its log level.
     """
+    if log_directory is None:
+        log_directory = default_paths()["logs"]
     log_directory.mkdir(parents=True, exist_ok=True)
     log_file = log_directory / _LOG_FILE_NAME
     logger = logging.getLogger(_LOGGER_NAME)
