@@ -166,7 +166,7 @@ Verify Environment (for the selected slicer)
 
 ↓
 
-Select Presets (printer, then compatible filament and process; Creality Print only for now)
+Select Presets (printer, then compatible filament and process; Creality Print and OrcaSlicer)
 
 ↓
 Select Input (one model file, or every model in a folder and its subfolders)
@@ -271,9 +271,13 @@ self-contained files for `--load-settings` / `--load-filaments`. The slicer's da
 directory is never modified. Creality Print also needs `--need-gcode-file`, without
 which it reports success but writes no G-code.
 
-Preset selection is supported for Creality Print. OrcaSlicer 2.4 stores its
-built-in presets in a packed `.opc` format and Bambu Studio's layout has not been
-verified yet; both are planned.
+Preset selection is supported for Creality Print and OrcaSlicer. Shipped
+filaments are limited to those the user made visible in the slicer, as in its
+own menus. Creality Print keeps shipped presets as JSON in its data directory.
+OrcaSlicer 2.4 packs them into `.opc` files (an internal format that is not
+parsed); the same presets ship as JSON inside the program, so the vendors in use
+are extracted once from the AppImage into `data/slicer-profiles/` and reused
+until the slicer is updated (`backends/profiles.py`). Bambu Studio is planned.
 
 Future:
 

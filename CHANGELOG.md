@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- feat(presets): preset selection for OrcaSlicer. Built-in presets are extracted once from the OrcaSlicer AppImage (its data folder only has packed `.opc` files) and cached in `data/slicer-profiles/`. Verified with real OrcaSlicer 2.4 slices.
+- feat(presets): filament lists only show built-in filaments made visible in the slicer, matching its own menus (applies to Creality Print too).
 - feat(slicing): name G-code after the model (`bracket.stl` → `bracket.gcode`; multi-plate projects → `<name>_plate_N.gcode`) instead of `plate_1.gcode`.
 - feat(slicing): slice every model in a folder and its subfolders as a batch, with per-file progress and a summary of failures; results mirror the source folder structure.
 - feat(cli): choose the output folder: the configured default, an existing subfolder, or a new folder created after confirmation.
