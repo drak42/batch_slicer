@@ -1,5 +1,6 @@
 """Tests for the BatchSlicer application bootstrap."""
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import Mock
@@ -8,9 +9,16 @@ import pytest
 
 from batchslicer import app
 from batchslicer.backends.slicers import BAMBU_STUDIO, CREALITY_PRINT, SLICERS
-from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.cli.file_prompt import SliceInput
+from batchslicer.cli.slicer_prompt import SlicerSelectionError
+from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.services.slicing import BatchOutcome, SliceOutcome
+
+
+def _all_output(capsys: pytest.CaptureFixture[str]) -> str:
+    """Return everything printed, normal output and errors together."""
+    captured = capsys.readouterr()
+    return captured.out + captured.err
 
 
 def _single_input() -> SliceInput:
@@ -31,7 +39,6 @@ def _outcome(
         message=message,
         elapsed=1.25,
     )
-from batchslicer.cli.slicer_prompt import SlicerSelectionError
 
 
 @dataclass
@@ -111,7 +118,7 @@ def test_configuration_failure_is_handled_cleanly(
     result = app.main([])
 
     assert result != 0
-    assert "BatchSlicer startup failed: missing config" in capsys.readouterr().out
+    assert "BatchSlicer startup failed: missing config" in _all_output(capsys)
 
 
 def test_startup_uses_services_in_order(
@@ -174,7 +181,7 @@ def test_no_slicer_selected_stops_startup(
 
     assert app.main([]) == 1
     assert not environment_service.called
-    output = capsys.readouterr().out
+    output = _all_output(capsys)
     assert "BatchSlicer startup failed: No slicer selected." in output
     assert "BatchSlicer ready." not in output
 
@@ -190,7 +197,7 @@ def test_environment_failure_lists_failed_checks(
 
     app.main([])
 
-    assert "slicer_executable: Bambu Studio executable not found: /x" in capsys.readouterr().out
+    assert "slicer_executable: Bambu Studio executable not found: /x" in _all_output(capsys)
 
 def _selection() -> PresetSelection:
     """Return a preset selection for startup tests."""
@@ -264,7 +271,7 @@ def test_cancelled_preset_selection_stops_startup(
     )
 
     assert app.main([]) == 1
-    output = capsys.readouterr().out
+    output = _all_output(capsys)
     assert "BatchSlicer startup failed: No filament selected." in output
     assert "BatchSlicer ready." not in output
 
@@ -326,7 +333,7 @@ def test_failed_slice_reports_the_slicers_reason(
     )
 
     assert app.main([]) == 1
-    output = capsys.readouterr().out
+    output = _all_output(capsys)
     assert "Slicing cube.stl failed: The input model file to the slicer can not be parsed." in output
     assert "Details: /out/cube-20261120-120000" in output
 
@@ -373,7 +380,7 @@ def test_folder_is_sliced_as_a_batch_with_progress_and_summary(
 
     call = app.SlicingService.return_value.slice_batch.call_args
     assert call.args[:3] == (models, Path("/models"), Path("/out"))
-    output = capsys.readouterr().out
+    output = _all_output(capsys)
     assert "Slicing 2 model files from /models..." in output
     assert "[1/2] a.stl ... done (1.2s)" in output
     assert "[2/2] sub/b.stl ... FAILED: can not be parsed" in output
@@ -482,7 +489,7 @@ def test_missing_or_unusable_options_stop_with_a_reason(
     _no_prompts(monkeypatch)
 
     assert app.main(arguments) == 1
-    assert message in capsys.readouterr().out
+    assert message in _all_output(capsys)
     assert not app.SlicingService.called
 
 
@@ -495,7 +502,7 @@ def test_unconfigured_slicer_on_the_command_line_is_refused(
     monkeypatch.setattr(app, "is_configured", Mock(return_value=False))
 
     assert app.main(["--slicer", "orca"]) == 1
-    assert "OrcaSlicer is not configured. Set orca.executable" in capsys.readouterr().out
+    assert "OrcaSlicer is not configured. Set orca.executable" in _all_output(capsys)
 
 
 def test_list_presets_prints_printers_then_exits(
@@ -559,7 +566,7 @@ def test_missing_configuration_is_explained(
     )
 
     assert app.main([]) == 1
-    assert "Run 'batchslicer setup'" in capsys.readouterr().out
+    assert "Run 'batchslicer setup'" in _all_output(capsys)
 
 
 def test_setup_command_runs_setup_instead_of_slicing(
@@ -577,4 +584,104 @@ def test_setup_command_runs_setup_instead_of_slicing(
 
     run_setup.side_effect = SlicerSelectionError("No usable slicer was found.")
     assert app.main(["setup"]) == 1
-    assert "BatchSlicer setup failed: No usable slicer was found." in capsys.readouterr().out
+    assert "BatchSlicer setup failed: No usable slicer was found." in _all_output(capsys)
+
+
+def test_errors_go_to_stderr_and_progress_to_stdout(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Scripts can separate normal output from errors."""
+    app.SlicingService.return_value.slice.return_value = _outcome(success=False, message="bad model")
+
+    assert app.main([]) == 1
+
+    captured = capsys.readouterr()
+    assert "Slicing cube.stl with Bambu Studio..." in captured.out
+    assert "Slicing cube.stl failed: bad model" in captured.err
+    assert "failed" not in captured.out
+
+
+def test_ctrl_c_during_slicing_stops_cleanly(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Ctrl+C while slicing gives a short message and exit status 130, not a traceback."""
+    app.SlicingService.return_value.slice.side_effect = KeyboardInterrupt
+
+    assert app.main([]) == 130
+
+    captured = capsys.readouterr()
+    assert captured.err.strip() == "Cancelled."
+    assert "Traceback" not in captured.out + captured.err
+
+
+def test_interrupted_batch_reports_what_was_done(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """An interrupted batch keeps and reports the finished models and exits with 130."""
+    models = (Path("/models/a.stl"), Path("/models/b.stl"), Path("/models/c.stl"))
+    monkeypatch.setattr(
+        app,
+        "prompt_for_input",
+        Mock(return_value=SliceInput(root=Path("/models"), models=models, is_folder=True)),
+    )
+    app.SlicingService.return_value.slice_batch.return_value = BatchOutcome(
+        batch_directory=Path("/out/models-1"),
+        outcomes=(_outcome(success=True, model="/models/a.stl"),),
+        planned=3,
+        interrupted_model=Path("/models/b.stl"),
+    )
+
+    assert app.main([]) == 130
+
+    captured = capsys.readouterr()
+    assert "Interrupted while slicing /models/b.stl; 1 model file(s) were not started." in captured.err
+    assert "Sliced 1 of 3 model files" in captured.out
+    assert "Output: /out/models-1" in captured.out
+
+
+def test_unexpected_error_is_summarised_with_details_in_the_log(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    """A bug gives a one-line message and the log path; the traceback goes to the log."""
+    app.SlicingService.return_value.slice.side_effect = RuntimeError("something broke")
+    monkeypatch.setattr(app, "current_log_file", Mock(return_value=tmp_path / "batchslicer.log"))
+    records: list[logging.LogRecord] = []
+    handler = logging.Handler()
+    handler.emit = records.append  # type: ignore[method-assign]
+    logger = logging.getLogger("batchslicer")
+    logger.addHandler(handler)
+    try:
+        assert app.main([]) == 1
+    finally:
+        logger.removeHandler(handler)
+
+    captured = capsys.readouterr()
+    assert "unexpected error: RuntimeError: something broke" in captured.err
+    assert f"Details were written to {tmp_path / 'batchslicer.log'}" in captured.err
+    assert "Traceback" not in captured.err
+    logged = [record for record in records if record.exc_info]
+    assert logged and isinstance(logged[0].exc_info[1], RuntimeError)
+
+
+def test_unexpected_error_before_logging_shows_the_traceback(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Without a log file to point to, the details are shown instead."""
+    startup_mocks[1].side_effect = RuntimeError("config exploded")
+    monkeypatch.setattr(app, "current_log_file", Mock(return_value=None))
+
+    assert app.main([]) == 1
+
+    err = capsys.readouterr().err
+    assert "unexpected error" in err
+    assert "Traceback" in err
+    assert "RuntimeError: config exploded" in err

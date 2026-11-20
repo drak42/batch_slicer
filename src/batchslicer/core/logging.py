@@ -9,7 +9,6 @@ from pathlib import Path
 
 from batchslicer.core.locations import default_paths
 
-
 _LOGGER_NAME = "batchslicer"
 _FILE_HANDLER_NAME = "batchslicer-file"
 _LOG_FILE_NAME = "batchslicer.log"
@@ -48,6 +47,12 @@ def configure_logging(
 
     handler.setLevel(level)
     return logger
+
+
+def current_log_file() -> Path | None:
+    """Return the file the BatchSlicer logger writes to, if logging is configured."""
+    handler = _get_file_handler(logging.getLogger(_LOGGER_NAME))
+    return Path(handler.baseFilename) if handler is not None else None
 
 
 def get_logger() -> logging.Logger:

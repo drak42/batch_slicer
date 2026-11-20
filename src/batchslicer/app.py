@@ -6,10 +6,17 @@ where the slicer supports it. The models to slice (one file, or a folder and
 its subfolders) and the output folder are then selected, and the models are
 sliced into job folders. Each choice comes from the command line when given
 there, and is otherwise asked for (unless ``--no-prompt`` is used).
+
+Errors are reported on stderr. Ctrl+C stops cleanly with exit status 130 (a
+batch keeps the models already sliced), and an unexpected error is reported in
+one line with the full details written to the log. Exit statuses: 0 success,
+1 failure, 2 invalid option (from argparse), 130 interrupted.
 """
 
-from collections.abc import Sequence
 import logging
+import sys
+import traceback
+from collections.abc import Sequence
 from pathlib import Path
 
 from batchslicer.backends.orca import OrcaBackend
@@ -25,9 +32,14 @@ from batchslicer.cli.setup import SetupOptions, run_setup
 from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slicer
 from batchslicer.core.config import Config, find_config_file, get_config
 from batchslicer.core.environment import EnvironmentService
-from batchslicer.core.logging import configure_logging
-from batchslicer.domain.presets import PresetKind, PresetSelection
+from batchslicer.core.logging import configure_logging, current_log_file
+from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.services.slicing import BatchOutcome, SliceOutcome, SlicingService
+
+EXIT_SUCCESS = 0
+EXIT_FAILURE = 1
+EXIT_INTERRUPTED = 130
+"""The conventional status for a program stopped with Ctrl+C."""
 
 
 class _StartupFailed(Exception):
@@ -37,8 +49,20 @@ class _StartupFailed(Exception):
 def main(argv: Sequence[str] | None = None) -> int:
     """Run BatchSlicer with command-line ``argv`` and return a process exit status."""
     options = parse_arguments(argv)
-    if isinstance(options, SetupOptions):
-        return _setup(options)
+    try:
+        if isinstance(options, SetupOptions):
+            return _setup(options)
+        return _run(options)
+    except KeyboardInterrupt:
+        _error("\nCancelled.")
+        logging.getLogger("batchslicer").warning("Cancelled by the user.")
+        return EXIT_INTERRUPTED
+    except Exception as error:  # noqa: BLE001 - last-resort report for any bug
+        return _report_unexpected(error)
+
+
+def _run(options: RunOptions) -> int:
+    """Run the slicing workflow and return a process exit status."""
     if not options.list_presets:
         print(get_banner(), end="")
     logger: logging.Logger | None = None
@@ -75,7 +99,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"Slicing {model.name} with {slicer.display_name}...")
             outcome = service.slice(model, output_directory, selection)
     except _StartupFailed:
-        return 1
+        return EXIT_FAILURE
     except (
         SlicerSelectionError,
         PresetError,
@@ -84,16 +108,37 @@ def main(argv: Sequence[str] | None = None) -> int:
         OSError,
         ValueError,
     ) as error:
-        print(f"BatchSlicer startup failed: {error}")
+        _error(f"BatchSlicer startup failed: {error}")
         if logger is not None:
             logger.error("BatchSlicer startup failed: %s", error)
-        return 1
+        return EXIT_FAILURE
 
     if slice_input.is_folder:
         _report_batch(batch)
-        return 0 if not batch.failed else 1
+        if batch.interrupted:
+            return EXIT_INTERRUPTED
+        return EXIT_SUCCESS if not batch.failed else EXIT_FAILURE
     _report(outcome)
-    return 0 if outcome.success else 1
+    return EXIT_SUCCESS if outcome.success else EXIT_FAILURE
+
+
+def _error(message: str) -> None:
+    """Show an error message on stderr."""
+    print(message, file=sys.stderr)
+
+
+def _report_unexpected(error: Exception) -> int:
+    """Report an unexpected error briefly, with the full details in the log."""
+    logger = logging.getLogger("batchslicer")
+    log_file = current_log_file()
+    if log_file is not None:
+        logger.error("Unexpected error", exc_info=error)
+        _error(f"BatchSlicer stopped because of an unexpected error: {type(error).__name__}: {error}")
+        _error(f"Details were written to {log_file}. Please include them when reporting the problem.")
+    else:
+        _error("BatchSlicer stopped because of an unexpected error:")
+        traceback.print_exception(error, file=sys.stderr)
+    return EXIT_FAILURE
 
 
 def _setup(options: SetupOptions) -> int:
@@ -102,9 +147,9 @@ def _setup(options: SetupOptions) -> int:
     try:
         run_setup(options)
     except (SlicerSelectionError, OSError) as error:
-        print(f"BatchSlicer setup failed: {error}")
-        return 1
-    return 0
+        _error(f"BatchSlicer setup failed: {error}")
+        return EXIT_FAILURE
+    return EXIT_SUCCESS
 
 
 def _select_slicer(options: RunOptions, config: Config) -> SlicerDefinition:
@@ -133,9 +178,9 @@ def _verify_environment(
     failed = [result for result in results if not result.passed]
     if failed:
         logger.error("BatchSlicer startup failed environment verification.")
-        print("BatchSlicer startup failed: environment verification failed.")
+        _error("BatchSlicer startup failed: environment verification failed.")
         for result in failed:
-            print(f"  - {result.name}: {result.message}")
+            _error(f"  - {result.name}: {result.message}")
         raise _StartupFailed
 
 
@@ -216,11 +261,11 @@ def _list_presets(
     _print_names(library.processes_for(printer))
 
 
-def _print_names(presets: Sequence[object]) -> None:
+def _print_names(presets: Sequence[Preset]) -> None:
     """Print one preset name per line, marking the user's own presets."""
     for preset in presets:
-        mine = "  (mine)" if getattr(preset, "is_user", False) else ""
-        print(f"  {getattr(preset, 'name')}{mine}")
+        mine = "  (mine)" if preset.is_user else ""
+        print(f"  {preset.name}{mine}")
 
 
 def _show_ready(slicer: SlicerDefinition, selection: PresetSelection | None) -> None:
@@ -282,16 +327,22 @@ def _slice_folder(
 
 def _report_batch(batch: BatchOutcome) -> None:
     """Summarise a batch: how many sliced, where the results are, and what failed."""
-    total = len(batch.outcomes)
+    total = batch.planned or len(batch.outcomes)
+    if batch.interrupted:
+        print("")
+        _error(
+            f"Interrupted while slicing {batch.interrupted_model}; "
+            f"{total - len(batch.outcomes) - 1} model file(s) were not started."
+        )
     print(
         f"Sliced {len(batch.succeeded)} of {total} model file{'s' if total != 1 else ''} "
         f"in {batch.elapsed:.1f}s."
     )
     print(f"  Output: {batch.batch_directory}")
     if batch.failed:
-        print("  Failed:")
+        _error("  Failed:")
         for outcome in batch.failed:
-            print(f"    {outcome.model}: {outcome.message or 'unknown error'}")
+            _error(f"    {outcome.model}: {outcome.message or 'unknown error'}")
 
 
 def _report(outcome: SliceOutcome) -> None:
@@ -301,5 +352,5 @@ def _report(outcome: SliceOutcome) -> None:
         for gcode in outcome.gcode_files:
             print(f"  {gcode}")
         return
-    print(f"Slicing {outcome.model.name} failed: {outcome.message or 'unknown error'}")
-    print(f"  Details: {outcome.job_directory}")
+    _error(f"Slicing {outcome.model.name} failed: {outcome.message or 'unknown error'}")
+    _error(f"  Details: {outcome.job_directory}")

@@ -1,7 +1,7 @@
 """Tests for slicing one model into a job folder."""
 
-from datetime import datetime
 import json
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -10,7 +10,6 @@ import pytest
 from batchslicer.backends.orca import OrcaResult
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.services.slicing import SlicingService
-
 
 NOW = datetime(2026, 11, 20, 14, 45, 30)
 
@@ -244,3 +243,29 @@ def test_other_gcode_files_are_left_alone(tmp_path: Path) -> None:
     outcome = service.slice(tmp_path / "part.stl", tmp_path / "out")
 
     assert [path.name for path in outcome.gcode_files] == ["custom.gcode", "part.gcode"]
+
+
+def test_ctrl_c_stops_a_batch_and_keeps_finished_models(tmp_path: Path) -> None:
+    """Interrupting a batch returns the models already sliced and names the one interrupted."""
+    source = tmp_path / "models"
+    backend = Mock()
+    calls = iter([None, KeyboardInterrupt()])
+
+    def slice_(model: Path, job: Path, **kwargs: object) -> OrcaResult:
+        step = next(calls)
+        if isinstance(step, BaseException):
+            raise step
+        (job / "plate_1.gcode").write_text("G1")
+        return OrcaResult(True, 0, "", "", 1.0, ())
+
+    backend.slice.side_effect = slice_
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW)
+    models = [source / "a.stl", source / "b.stl", source / "c.stl"]
+
+    batch = service.slice_batch(models, source, tmp_path / "out")
+
+    assert batch.interrupted
+    assert batch.interrupted_model == source / "b.stl"
+    assert batch.planned == 3
+    assert [outcome.model.name for outcome in batch.succeeded] == ["a.stl"]
+    assert (batch.batch_directory / "a" / "a.gcode").is_file()

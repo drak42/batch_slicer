@@ -5,25 +5,25 @@ model and the time, so earlier results are never overwritten. A batch gets one
 such folder named after the source folder, inside which the source folder
 structure is mirrored with one folder per model. When presets were chosen,
 complete copies are written into the job (once per batch) so it records
-exactly what was used. A failed model does not stop a batch. G-code files are
+exactly what was used. A failed model does not stop a batch, and Ctrl+C stops
+it cleanly, keeping the models already sliced. G-code files are
 named after their model (``bracket.stl`` gives ``bracket.gcode``) instead of the
 slicer's generic ``plate_N.gcode``. This module does not prompt the user or
 choose presets.
 """
 
+import json
+import logging
+import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-import json
-import logging
 from pathlib import Path
-import re
 
 from batchslicer.backends.orca import OrcaBackend, OrcaResult
 from batchslicer.backends.presets import PresetLibrary
 from batchslicer.core.logging import get_logger
 from batchslicer.domain.presets import PresetSelection
-
 
 _RESULT_FILE_NAME = "result.json"
 _PRESETS_FOLDER_NAME = "presets"
@@ -50,6 +50,16 @@ class BatchOutcome:
 
     batch_directory: Path
     outcomes: tuple[SliceOutcome, ...]
+    planned: int = 0
+    """How many models the batch set out to slice."""
+
+    interrupted_model: Path | None = None
+    """The model being sliced when the batch was interrupted, if it was."""
+
+    @property
+    def interrupted(self) -> bool:
+        """Return whether the batch was stopped before every model was sliced."""
+        return self.interrupted_model is not None
 
     @property
     def succeeded(self) -> tuple[SliceOutcome, ...]:
@@ -121,7 +131,8 @@ class SlicingService:
 
         Results go into one new batch folder inside ``output_directory``, where
         ``source_root/a/b/part.stl`` is sliced into ``<batch>/a/b/part/``.
-        Every model is attempted even if earlier ones fail.
+        Every model is attempted even if earlier ones fail. If the batch is
+        interrupted (Ctrl+C), it stops and returns the models finished so far.
         """
         batch_directory = self._create_unique_directory(
             output_directory / f"{source_root.name}-{self._stamp()}"
@@ -133,21 +144,36 @@ class SlicingService:
 
         outcomes: list[SliceOutcome] = []
         total = len(models)
+        interrupted_model: Path | None = None
         for number, model in enumerate(models, start=1):
-            if on_start is not None:
-                on_start(number, total, model)
-            relative_folder = model.parent.relative_to(source_root)
-            job_directory = self._create_unique_directory(
-                batch_directory / relative_folder / model.stem
-            )
-            outcome = self._slice_into(model, job_directory, settings, filaments)
+            try:
+                if on_start is not None:
+                    on_start(number, total, model)
+                relative_folder = model.parent.relative_to(source_root)
+                job_directory = self._create_unique_directory(
+                    batch_directory / relative_folder / model.stem
+                )
+                outcome = self._slice_into(model, job_directory, settings, filaments)
+            except KeyboardInterrupt:
+                interrupted_model = model
+                self._logger.warning("Batch interrupted while slicing %s.", model)
+                break
             outcomes.append(outcome)
             if on_result is not None:
                 on_result(number, total, outcome)
 
-        batch = BatchOutcome(batch_directory=batch_directory, outcomes=tuple(outcomes))
+        batch = BatchOutcome(
+            batch_directory=batch_directory,
+            outcomes=tuple(outcomes),
+            planned=total,
+            interrupted_model=interrupted_model,
+        )
         self._logger.info(
-            "Batch finished: %d succeeded, %d failed.", len(batch.succeeded), len(batch.failed)
+            "Batch %s: %d succeeded, %d failed, %d not sliced.",
+            "interrupted" if batch.interrupted else "finished",
+            len(batch.succeeded),
+            len(batch.failed),
+            total - len(outcomes),
         )
         return batch
 
