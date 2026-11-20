@@ -5,6 +5,11 @@ one controlled subprocess boundary. Commands follow the OrcaSlicer CLI contract:
 ``orca-slicer [OPTIONS] [file.3mf/file.stl ...]``, where ``--slice`` selects a
 plate and input models are positional arguments. It does not discover
 installations, resolve presets, or interpret slicing profiles.
+
+OrcaSlicer writes a ``result.json`` status file into ``--outputdir`` when one is
+given, otherwise into its working directory. Commands without an output
+directory therefore run from a temporary directory so the file never lands in
+the caller's working directory.
 """
 
 from collections.abc import Sequence
@@ -12,6 +17,7 @@ from dataclasses import dataclass
 import logging
 from pathlib import Path
 import subprocess
+import tempfile
 import time
 from typing import TypeAlias
 
@@ -60,11 +66,17 @@ class OrcaBackend:
         self._logger = logger or get_logger()
         self._timeout_seconds = timeout_seconds
 
-    def run(self, command: Sequence[str]) -> OrcaResult:
+    def run(
+        self,
+        command: Sequence[str],
+        *,
+        working_directory: PathLike | None = None,
+    ) -> OrcaResult:
         """Execute one complete command and return its captured result.
 
-        Commands that cannot start or exceed the timeout produce an
-        unsuccessful result with exit code -1 instead of raising.
+        ``working_directory`` sets where OrcaSlicer runs; ``None`` keeps the
+        current directory. Commands that cannot start or exceed the timeout
+        produce an unsuccessful result with exit code -1 instead of raising.
         """
         executed_command = tuple(str(argument) for argument in command)
         started_at = time.perf_counter()
@@ -75,6 +87,7 @@ class OrcaBackend:
                 text=True,
                 check=False,
                 timeout=self._timeout_seconds,
+                cwd=working_directory,
             )
         except subprocess.TimeoutExpired as error:
             elapsed = time.perf_counter() - started_at
@@ -121,11 +134,13 @@ class OrcaBackend:
 
     def help(self) -> OrcaResult:
         """Run OrcaSlicer with its general help option."""
-        return self.run(self.build_help_command())
+        return self._run_in_scratch_directory(self.build_help_command())
 
     def export_settings(self, output_path: PathLike) -> OrcaResult:
         """Export OrcaSlicer settings to ``output_path``."""
-        return self.run(self.build_export_settings_command(output_path))
+        return self._run_in_scratch_directory(
+            self.build_export_settings_command(output_path)
+        )
 
     def slice(
         self,
@@ -163,7 +178,10 @@ class OrcaBackend:
 
     def build_export_settings_command(self, output_path: PathLike) -> tuple[str, ...]:
         """Return the deterministic command used by :meth:`export_settings`."""
-        return self._base_command() + ("--export-settings", str(Path(output_path)))
+        return self._base_command() + (
+            "--export-settings",
+            str(Path(output_path).absolute()),
+        )
 
     def build_slice_command(
         self,
@@ -219,10 +237,21 @@ class OrcaBackend:
         command.append(str(Path(input_path)))
         return tuple(command)
 
+    def _run_in_scratch_directory(self, command: Sequence[str]) -> OrcaResult:
+        """Run a command without ``--outputdir`` where its result.json is discarded."""
+        with tempfile.TemporaryDirectory(prefix="orcabatch-") as scratch_directory:
+            return self.run(command, working_directory=scratch_directory)
+
     def _base_command(self) -> tuple[str, ...]:
-        """Return the executable and configured OrcaSlicer data directory."""
+        """Return the executable and configured OrcaSlicer data directory.
+
+        Paths are made absolute so commands behave the same from any working
+        directory. A bare executable name is kept so it is still found on PATH.
+        """
         executable = self._configured_path("executable")
-        datadir = self._configured_path("datadir")
+        if len(executable.parts) > 1:
+            executable = executable.absolute()
+        datadir = self._configured_path("datadir").absolute()
         return (str(executable), "--datadir", str(datadir))
 
     def _configured_path(self, key: str) -> Path:

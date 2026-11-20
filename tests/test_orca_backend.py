@@ -54,6 +54,7 @@ def test_run_captures_success_and_exact_command(
         text=True,
         check=False,
         timeout=DEFAULT_TIMEOUT_SECONDS,
+        cwd=None,
     )
 
 
@@ -171,6 +172,86 @@ def test_export_settings_command(backend: OrcaBackend, tmp_path: Path) -> None:
     assert command[-2:] == ("--export-settings", str(output))
 
 
+def test_help_and_export_run_outside_the_working_directory(
+    backend: OrcaBackend,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Commands without --outputdir run in a scratch directory so result.json is not left behind."""
+    monkeypatch.chdir(tmp_path)
+    used_directories: list[Path] = []
+
+    def fake_run(command: tuple[str, ...], **kwargs: object) -> Mock:
+        directory = Path(str(kwargs["cwd"]))
+        used_directories.append(directory)
+        (directory / "result.json").write_text("{}", encoding="utf-8")
+        return Mock(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr("orcabatch.backends.orca.subprocess.run", fake_run)
+
+    backend.help()
+    backend.export_settings("settings.json")
+
+    assert len(used_directories) == 2
+    for directory in used_directories:
+        assert directory != tmp_path
+        assert not directory.exists()
+    assert not (tmp_path / "result.json").exists()
+
+
+def test_slice_keeps_working_directory(
+    backend: OrcaBackend,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Slicing writes result.json to --outputdir, so it runs from the current directory."""
+    run = Mock(return_value=Mock(returncode=0, stdout="", stderr=""))
+    monkeypatch.setattr("orcabatch.backends.orca.subprocess.run", run)
+
+    backend.slice(tmp_path / "model.stl", tmp_path / "out")
+
+    assert run.call_args.kwargs["cwd"] is None
+
+
+def test_relative_paths_are_made_absolute(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Relative configured paths still work when OrcaSlicer runs elsewhere."""
+    monkeypatch.chdir(tmp_path)
+    config = Mock(spec=Config)
+    values = {
+        ("orca", "executable"): "bin/orca-slicer",
+        ("orca", "datadir"): "orca-data",
+    }
+    config.get.side_effect = lambda section, key: values[(section, key)]
+    backend = OrcaBackend(config=config, logger=Mock())
+
+    command = backend.build_export_settings_command("settings.json")
+
+    assert command == (
+        str(tmp_path / "bin" / "orca-slicer"),
+        "--datadir",
+        str(tmp_path / "orca-data"),
+        "--export-settings",
+        str(tmp_path / "settings.json"),
+    )
+
+
+def test_bare_executable_name_is_left_for_path_lookup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An executable given only by name is still found on PATH."""
+    monkeypatch.chdir(tmp_path)
+    config = Mock(spec=Config)
+    values = {("orca", "executable"): "orca-slicer", ("orca", "datadir"): "data"}
+    config.get.side_effect = lambda section, key: values[(section, key)]
+    backend = OrcaBackend(config=config, logger=Mock())
+
+    assert backend.build_help_command()[0] == "orca-slicer"
+
+
 def test_slice_command_follows_orca_cli_contract(
     backend: OrcaBackend,
     tmp_path: Path,
@@ -279,7 +360,7 @@ def test_every_option_used_is_accepted_by_real_orca(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Every option this backend emits appears in the real OrcaSlicer help text."""
-    monkeypatch.chdir(tmp_path)  # OrcaSlicer writes result.json to the working directory.
+    monkeypatch.chdir(tmp_path)
     config = Mock(spec=Config)
     values = {
         ("orca", "executable"): _REAL_ORCA,
@@ -301,6 +382,7 @@ def test_every_option_used_is_accepted_by_real_orca(
         load_filaments=[tmp_path / "filament.json"],
     ) + backend.build_export_settings_command(tmp_path / "settings.json")
 
+    assert not (tmp_path / "result.json").exists()
     options = {argument for argument in command if argument.startswith("--")}
     assert "--slice option" in help_text
     for option in options:
