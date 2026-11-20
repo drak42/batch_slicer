@@ -1,10 +1,13 @@
 """Configure and provide the shared BatchSlicer application logger.
 
-This module owns the application's file logger. It does not configure console
-output, rotate logs, parse configuration files, or format structured logs.
+This module owns the application's file logger. The log file is rotated so it
+cannot grow without limit: at about 1 MB it is renamed to ``batchslicer.log.1``
+and a new one is started, keeping the three most recent old files. It does not
+configure console output, parse configuration files, or format structured logs.
 """
 
 import logging
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from batchslicer.core.locations import default_paths
@@ -13,6 +16,11 @@ _LOGGER_NAME = "batchslicer"
 _FILE_HANDLER_NAME = "batchslicer-file"
 _LOG_FILE_NAME = "batchslicer.log"
 _LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
+MAX_LOG_BYTES = 1_000_000
+"""Size at which the log file is rotated."""
+
+LOG_BACKUP_COUNT = 3
+"""How many rotated log files are kept."""
 
 
 def configure_logging(
@@ -40,7 +48,12 @@ def configure_logging(
         handler = None
 
     if handler is None:
-        handler = logging.FileHandler(log_file, encoding="utf-8")
+        handler = RotatingFileHandler(
+            log_file,
+            maxBytes=MAX_LOG_BYTES,
+            backupCount=LOG_BACKUP_COUNT,
+            encoding="utf-8",
+        )
         handler.set_name(_FILE_HANDLER_NAME)
         handler.setFormatter(logging.Formatter(_LOG_FORMAT))
         logger.addHandler(handler)

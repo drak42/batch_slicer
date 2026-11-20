@@ -86,3 +86,18 @@ def _service_handlers(logger: logging.Logger) -> list[logging.FileHandler]:
         for handler in logger.handlers
         if isinstance(handler, logging.FileHandler) and handler.get_name() == "batchslicer-file"
     ]
+
+
+def test_log_file_is_rotated_when_it_grows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The log never grows without limit: old content moves to numbered files."""
+    from batchslicer.core import logging as logging_service
+
+    monkeypatch.setattr(logging_service, "MAX_LOG_BYTES", 2_000)
+    logger = configure_logging(log_directory=tmp_path / "logs")
+
+    for number in range(200):
+        logger.info("line %d %s", number, "x" * 50)
+
+    log_files = sorted(path.name for path in (tmp_path / "logs").iterdir())
+    assert log_files == ["batchslicer.log", "batchslicer.log.1", "batchslicer.log.2", "batchslicer.log.3"]
+    assert (tmp_path / "logs" / "batchslicer.log").stat().st_size <= 2_000

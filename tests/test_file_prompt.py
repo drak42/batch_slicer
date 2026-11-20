@@ -83,7 +83,7 @@ def test_a_path_outside_incoming_can_be_typed(incoming: Path, tmp_path: Path) ->
 
 
 def test_paths_that_are_not_models_are_refused(incoming: Path, tmp_path: Path) -> None:
-    """Typed paths to missing or unsupported files are explained and asked again."""
+    """An existing non-model file is explained; a missing path is treated as a search."""
     lines: list[str] = []
 
     prompt_for_model(
@@ -92,7 +92,8 @@ def test_paths_that_are_not_models_are_refused(incoming: Path, tmp_path: Path) -
         write=lines.append,
     )
 
-    assert sum(line.startswith("Not a .3mf, .obj, .stl model file:") for line in lines) == 2
+    assert sum(line.startswith("Not a .3mf, .obj, .stl model file:") for line in lines) == 1
+    assert any(line.startswith("No model files match") for line in lines)
 
 
 def test_empty_incoming_asks_for_a_path(tmp_path: Path) -> None:
@@ -143,7 +144,7 @@ def test_recursive_find_includes_subfolders_and_skips_hidden(tree: Path) -> None
 
 def test_single_file_mode_returns_one_model(tree: Path) -> None:
     """Choosing 'one model file' asks for a file in the incoming folder."""
-    chosen = prompt_for_input(tree, read_line=_answers("1", "1"), write=lambda _: None)
+    chosen = prompt_for_input(tree, read_line=_answers("1", "top", "1"), write=lambda _: None)
 
     assert not chosen.is_folder
     assert chosen.models == ((tree / "top.stl").absolute(),)
@@ -222,3 +223,19 @@ def test_bad_input_paths_are_explained(tree: Path, relative: str, message: str) 
     """Missing paths, non-model files and empty folders are refused with a reason."""
     with pytest.raises(SlicerSelectionError, match=message):
         input_from_path(tree / relative)
+
+
+def test_single_file_mode_lists_models_in_subfolders(tree: Path) -> None:
+    """Models in subfolders are listed by their path within the incoming folder."""
+    lines: list[str] = []
+
+    chosen = prompt_for_model(tree, read_line=_answers("brackets/old", "1"), write=lines.append)
+
+    assert lines[:5] == [
+        "Select a model file:",
+        "  1) brackets/left.stl",
+        "  2) brackets/old/v1.obj",
+        "  3) brackets/right.3MF",
+        "  4) top.stl",
+    ]
+    assert chosen == (tree / "brackets" / "old" / "v1.obj").absolute()

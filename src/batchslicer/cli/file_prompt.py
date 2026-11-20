@@ -119,9 +119,12 @@ def prompt_for_model(
 ) -> Path:
     """Return the absolute path of the model file the user chooses.
 
+    Models in the incoming folder and its subfolders are listed by their path
+    within it (``brackets/left.stl``). Text that names an existing model file
+    is used directly; any other text searches the list.
     Raises :class:`SlicerSelectionError` when input ends or is interrupted.
     """
-    models = find_models(incoming)
+    models = find_models(incoming, recursive=True)
     if not models:
         write(f"No model files ({_SUPPORTED}) found in {incoming}.")
 
@@ -129,15 +132,18 @@ def prompt_for_model(
         path = Path(text).expanduser()
         if is_model_file(path):
             return path
-        if path.exists() or "/" in text or "\\" in text:
+        if path.exists():
             write(f"Not a {_SUPPORTED} model file: {text}")
         return None
+
+    def label(path: Path) -> str:
+        return path.relative_to(incoming).as_posix()
 
     chosen = choose(
         models,
         noun="model file",
         plural="model files",
-        label=lambda path: path.name,
+        label=label,
         read_line=read_line,
         write=write,
         prompt=(
