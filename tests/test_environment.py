@@ -6,6 +6,12 @@ from pathlib import Path
 
 import pytest
 
+from orcabatch.backends.slicers import (
+    BAMBU_STUDIO,
+    CREALITY_PRINT,
+    ORCASLICER,
+    SlicerDefinition,
+)
 from orcabatch.core.config import Config
 from orcabatch.core.environment import CheckResult, EnvironmentService
 from orcabatch.core.logging import configure_logging
@@ -71,7 +77,7 @@ def test_missing_orca_executable(tmp_path: Path) -> None:
     config = _create_valid_config(tmp_path, executable=tmp_path / "missing-orca")
     service = _create_service(tmp_path, config=config)
 
-    result = _result_by_name(service.run_checks(), "orca_executable")
+    result = _result_by_name(service.run_checks(), "slicer_executable")
 
     assert not result.passed
     assert "not found" in result.message
@@ -84,7 +90,7 @@ def test_orca_executable_points_to_directory(tmp_path: Path) -> None:
     config = _create_valid_config(tmp_path, executable=executable_directory)
     service = _create_service(tmp_path, config=config)
 
-    result = _result_by_name(service.run_checks(), "orca_executable")
+    result = _result_by_name(service.run_checks(), "slicer_executable")
 
     assert not result.passed
     assert "not a file" in result.message
@@ -95,7 +101,7 @@ def test_missing_orca_data_directory(tmp_path: Path) -> None:
     config = _create_valid_config(tmp_path, datadir=tmp_path / "missing-data")
     service = _create_service(tmp_path, config=config)
 
-    result = _result_by_name(service.run_checks(), "orca_data_directory")
+    result = _result_by_name(service.run_checks(), "slicer_data_directory")
 
     assert not result.passed
     assert "not found" in result.message
@@ -108,10 +114,42 @@ def test_orca_datadir_points_to_file(tmp_path: Path) -> None:
     config = _create_valid_config(tmp_path, datadir=datadir_file)
     service = _create_service(tmp_path, config=config)
 
-    result = _result_by_name(service.run_checks(), "orca_data_directory")
+    result = _result_by_name(service.run_checks(), "slicer_data_directory")
 
     assert not result.passed
     assert "not a directory" in result.message
+
+
+def test_checks_paths_of_the_selected_slicer(tmp_path: Path) -> None:
+    """The selected slicer's config section is verified, not OrcaSlicer's."""
+    executable = tmp_path / "CrealityPrint.AppImage"
+    executable.touch()
+    datadir = tmp_path / "creality-data"
+    datadir.mkdir()
+    config = _create_valid_config(
+        tmp_path,
+        extra_sections={"creality_print": (executable, datadir)},
+    )
+    service = _create_service(tmp_path, config=config, slicer=CREALITY_PRINT)
+
+    result = _result_by_name(service.run_checks(), "slicer_executable")
+
+    assert result.passed
+    assert result.message == "Creality Print executable exists."
+
+
+def test_unconfigured_selected_slicer_fails(tmp_path: Path) -> None:
+    """Selecting a slicer with no config section fails its checks without raising."""
+    service = _create_service(
+        tmp_path,
+        config=_create_valid_config(tmp_path),
+        slicer=BAMBU_STUDIO,
+    )
+
+    results = service.run_checks()
+
+    assert not _result_by_name(results, "slicer_executable").passed
+    assert not _result_by_name(results, "slicer_data_directory").passed
 
 
 def test_missing_runtime_directories_are_created(tmp_path: Path) -> None:
@@ -185,6 +223,7 @@ def _create_service(
     *,
     config: Config,
     python_version: tuple[int, int, int] = (3, 12, 0),
+    slicer: SlicerDefinition = ORCASLICER,
 ) -> EnvironmentService:
     """Create an environment service with a test log file."""
     logger = configure_logging(log_directory=tmp_path / "service-logs")
@@ -192,6 +231,7 @@ def _create_service(
         config=config,
         logger=logger,
         python_version=python_version,
+        slicer=slicer,
     )
 
 
@@ -201,6 +241,7 @@ def _create_valid_config(
     executable: Path | None = None,
     datadir: Path | None = None,
     runtime_paths: dict[str, Path] | None = None,
+    extra_sections: dict[str, tuple[Path, Path]] | None = None,
 ) -> Config:
     """Create a Config instance backed by a temporary YAML file."""
     executable_path = executable or tmp_path / "orca"
@@ -219,6 +260,7 @@ def _create_valid_config(
                 "orca:",
                 f'  executable: "{executable_path}"',
                 f'  datadir: "{datadir_path}"',
+                *_slicer_sections(extra_sections or {}),
                 "paths:",
                 f'  incoming: "{paths["incoming"]}"',
                 f'  output: "{paths["output"]}"',
@@ -230,6 +272,14 @@ def _create_valid_config(
         encoding="utf-8",
     )
     return Config(config_path)
+
+
+def _slicer_sections(sections: dict[str, tuple[Path, Path]]) -> list[str]:
+    """Return YAML lines for additional slicer configuration sections."""
+    lines: list[str] = []
+    for key, (executable, datadir) in sections.items():
+        lines.extend((f"{key}:", f'  executable: "{executable}"', f'  datadir: "{datadir}"'))
+    return lines
 
 
 def _runtime_paths(tmp_path: Path) -> dict[str, Path]:

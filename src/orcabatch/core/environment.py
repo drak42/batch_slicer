@@ -1,7 +1,7 @@
 """Verify that the OrcaBatch runtime environment is ready.
 
-This module checks Python, configuration, runtime directories, and configured
-OrcaSlicer paths before application startup continues. It returns structured
+This module checks Python, configuration, runtime directories, and the
+configured paths of the selected slicer before application startup continues. It returns structured
 results and writes summary messages through the OrcaBatch logging service. It
 does not print output, launch external processes, validate databases, validate
 presets, or create configuration files.
@@ -13,6 +13,7 @@ from pathlib import Path
 import sys
 from typing import Any
 
+from orcabatch.backends.slicers import ORCASLICER, SlicerDefinition
 from orcabatch.core.config import Config, get_config
 from orcabatch.core.logging import get_logger
 
@@ -38,9 +39,11 @@ class EnvironmentService:
         config: Config | None = None,
         logger: logging.Logger | None = None,
         python_version: tuple[int, int, int] | None = None,
+        slicer: SlicerDefinition = ORCASLICER,
     ) -> None:
-        """Create an environment service with injectable collaborators."""
+        """Create an environment service that verifies ``slicer`` and the runtime."""
         self._config = config
+        self._slicer = slicer
         self._logger = logger or get_logger()
         self._python_version = python_version or sys.version_info[:3]
 
@@ -54,8 +57,8 @@ class EnvironmentService:
             self._check_data_directory(),
             self._check_incoming_directory(),
             self._check_output_directory(),
-            self._check_orca_executable(),
-            self._check_orca_data_directory(),
+            self._check_slicer_executable(),
+            self._check_slicer_data_directory(),
         ]
 
         failed_results = [result for result in results if not result.passed]
@@ -121,11 +124,12 @@ class EnvironmentService:
         """Verify that the configured output directory exists or can be created."""
         return self._check_runtime_directory("output_directory", "output")
 
-    def _check_orca_executable(self) -> CheckResult:
-        """Verify that the configured Orca executable exists and is a file."""
-        name = "orca_executable"
+    def _check_slicer_executable(self) -> CheckResult:
+        """Verify that the selected slicer's executable exists and is a file."""
+        name = "slicer_executable"
+        slicer_name = self._slicer.display_name
         try:
-            executable = self._get_configured_path("orca", "executable")
+            executable = self._get_configured_path(self._slicer.key, "executable")
         except (FileNotFoundError, ValueError, KeyError) as error:
             return CheckResult(name=name, passed=False, message=str(error))
 
@@ -133,27 +137,28 @@ class EnvironmentService:
             return CheckResult(
                 name=name,
                 passed=False,
-                message=f"Orca executable not found: {executable}",
+                message=f"{slicer_name} executable not found: {executable}",
             )
 
         if not executable.is_file():
             return CheckResult(
                 name=name,
                 passed=False,
-                message=f"Orca executable is not a file: {executable}",
+                message=f"{slicer_name} executable is not a file: {executable}",
             )
 
         return CheckResult(
             name=name,
             passed=True,
-            message="Orca executable exists.",
+            message=f"{slicer_name} executable exists.",
         )
 
-    def _check_orca_data_directory(self) -> CheckResult:
-        """Verify that the configured Orca data directory exists and is a directory."""
-        name = "orca_data_directory"
+    def _check_slicer_data_directory(self) -> CheckResult:
+        """Verify that the selected slicer's data directory exists and is a directory."""
+        name = "slicer_data_directory"
+        slicer_name = self._slicer.display_name
         try:
-            data_directory = self._get_configured_path("orca", "datadir")
+            data_directory = self._get_configured_path(self._slicer.key, "datadir")
         except (FileNotFoundError, ValueError, KeyError) as error:
             return CheckResult(name=name, passed=False, message=str(error))
 
@@ -161,20 +166,20 @@ class EnvironmentService:
             return CheckResult(
                 name=name,
                 passed=False,
-                message=f"Orca data directory not found: {data_directory}",
+                message=f"{slicer_name} data directory not found: {data_directory}",
             )
 
         if not data_directory.is_dir():
             return CheckResult(
                 name=name,
                 passed=False,
-                message=f"Orca data directory is not a directory: {data_directory}",
+                message=f"{slicer_name} data directory is not a directory: {data_directory}",
             )
 
         return CheckResult(
             name=name,
             passed=True,
-            message="Orca data directory exists.",
+            message=f"{slicer_name} data directory exists.",
         )
 
     def _check_runtime_directory(self, name: str, key: str) -> CheckResult:
