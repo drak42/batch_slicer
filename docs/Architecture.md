@@ -159,6 +159,10 @@ Discover Backends
 
 ↓
 
+Select Slicer (user is prompted; startup waits for a configured choice)
+
+↓
+
 Initialise Services
 
 ↓
@@ -232,15 +236,19 @@ Domain objects should never know about Flask, SQLite or OrcaSlicer.
 
 Interfaces with slicing software.
 
-Initially:
+Supported (all share the OrcaSlicer command-line interface, driven by one backend):
 
 - OrcaSlicer
+- Creality Print (run with `--cli`; no `--orient`, `--arrange`, `--skip-modified-gcodes` or `--export-settings`)
+- Bambu Studio
+
+Each slicer has its own configuration section (`orca`, `creality_print`, `bambu_studio`)
+with `executable` and `datadir`. The user chooses one at startup.
 
 Future:
 
 - PrusaSlicer
 - Cura
-- Bambu Studio
 
 ---
 
