@@ -1,14 +1,30 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "BatchSlicer"
-version = "0.1.0"
-description = "Print automation platform centred around OrcaSlicer."
+dynamic = ["version"]
+description = "Batch-slice 3D models with OrcaSlicer, Creality Print or Bambu Studio using your own presets."
 readme = "README.md"
 requires-python = ">=3.12"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Christopher Eslick" }]
+keywords = ["3d-printing", "slicer", "batch", "orcaslicer", "creality-print", "bambu-studio", "gcode"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Manufacturing",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+    "Topic :: Printing",
+    "Typing :: Typed",
+]
 dependencies = [
     "PyYAML>=6.0",
 ]
@@ -25,10 +41,19 @@ dev = [
 batchslicer = "batchslicer.app:main"
 
 [project.urls]
+Homepage = "https://github.com/drak42/batch_slicer"
 Repository = "https://github.com/drak42/batch_slicer"
+Issues = "https://github.com/drak42/batch_slicer/issues"
+Changelog = "https://github.com/drak42/batch_slicer/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
+
+[tool.setuptools.dynamic]
+version = { attr = "batchslicer.version.__version__" }
+
+[tool.setuptools.package-data]
+batchslicer = ["py.typed"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

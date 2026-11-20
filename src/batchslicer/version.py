@@ -1,11 +1,14 @@
 """Provide the single source of truth for BatchSlicer version information.
 
-This module exposes immutable application metadata. It does not perform I/O,
-read packaging metadata, or format console output beyond the public version
-string.
+This module exposes immutable application metadata. ``__version__`` is the
+only place the version number is written: the package build reads it from
+here (see ``pyproject.toml``). It does not perform I/O, read packaging
+metadata, or format console output beyond the public version string.
 """
 
 from dataclasses import dataclass
+
+__version__ = "0.2.0"
 
 
 @dataclass(frozen=True)
@@ -23,7 +26,7 @@ class Version:
 CURRENT_VERSION = Version(
     product_name="BatchSlicer",
     repository_name="batch_slicer",
-    version="0.1.0",
+    version=__version__,
     python_minimum="3.12",
     copyright="Copyright (c) 2026 Christopher Eslick",
     license="MIT",
