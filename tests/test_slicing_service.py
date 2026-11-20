@@ -50,7 +50,7 @@ def test_successful_slice_reports_gcode_in_a_new_job_folder(tmp_path: Path) -> N
     job = tmp_path / "output" / "cube-20261120-144530"
     assert outcome.success
     assert outcome.job_directory == job
-    assert outcome.gcode_files == (job / "plate_1.gcode",)
+    assert outcome.gcode_files == (job / "cube.gcode",)
     assert outcome.message == "Success."
     assert outcome.elapsed == 2.5
 
@@ -153,7 +153,7 @@ def test_batch_mirrors_source_folders_and_writes_presets_once(tmp_path: Path) ->
         root / "a",
         root / "sub" / "deep" / "b",
     ]
-    assert (root / "sub" / "deep" / "b" / "plate_1.gcode").is_file()
+    assert (root / "sub" / "deep" / "b" / "b.gcode").is_file()
     library.write_resolved.assert_called_once_with(_selection(), root / "presets")
     assert started == [(1, 2, "a.stl"), (2, 2, "b.stl")]
     assert finished == [True, True]
@@ -193,3 +193,54 @@ def test_models_with_the_same_name_get_separate_folders(tmp_path: Path) -> None:
     batch = service.slice_batch([source / "part.3mf", source / "part.stl"], source, tmp_path / "out")
 
     assert [outcome.job_directory.name for outcome in batch.outcomes] == ["part", "part-2"]
+
+
+def _backend_writing(*names: str) -> Mock:
+    """Return a backend whose slice writes the given G-code file names."""
+    backend = Mock()
+
+    def slice_(model: Path, job: Path, **kwargs: object) -> OrcaResult:
+        for name in names:
+            (job / name).write_text("G1")
+        return OrcaResult(True, 0, "", "", 1.0, ())
+
+    backend.slice.side_effect = slice_
+    return backend
+
+
+def test_single_plate_gcode_is_named_after_the_model(tmp_path: Path) -> None:
+    """bracket.stl is sliced to bracket.gcode, keeping the model's name."""
+    service = SlicingService(_backend_writing("plate_1.gcode"), logger=Mock(), clock=lambda: NOW)
+
+    outcome = service.slice(tmp_path / "Left Bracket v2.stl", tmp_path / "out")
+
+    assert [path.name for path in outcome.gcode_files] == ["Left Bracket v2.gcode"]
+    assert not (outcome.job_directory / "plate_1.gcode").exists()
+
+
+def test_multiple_plates_keep_their_plate_numbers(tmp_path: Path) -> None:
+    """A project with several plates gives one file per plate, named after the model."""
+    service = SlicingService(
+        _backend_writing("plate_1.gcode", "plate_2.gcode", "plate_10.gcode"),
+        logger=Mock(),
+        clock=lambda: NOW,
+    )
+
+    outcome = service.slice(tmp_path / "kit.3mf", tmp_path / "out")
+
+    assert [path.name for path in outcome.gcode_files] == [
+        "kit_plate_1.gcode",
+        "kit_plate_10.gcode",
+        "kit_plate_2.gcode",
+    ]
+
+
+def test_other_gcode_files_are_left_alone(tmp_path: Path) -> None:
+    """Only the slicer's plate_N.gcode files are renamed."""
+    service = SlicingService(
+        _backend_writing("plate_1.gcode", "custom.gcode"), logger=Mock(), clock=lambda: NOW
+    )
+
+    outcome = service.slice(tmp_path / "part.stl", tmp_path / "out")
+
+    assert [path.name for path in outcome.gcode_files] == ["custom.gcode", "part.gcode"]

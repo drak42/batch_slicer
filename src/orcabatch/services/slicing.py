@@ -5,8 +5,10 @@ model and the time, so earlier results are never overwritten. A batch gets one
 such folder named after the source folder, inside which the source folder
 structure is mirrored with one folder per model. When presets were chosen,
 complete copies are written into the job (once per batch) so it records
-exactly what was used. A failed model does not stop a batch. This module does
-not prompt the user or choose presets.
+exactly what was used. A failed model does not stop a batch. G-code files are
+named after their model (``bracket.stl`` gives ``bracket.gcode``) instead of the
+slicer's generic ``plate_N.gcode``. This module does not prompt the user or
+choose presets.
 """
 
 from collections.abc import Callable, Sequence
@@ -15,6 +17,7 @@ from datetime import datetime
 import json
 import logging
 from pathlib import Path
+import re
 
 from orcabatch.backends.orca import OrcaBackend, OrcaResult
 from orcabatch.backends.presets import PresetLibrary
@@ -24,6 +27,7 @@ from orcabatch.domain.presets import PresetSelection
 
 _RESULT_FILE_NAME = "result.json"
 _PRESETS_FOLDER_NAME = "presets"
+_PLATE_GCODE_PATTERN = re.compile(r"plate_(\d+)\.gcode")
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,7 +200,7 @@ class SlicingService:
 
     def _outcome(self, model: Path, job_directory: Path, result: OrcaResult) -> SliceOutcome:
         """Combine the process result, result.json and the G-code files found."""
-        gcode_files = tuple(sorted(job_directory.glob("*.gcode")))
+        gcode_files = _name_gcode_after_model(model, job_directory)
         message = _read_result_message(job_directory / _RESULT_FILE_NAME)
         success = result.success and bool(gcode_files)
         if not message:
@@ -225,3 +229,24 @@ def _read_result_message(path: Path) -> str:
         return ""
     message = data.get("error_string") if isinstance(data, dict) else None
     return message if isinstance(message, str) else ""
+
+
+def _name_gcode_after_model(model: Path, job_directory: Path) -> tuple[Path, ...]:
+    """Rename the slicer's ``plate_N.gcode`` files after ``model`` and return all G-code.
+
+    A single plate becomes ``<model name>.gcode``; several plates become
+    ``<model name>_plate_N.gcode``. Other G-code files are left as they are.
+    """
+    plates = sorted(
+        (
+            (int(match.group(1)), path)
+            for path in job_directory.glob("*.gcode")
+            if (match := _PLATE_GCODE_PATTERN.fullmatch(path.name))
+        ),
+    )
+    for number, path in plates:
+        name = f"{model.stem}.gcode" if len(plates) == 1 else f"{model.stem}_plate_{number}.gcode"
+        target = path.with_name(name)
+        if target != path and not target.exists():
+            path.rename(target)
+    return tuple(sorted(job_directory.glob("*.gcode")))

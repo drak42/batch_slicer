@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- feat(slicing): name G-code after the model (`bracket.stl` → `bracket.gcode`; multi-plate projects → `<name>_plate_N.gcode`) instead of `plate_1.gcode`.
 - feat(slicing): slice every model in a folder and its subfolders as a batch, with per-file progress and a summary of failures; results mirror the source folder structure.
 - feat(cli): choose the output folder: the configured default, an existing subfolder, or a new folder created after confirmation.
 - feat(slicing): after setup, choose a model file (.stl/.3mf/.obj) from the incoming folder or by path, and slice it into its own timestamped job folder under output, which also keeps the exact presets used. Failures show the slicer's own reason from result.json.
