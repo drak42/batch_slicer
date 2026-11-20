@@ -190,18 +190,36 @@ def test_help_and_export_run_outside_the_working_directory(
     assert not (tmp_path / "result.json").exists()
 
 
-def test_slice_keeps_working_directory(
+def test_slice_runs_inside_the_output_folder(
     backend: OrcaBackend,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """Slicing writes result.json to --outputdir, so it runs from the current directory."""
+    """Extra files a slicer writes (such as OrcaSlicer's NNNNN.log) stay with the results."""
     run = Mock(return_value=Mock(returncode=0, stdout="", stderr=""))
     monkeypatch.setattr("batchslicer.backends.orca.subprocess.run", run)
 
     backend.slice(tmp_path / "model.stl", tmp_path / "out")
 
-    assert run.call_args.kwargs["cwd"] is None
+    assert run.call_args.kwargs["cwd"] == tmp_path / "out"
+    assert (tmp_path / "out").is_dir()
+
+
+def test_relative_slice_paths_still_work_from_the_output_folder(
+    backend: OrcaBackend,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Paths given relative to the current folder are made absolute before the slicer moves."""
+    monkeypatch.chdir(tmp_path)
+
+    command = backend.build_slice_command(
+        "models/part.stl", "out", load_settings=["presets/machine.json"]
+    )
+
+    assert command[-1] == str(tmp_path / "models" / "part.stl")
+    assert str(tmp_path / "out") in command
+    assert str(tmp_path / "presets" / "machine.json") in command
 
 
 def test_relative_paths_are_made_absolute(

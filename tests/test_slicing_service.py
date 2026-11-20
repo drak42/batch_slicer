@@ -269,3 +269,24 @@ def test_ctrl_c_stops_a_batch_and_keeps_finished_models(tmp_path: Path) -> None:
     assert batch.planned == 3
     assert [outcome.model.name for outcome in batch.succeeded] == ["a.stl"]
     assert (batch.batch_directory / "a" / "a.gcode").is_file()
+
+
+def test_failure_includes_the_slicers_validation_log(tmp_path: Path) -> None:
+    """OrcaSlicer's specific reason, written to NNNNN.log, is added to its generic message."""
+    backend = Mock()
+
+    def slice_(model: Path, job: Path, **kwargs: object) -> OrcaResult:
+        (job / "result.json").write_text(
+            json.dumps({"error_string": "There are some incorrect slicing parameters."})
+        )
+        (job / "00000.log").write_text("got error when validate: Too small line width\n")
+        return OrcaResult(False, 205, "", "", 1.0, ())
+
+    backend.slice.side_effect = slice_
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW)
+
+    outcome = service.slice(tmp_path / "part.stl", tmp_path / "out")
+
+    assert outcome.message == (
+        "There are some incorrect slicing parameters. (Too small line width)"
+    )

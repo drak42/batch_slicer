@@ -170,7 +170,14 @@ class OrcaBackend:
         load_settings: Sequence[PathLike] = (),
         load_filaments: Sequence[PathLike] = (),
     ) -> OrcaResult:
-        """Slice one model file into ``output_directory`` with requested options."""
+        """Slice one model file into ``output_directory`` with requested options.
+
+        The slicer runs from inside ``output_directory`` (created if needed), so
+        any extra files it writes there, such as validation logs, stay with the
+        results instead of appearing in the current folder.
+        """
+        output = Path(output_directory).absolute()
+        output.mkdir(parents=True, exist_ok=True)
         return self.run(
             self.build_slice_command(
                 input_path,
@@ -183,7 +190,8 @@ class OrcaBackend:
                 no_check=no_check,
                 load_settings=load_settings,
                 load_filaments=load_filaments,
-            )
+            ),
+            working_directory=output,
         )
 
     def build_help_command(self) -> tuple[str, ...]:
@@ -230,7 +238,7 @@ class OrcaBackend:
                 "--slice",
                 str(plate),
                 "--outputdir",
-                str(Path(output_directory)),
+                str(Path(output_directory).absolute()),
             )
         )
         for option, enabled in (
@@ -253,7 +261,7 @@ class OrcaBackend:
             command.extend(("--load-settings", _join_file_list(load_settings)))
         if load_filaments:
             command.extend(("--load-filaments", _join_file_list(load_filaments)))
-        command.append(str(Path(input_path)))
+        command.append(str(Path(input_path).absolute()))
         return tuple(command)
 
     def _run_in_scratch_directory(self, command: Sequence[str]) -> OrcaResult:
@@ -286,7 +294,7 @@ class OrcaBackend:
 
 def _join_file_list(paths: Sequence[PathLike]) -> str:
     """Join paths into OrcaSlicer's semicolon-separated file list argument."""
-    values = [str(Path(path)) for path in paths]
+    values = [str(Path(path).absolute()) for path in paths]
     for value in values:
         if _FILE_LIST_SEPARATOR in value:
             raise ValueError(

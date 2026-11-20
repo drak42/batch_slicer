@@ -233,6 +233,10 @@ class SlicingService:
             message = result.stderr.strip().splitlines()[-1] if result.stderr.strip() else ""
         if result.success and not gcode_files:
             message = "The slicer finished but wrote no G-code."
+        if not success:
+            detail = _read_validation_log(job_directory)
+            if detail and detail not in message:
+                message = f"{message} ({detail})" if message else detail
         if success:
             self._logger.info("Sliced %s into %d G-code file(s).", model, len(gcode_files))
         else:
@@ -245,6 +249,25 @@ class SlicingService:
             message=message,
             elapsed=result.elapsed,
         )
+
+
+def _read_validation_log(job_directory: Path) -> str:
+    """Return the reason from a slicer's short validation log (``NNNNN.log``), if any.
+
+    OrcaSlicer writes the specific reason a slice was rejected, such as "Too
+    small line width", to a numbered log file next to result.json.
+    """
+    for path in sorted(job_directory.glob("[0-9]*.log")):
+        try:
+            if path.stat().st_size > 4096:
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace").strip()
+        except OSError:
+            continue
+        if text:
+            line = text.splitlines()[0].strip()
+            return line.removeprefix("got error when validate:").strip()
+    return ""
 
 
 def _read_result_message(path: Path) -> str:
