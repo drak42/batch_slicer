@@ -222,7 +222,7 @@ self-contained files for `--load-settings` / `--load-filaments`. The slicer's da
 directory is never modified. Creality Print also needs `--need-gcode-file`, without
 which it reports success but writes no G-code.
 
-Preset selection is supported for Creality Print and OrcaSlicer. Shipped
+Preset selection is supported for all three slicers. Shipped
 filaments are limited to those the user made visible in the slicer, as in its
 own menus. Creality Print keeps shipped presets as JSON in its data directory.
 OrcaSlicer 2.4 and later pack them into `.opc` files. The vendors in use are
@@ -232,8 +232,10 @@ vendors the program does not ship, from the settings folder's `.opc` files,
 and unpacked once as JSON into `data/slicer-profiles/` until the slicer or
 those files change (`backends/profiles.py`). From OrcaSlicer 2.5 the CLI looks
 up a settings file's `inherits` itself, so a user's printer is written without
-that link for 2.5 and later (the version comes from `--help`). Bambu Studio is
-planned.
+that link for 2.5 and later (the version comes from `--help`). Bambu Studio
+keeps shipped presets as JSON in its data directory and records added printers
+as models and nozzle sizes (`models` in `BambuStudio.conf`), which are mapped
+to the shipped printers with that `printer_model` and `printer_variant`.
 
 Future:
 

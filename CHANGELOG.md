@@ -8,6 +8,13 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ### Added
 
+- **Bambu Studio preset selection.** Choose a printer, then a compatible
+  filament and process, as for the other slicers. Bambu Studio records the
+  printer models you added and their nozzle sizes, so BatchSlicer lists the
+  shipped printers for those, plus printers you created yourself. Tested with
+  Bambu Studio 2.9.1.
+- The weekly "Latest slicers" job now also slices with Bambu Studio's presets.
+
 - **OrcaSlicer 2.5 support.** OrcaSlicer 2.5 ships its built-in presets only as
   packed `.opc` files; BatchSlicer now reads that format (following
   OrcaSlicer's own source) and unpacks the presets it needs. Vendors that

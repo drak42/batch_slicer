@@ -231,14 +231,46 @@ class PresetLibrary:
         return Preset(name=name, kind=kind, path=index[kind][name][0], is_user=is_user)
 
     def _added_printer_names(self) -> list[str]:
-        """Return the shipped printers the user has added in the slicer, in its order."""
+        """Return the shipped printers the user has added in the slicer, in its order.
+
+        OrcaSlicer and Creality Print list the added printer presets
+        (``orca_presets``). Bambu Studio instead lists the printer models added
+        and their nozzle sizes (``models``); each becomes the shipped printers
+        for that model and nozzle.
+        """
         names: list[str] = []
-        for entry in self._app_config.get("orca_presets", []):
-            if isinstance(entry, dict) and isinstance(entry.get("machine"), str):
-                names.append(entry["machine"])
+        entries = self._app_config.get("orca_presets")
+        if isinstance(entries, list):
+            for entry in entries:
+                if isinstance(entry, dict) and isinstance(entry.get("machine"), str):
+                    names.append(entry["machine"])
+        else:
+            names.extend(self._printers_for_added_models())
         current = self._app_config.get("presets", {}).get("machine")
         if isinstance(current, str) and current not in names:
             names.append(current)
+        return names
+
+    def _printers_for_added_models(self) -> list[str]:
+        """Return the shipped printers for the models and nozzles in ``models`` (Bambu Studio)."""
+        models = self._app_config.get("models")
+        if not isinstance(models, list):
+            return []
+        by_model: dict[tuple[str, str], list[str]] = {}
+        for name, (_, data) in sorted(self._system[PresetKind.PRINTER].items()):
+            if data.get("instantiation") != "true":
+                continue
+            model = self._inherited_value(PresetKind.PRINTER, name, "printer_model")
+            variant = self._inherited_value(PresetKind.PRINTER, name, "printer_variant")
+            if isinstance(model, str) and isinstance(variant, str):
+                by_model.setdefault((model, variant), []).append(name)
+        names: list[str] = []
+        for entry in models:
+            if not isinstance(entry, dict) or not isinstance(entry.get("model"), str):
+                continue
+            nozzles = str(entry.get("nozzle_diameter", "")).split(";")
+            for nozzle in nozzles:
+                names.extend(by_model.get((entry["model"], nozzle.strip()), []))
         return names
 
     def _read_visible_filaments(self) -> frozenset[str]:

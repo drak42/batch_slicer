@@ -11,7 +11,7 @@ import pytest
 from batchslicer.backends.orca import OrcaBackend
 from batchslicer.backends.presets import PresetError, PresetLibrary
 from batchslicer.backends.profiles import find_system_profiles
-from batchslicer.backends.slicers import CREALITY_PRINT, ORCASLICER, SlicerDefinition
+from batchslicer.backends.slicers import BAMBU_STUDIO, CREALITY_PRINT, ORCASLICER, SlicerDefinition
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from conftest import write_config
 
@@ -272,7 +272,11 @@ def _real_slicer(slicer: SlicerDefinition, prefix: str) -> list[object]:
     ]
 
 
-_REAL_SLICERS = _real_slicer(CREALITY_PRINT, "CREALITY") + _real_slicer(ORCASLICER, "ORCA")
+_REAL_SLICERS = (
+    _real_slicer(CREALITY_PRINT, "CREALITY")
+    + _real_slicer(ORCASLICER, "ORCA")
+    + _real_slicer(BAMBU_STUDIO, "BAMBU")
+)
 
 
 def _write_cube(path: Path, size: float = 20.0) -> None:
@@ -357,3 +361,49 @@ def _first_usable_selection(
         if filament and process:
             return printer, filament, process
     pytest.skip("No printer with suitable presets in this data directory.")
+
+
+def _bambu_datadir(tmp_path: Path) -> Path:
+    """Create a small Bambu Studio style data directory: added printers are listed as models."""
+    root = tmp_path / "bambu"
+    system = root / "system" / "Creality"
+    conf = {
+        "models": [{"model": "Creality K1 Max", "nozzle_diameter": "0.4;0.8", "vendor": "Creality"}],
+        "presets": {"machine": "Creality K1 Max 0.4 nozzle"},
+        "filaments": ["Generic PLA @Creality"],
+    }
+    root.mkdir()
+    (root / "BambuStudio.conf").write_text(json.dumps(conf) + "\n# MD5 checksum abc\n")
+    _write(system / "machine" / "common.json", {"name": "fdm_creality_common", "nozzle_diameter": ["0.4"]})
+    for name, model, variant in (
+        ("Creality K1 Max 0.4 nozzle", "Creality K1 Max", "0.4"),
+        ("Creality K1 Max 0.6 nozzle", "Creality K1 Max", "0.6"),
+        ("Creality K1 Max 0.8 nozzle", "Creality K1 Max", "0.8"),
+        ("Creality K1 0.4 nozzle", "Creality K1", "0.4"),
+    ):
+        _write(system / "machine" / f"{name}.json", {"name": name, "inherits": "fdm_creality_common", "instantiation": "true", "printer_model": model, "printer_variant": variant})
+    _write(system / "machine" / "model.json", {"name": "Creality K1 Max", "model_id": "K1Max"})  # model, not a preset
+    _write(system / "process" / "k1max.json", {"name": "0.20mm Standard @Creality K1Max 0.4 nozzle", "instantiation": "true", "compatible_printers": ["Creality K1 Max 0.4 nozzle"]})
+    _write(system / "filament" / "pla.json", {"name": "Generic PLA @Creality", "instantiation": "true", "compatible_printers": ["Creality K1 Max 0.4 nozzle", "Creality K1 Max 0.8 nozzle"]})
+    _write(root / "user" / "default" / "machine" / "k2.json", {"name": "My K2", "inherits": "Creality K1 Max 0.4 nozzle", "from": "User", "printable_height": "350"})
+    return root
+
+
+def test_bambu_studio_printers_come_from_the_added_models(tmp_path: Path) -> None:
+    """Bambu Studio lists added printer models and nozzles; each gives its shipped printers."""
+    library = PresetLibrary(_bambu_datadir(tmp_path), "BambuStudio.conf", logger=Mock())
+
+    assert [(p.name, p.is_user) for p in library.printers()] == [
+        ("My K2", True),
+        ("Creality K1 Max 0.4 nozzle", False),
+        ("Creality K1 Max 0.8 nozzle", False),
+    ]
+
+
+def test_bambu_studio_user_printer_matches_its_base_printers_presets(tmp_path: Path) -> None:
+    """A user's printer based on the K1 Max gets the K1 Max's filaments and processes."""
+    library = PresetLibrary(_bambu_datadir(tmp_path), "BambuStudio.conf", logger=Mock())
+    mine = library.printers()[0]
+
+    assert [p.name for p in library.filaments_for(mine)] == ["Generic PLA @Creality"]
+    assert [p.name for p in library.processes_for(mine)] == ["0.20mm Standard @Creality K1Max 0.4 nozzle"]

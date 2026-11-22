@@ -83,7 +83,7 @@ repeats the same run.
 |---|---|---|
 | OrcaSlicer (tested with 2.4 and 2.5) | Yes | Yes |
 | Creality Print (tested with 7.3) | Yes | Yes |
-| Bambu Studio (tested with 2.8) | Yes | Not yet (see [limitations](#current-limitations)) |
+| Bambu Studio (tested with 2.8 and 2.9) | Yes | Yes |
 
 ## How it works
 
@@ -679,9 +679,11 @@ spelling with `batchslicer --list-profiles`.
 `--filament` and `--process` describe one printer. To change a printer in a
 multi-printer run, save it as its own profile and pass each with `--profile`.
 
-**Bambu Studio says "Preset selection is not available"**: see
-[limitations](#current-limitations). Slicing a `.3mf` project that already
-contains its settings still works.
+**Bambu Studio lists no printers, or not the one you expect**: Bambu Studio
+records the printer *models* you added (with their nozzle sizes), and
+BatchSlicer lists the shipped printers for those, plus printers you created
+yourself. Add the model in Bambu Studio (printer selection), close it, and
+run BatchSlicer again. Bambu Studio must have been opened and set up once.
 
 ## Checking your setup: `batchslicer doctor`
 
@@ -735,9 +737,6 @@ tab ("Latest slicers").
 
 ## Current limitations
 
-- **Bambu Studio presets** are not selectable yet; slicing works, but without
-  preset selection. This needs Bambu Studio's settings folder, which exists
-  after it has been opened and set up once.
 - **Linux only.** Windows and macOS are not supported yet.
 - **One filament per printer.** Multi-material setups (Creality CFS, Bambu AMS)
   need several filaments and are not supported yet.

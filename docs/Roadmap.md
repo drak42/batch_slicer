@@ -40,8 +40,7 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 ## Next
 
 - [x] **OrcaSlicer 2.5**: read its packed `.opc` preset files.
-- [ ] **Bambu Studio preset selection** (needs a Bambu Studio settings folder to
-  verify against).
+- [x] **Bambu Studio preset selection.**
 - [ ] **Skip folders** (for example `--exclude PATTERN`): the soak test's
   largest group of failures came from non-model meshes bundled with other
   software.

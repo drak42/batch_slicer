@@ -55,7 +55,11 @@ ORCASLICER = SlicerDefinition(
     resolves_inherits_from=(2, 5),
 )
 
-BAMBU_STUDIO = SlicerDefinition(key="bambu_studio", display_name="Bambu Studio")
+BAMBU_STUDIO = SlicerDefinition(
+    key="bambu_studio",
+    display_name="Bambu Studio",
+    app_config_name="BambuStudio.conf",
+)
 
 CREALITY_PRINT = SlicerDefinition(
     key="creality_print",

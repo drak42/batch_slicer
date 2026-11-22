@@ -9,7 +9,7 @@ made visible. It never contains personal data.
 Usage:
     python scripts/make_test_slicer_data.py SLICER EXECUTABLE TARGET
 
-SLICER is ``orca`` or ``creality_print``; EXECUTABLE is the slicer's AppImage;
+SLICER is ``orca``, ``creality_print`` or ``bambu_studio``; EXECUTABLE is the slicer's AppImage;
 TARGET is the folder to create (it must not exist yet).
 """
 
@@ -22,7 +22,10 @@ import tempfile
 from pathlib import Path
 
 PRINTER = "Creality K2 Plus 0.4 nozzle"
-"""A printer every tested slicer ships presets for."""
+"""A printer OrcaSlicer and Creality Print ship presets for."""
+
+_BAMBU_MODEL = "Creality K1 Max"
+"""The closest printer Bambu Studio ships (it has no K2), recorded as an added model."""
 
 _VISIBLE_FILAMENTS = {
     "orca": ["Generic PLA @System", "Generic PETG @System"],
@@ -30,8 +33,13 @@ _VISIBLE_FILAMENTS = {
         "Generic PLA @Creality K2 Plus 0.4 nozzle",
         "Generic PETG @Creality K2 Plus 0.4 nozzle",
     ],
+    "bambu_studio": ["Generic PLA @Creality", "Generic PETG @Creality"],
 }
-_SETTINGS_FILE = {"orca": "OrcaSlicer.conf", "creality_print": "Creality.conf"}
+_SETTINGS_FILE = {
+    "orca": "OrcaSlicer.conf",
+    "creality_print": "Creality.conf",
+    "bambu_studio": "BambuStudio.conf",
+}
 
 
 def main(arguments: list[str]) -> int:
@@ -46,11 +54,18 @@ def main(arguments: list[str]) -> int:
     if target.exists():
         parser.error(f"{target} already exists")
     (target / "user" / "default").mkdir(parents=True)
-    settings = {
+    settings: dict[str, object] = {
         "presets": {"machine": PRINTER},
         "orca_presets": [{"machine": PRINTER}],
         "filaments": _VISIBLE_FILAMENTS[options.slicer],
     }
+    if options.slicer == "bambu_studio":
+        # Bambu Studio records added printer models and nozzle sizes instead.
+        settings = {
+            "presets": {"machine": f"{_BAMBU_MODEL} 0.4 nozzle"},
+            "models": [{"model": _BAMBU_MODEL, "nozzle_diameter": "0.4", "vendor": "Creality"}],
+            "filaments": _VISIBLE_FILAMENTS[options.slicer],
+        }
     (target / _SETTINGS_FILE[options.slicer]).write_text(json.dumps(settings, indent=2))
 
     if options.slicer == "orca":

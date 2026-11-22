@@ -8,7 +8,9 @@ from unittest.mock import Mock
 import pytest
 
 from batchslicer import app
-from batchslicer.backends.slicers import BAMBU_STUDIO, CREALITY_PRINT, SLICERS
+from batchslicer.backends.slicers import BAMBU_STUDIO as _REAL_BAMBU_STUDIO
+from batchslicer.backends.slicers import CREALITY_PRINT
+from batchslicer.backends.slicers import SLICERS as _REAL_SLICERS
 from batchslicer.cli.file_prompt import SliceInput
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
@@ -24,6 +26,12 @@ def _all_output(capsys: pytest.CaptureFixture[str]) -> str:
 def _single_input() -> SliceInput:
     """Return a one-file slicing input."""
     return SliceInput(root=Path("/models"), models=(Path("/models/cube.stl"),), is_folder=False)
+
+
+BAMBU_STUDIO = replace(_REAL_BAMBU_STUDIO, app_config_name=None)
+"""Stands in for a slicer without preset selection (every real slicer now has it)."""
+
+SLICERS = tuple(BAMBU_STUDIO if slicer.key == BAMBU_STUDIO.key else slicer for slicer in _REAL_SLICERS)
 
 
 def _outcome(
@@ -76,6 +84,8 @@ def startup_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, Mock, Mock, Mo
     monkeypatch.setattr(app, "EnvironmentService", environment_service)
     monkeypatch.setattr(app, "is_configured", Mock(return_value=True))
     monkeypatch.setattr(app, "prompt_for_slicer", Mock(return_value=BAMBU_STUDIO))
+    monkeypatch.setattr(app, "SLICERS", SLICERS)
+    monkeypatch.setattr(app, "get_slicer", lambda key: next(s for s in SLICERS if s.key == key))
     monkeypatch.setattr(app, "prompt_for_input", Mock(return_value=_single_input()))
     monkeypatch.setattr(app, "prompt_for_output", Mock(return_value=Path("/out")))
     monkeypatch.setattr(app, "OrcaBackend", Mock())

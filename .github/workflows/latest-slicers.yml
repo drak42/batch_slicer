@@ -37,7 +37,7 @@ jobs:
             env_prefix: BAMBU
             repo: bambulab/BambuStudio
             pattern: "BambuStudio_ubu24*.AppImage"
-            settings: false
+            settings: true
     steps:
       - uses: actions/checkout@v4
 
