@@ -179,3 +179,10 @@ def test_send_and_no_send_cannot_be_combined(capsys: pytest.CaptureFixture[str])
         parse_arguments(["--send", "k2", "--no-send"])
     assert stopped.value.code == 2
     assert "not allowed with" in capsys.readouterr().err
+
+
+def test_thumbnails_option() -> None:
+    """--thumbnails / --no-thumbnails; unset means the default (on)."""
+    assert parse_arguments([]).thumbnails is None
+    assert parse_arguments(["--no-thumbnails"]).thumbnails is False
+    assert parse_arguments(["--thumbnails"]).thumbnails is True

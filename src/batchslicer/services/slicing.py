@@ -15,7 +15,8 @@ slicer's auto-orient; with ``"always"`` every model is. Several models can be
 sliced at the same time (``jobs``), each by its own slicer process. The
 slicer's own status files (``result.json``, ``NNNNN.log``) are read for the
 outcome and then removed, so a job folder holds only G-code (and presets); a
-failed model in a batch leaves no folder behind. This module does not prompt
+failed model in a batch leaves no folder behind. Preview pictures are added
+to the G-code (see :mod:`batchslicer.services.thumbnails`) unless turned off. This module does not prompt
 the user or choose presets.
 """
 
@@ -36,6 +37,7 @@ from batchslicer.core.logging import get_logger
 from batchslicer.domain.options import MAX_JOBS, SliceOptions
 from batchslicer.domain.presets import PresetSelection
 from batchslicer.services.gcode_stats import GcodeStats, total_stats
+from batchslicer.services.thumbnails import ThumbnailError, add_thumbnails
 
 _RESULT_FILE_NAME = "result.json"
 _PRESETS_FOLDER_NAME = "presets"
@@ -349,6 +351,8 @@ class SlicingService:
             if detail and detail not in message and not (message and message in detail):
                 message = f"{message} ({detail})" if message else detail
         _remove_status_files(job_directory)
+        if success and self._options.thumbnails:
+            self._add_thumbnails(gcode_files)
         if success:
             self._logger.info(
                 "Sliced %s into %d G-code file(s)%s.",
@@ -368,6 +372,21 @@ class SlicingService:
             auto_oriented=auto_oriented and success,
             stats=total_stats(gcode_files) if success else GcodeStats(),
         )
+
+
+    def _add_thumbnails(self, gcode_files: Sequence[Path]) -> None:
+        """Add preview pictures to each G-code file; a problem is logged, never a failure."""
+        for gcode in gcode_files:
+            try:
+                result = add_thumbnails(gcode)
+            except (ThumbnailError, ValueError) as error:
+                self._logger.warning("No preview pictures for %s: %s", gcode, error)
+                continue
+            if result.added:
+                sizes = ", ".join(f"{width}x{height}" for width, height in result.added)
+                self._logger.info("Added preview pictures (%s) to %s", sizes, gcode)
+            else:
+                self._logger.info("No preview pictures for %s: %s", gcode, result.reason)
 
 
 def _remove_status_files(job_directory: Path) -> None:

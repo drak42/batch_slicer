@@ -545,3 +545,42 @@ def test_validation_log_that_repeats_the_message_is_not_added_again(tmp_path: Pa
     service = SlicingService(backend, logger=Mock(), clock=lambda: NOW)
 
     assert service.slice(tmp_path / "part.stl", tmp_path / "out").message == reason
+
+
+_TOOLPATHS = "; HEADER_BLOCK_END\nM83\n;TYPE:Outer wall\nG1 Z.2\nG1 X10 Y0 E1\nG1 X10 Y10 E1\nG1 X0 Y10 E1\n"
+
+
+@pytest.mark.parametrize("thumbnails", [True, False])
+def test_preview_pictures_are_added_unless_turned_off(tmp_path: Path, thumbnails: bool) -> None:
+    """Sliced G-code gets preview pictures by default; --no-thumbnails leaves it as the slicer wrote it."""
+    backend = _backend()
+
+    def slice_(model: Path, job: Path, **kwargs: object) -> OrcaResult:
+        (job / "plate_1.gcode").write_text(_TOOLPATHS)
+        return OrcaResult(True, 0, "", "", 1.0, ())
+
+    backend.slice.side_effect = slice_
+    service = SlicingService(
+        backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(thumbnails=thumbnails)
+    )
+
+    outcome = service.slice(tmp_path / "cube.stl", tmp_path / "output")
+
+    text = outcome.gcode_files[0].read_text()
+    assert ("; thumbnail begin 300x300" in text) is thumbnails
+    assert ("; thumbnail begin 96x96" in text) is thumbnails
+
+
+def test_a_picture_problem_does_not_fail_the_slice(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """If pictures cannot be added, the model still counts as sliced and the reason is logged."""
+    from batchslicer.services import slicing
+    from batchslicer.services.thumbnails import ThumbnailError
+
+    monkeypatch.setattr(slicing, "add_thumbnails", Mock(side_effect=ThumbnailError("disk full")))
+    logger = Mock()
+    service = SlicingService(_backend(), logger=logger, clock=lambda: NOW)
+
+    outcome = service.slice(tmp_path / "cube.stl", tmp_path / "output")
+
+    assert outcome.success
+    assert "disk full" in str(logger.warning.call_args)

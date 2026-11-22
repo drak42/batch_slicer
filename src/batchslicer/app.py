@@ -145,6 +145,7 @@ def _run(options: RunOptions) -> int:
         slice_options = SliceOptions(
             orient=options.orient or "off",
             allow_newer_files=bool(options.allow_newer_files),
+            thumbnails=options.thumbnails is not False,
         )
         jobs = options.jobs or 1
         _check_options(targets, slice_options)
@@ -293,6 +294,7 @@ def _plan_targets(
             ),
             jobs=options.jobs if options.jobs is not None else plan.jobs,
             exclude=options.exclude if options.exclude is not None else plan.exclude,
+            thumbnails=options.thumbnails if options.thumbnails is not None else plan.thumbnails,
         )
 
     if len(targets) > 1:
@@ -428,6 +430,7 @@ def _remember_choices(
         allow_newer_files=options.allow_newer_files,
         jobs=options.jobs,
         exclude=options.exclude,
+        thumbnails=options.thumbnails,
     )
     try:
         profiles.save(choices)

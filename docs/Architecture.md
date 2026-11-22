@@ -173,8 +173,9 @@ startup grows (for example a service registry).
 Implements reusable application services.
 
 Built: slicing one model or a batch (`services/slicing.py`), the run report
-(`services/report.py`), G-code statistics (`services/gcode_stats.py`) and
-sending G-code to printers (`services/sending.py`).
+(`services/report.py`), G-code statistics (`services/gcode_stats.py`),
+preview pictures drawn from the G-code (`services/thumbnails.py`) and sending
+G-code to printers (`services/sending.py`).
 Configuration and logging live in `core/`.
 
 Planned: queue, database, history.

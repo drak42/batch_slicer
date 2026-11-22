@@ -1,4 +1,4 @@
-"""Describe how models are sliced, beyond the presets: orientation and file versions.
+"""Describe how models are sliced, beyond the presets: orientation, file versions, pictures.
 
 These options change what is asked of the slicer for every model in a run.
 They are plain values shared by the command line, profiles and the slicing
@@ -30,6 +30,9 @@ class SliceOptions:
     allow_newer_files: bool = False
     """Let the slicer open 3MF projects saved by a newer slicer version."""
 
+    thumbnails: bool = True
+    """Add preview pictures, drawn from the G-code, for printer screens."""
+
     def describe(self) -> str:
         """Return the options that differ from the defaults, as one line ("" if none)."""
         parts = []
@@ -39,6 +42,8 @@ class SliceOptions:
             parts.append("auto-orient every model")
         if self.allow_newer_files:
             parts.append("allow newer 3MF files")
+        if not self.thumbnails:
+            parts.append("no preview pictures")
         return ", ".join(parts)
 
 

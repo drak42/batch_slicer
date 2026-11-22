@@ -6,11 +6,19 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Preview pictures in the G-code.** Printer screens (such as the K2 Plus
+  touchscreen) now show a picture of each file. Slicers draw these only in
+  their windows, so BatchSlicer draws them from the G-code's toolpaths: the
+  part as it will print, shaded, in the filament's colour, at the sizes the
+  printer preset asks for (usually 300x300 and 96x96 PNG). About a second per
+  typical model; `--no-thumbnails` turns it off, and profiles can save it.
+
 ### Changed
 
 - The README notes how sending works with the Creality K2 Plus (tested: ports
-  7125 and 4408, no API key, folders shown on the touchscreen) and that
-  G-code from the command line has no preview pictures.
+  7125 and 4408, no API key, folders shown on the touchscreen).
 
 ## [0.7.0] - 2026-11-22
 

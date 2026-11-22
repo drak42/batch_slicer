@@ -68,6 +68,9 @@ class RunOptions:
     exclude: tuple[str, ...] | None = None
     """Patterns of folders and files to leave out of a folder run (--exclude)."""
 
+    thumbnails: bool | None = None
+    """Add preview pictures to the G-code (--thumbnails / --no-thumbnails)."""
+
     send: str | None = None
     """Printer to send the G-code to (--send): a configured name or an address; ``""`` for --no-send."""
 
@@ -128,6 +131,7 @@ def parse_arguments(
         allow_newer_files=namespace.allow_newer_files,
         jobs=namespace.jobs,
         exclude=tuple(namespace.exclude) if namespace.exclude else None,
+        thumbnails=namespace.thumbnails,
         send=namespace.send,
         start=namespace.start,
     )
@@ -299,6 +303,15 @@ def _parser() -> argparse.ArgumentParser:
             "for several. Without '/' it matches any folder or file name ('Cura-*', "
             "'*_old.stl'), with '/' a path inside the folder ('kits/old'). Wildcards "
             "*, ? and [...] work; case is ignored"
+        ),
+    )
+    slicing.add_argument(
+        "--thumbnails",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "add preview pictures for printer screens to the G-code, drawn from the "
+            "G-code itself (default: on; --no-thumbnails saves about a second per model)"
         ),
     )
     sending = parser.add_argument_group("sending to a printer (Klipper/Moonraker)")

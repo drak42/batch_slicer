@@ -66,6 +66,9 @@ repeats the same run.
 - **Rescues awkwardly saved models.** With `--orient retry`, a model the slicer
   rejects is sliced again with the slicer's auto-orient. In a test on 1,719
   downloaded models this fixed 97 of 115 "Failed slicing the model" errors.
+- **Adds preview pictures for printer screens.** Slicers draw these only in
+  their windows, so BatchSlicer draws them from the G-code itself: the part as
+  it will print, in the filament's colour.
 - **Reports print time and filament.** Every run writes `report.csv` and
   `report.json` with each model's status, print time, filament weight, length
   and cost, and the summary shows the totals.
@@ -371,6 +374,7 @@ asking; anything you leave out is still asked for, unless you add
 | `--orient MODE` | the slicer's auto-orient: `off` (default), `retry` (slice a model that fails once more with auto-orient) or `always` (auto-orient every model; this may rotate parts saved the right way up). Not available for Creality Print |
 | `--allow-newer-files` | let the slicer open `.3mf` projects saved by a newer slicer version (`--no-allow-newer-files` turns off a profile's setting) |
 | `--jobs N` | slice N models at the same time (default 1); see [Speed](#speed) |
+| `--no-thumbnails` | don't add preview pictures to the G-code (see [Output](#output)); `--thumbnails` turns them back on over a profile |
 | `--exclude PATTERN` | leave out folders or files matching PATTERN when slicing a folder; repeat for several (see [Leaving models out](#leaving-models-out)) |
 | `--send PRINTER` | after slicing, upload the G-code to PRINTER: its address (`192.168.1.50`, `k2.local:4408` or a full URL) or a name from the configuration's `printers` section (see [Sending G-code to a printer](#sending-g-code-to-a-printer)); `--no-send` turns off a profile's printer |
 | `--start` | start printing once the G-code is on the printer; only for a single model that gives one G-code file |
@@ -618,9 +622,6 @@ batchslicer --profile k2-pla --input bracket.stl --send k2plus --start
 - **Creality K2 Plus** (tested): Moonraker answers on port 7125 and on 4408,
   with no API key needed, and the touchscreen shows the batch folders. Creality
   Print's device list shows the printer's address.
-- The G-code has no preview pictures, because the slicers draw those only in
-  their windows, not from the command line, so printer screens show the files
-  without a picture.
 
 ## Output
 
@@ -661,6 +662,15 @@ output/
   report and the log. The slicer's own status files (`result.json`,
   `00000.log`) are read and then removed, so result folders hold only G-code.
 - A model that was stopped by Ctrl+C leaves nothing behind (no partial G-code).
+- **Preview pictures.** Slicers draw the pictures printer screens show only
+  in their windows, so G-code sliced from the command line has none.
+  BatchSlicer adds them, drawn from the G-code itself: the walls and surfaces
+  of the part as it will print (after any auto-orient, and per plate of a
+  project), seen from the front at an angle in the filament's colour. The
+  sizes are the ones the printer preset asks for (usually 300x300 and 96x96),
+  in the PNG format OrcaSlicer and Creality Print use. It takes about a second
+  for a typical model (around 10 seconds for an 80 MB file); `--no-thumbnails`
+  skips it. G-code that already has pictures is left as it is.
 
 ### Reports
 
@@ -859,8 +869,6 @@ the Actions tab ("Latest slicers").
   filament and process for all models; to vary them, use separate runs or
   profiles.
 - **One model per plate.** Several models are not arranged onto one plate.
-- **No preview pictures** in the G-code (slicers draw them only in their
-  windows), so printer screens show sliced files without a picture.
 - **Sending needs Klipper with Moonraker.** Bambu Lab printers (LAN mode),
   OctoPrint and Creality printers without Moonraker are not supported yet.
 - **Flatpak installs are not detected** by `batchslicer setup`; configure them

@@ -284,3 +284,15 @@ def test_printer_to_send_to_is_saved_per_target(tmp_path: Path) -> None:
     assert Profile("one", targets=(Target(printer="K2 Plus", send="k2"),)).summary() == (
         "K2 Plus, send to k2"
     )
+
+
+def test_thumbnails_setting_is_saved_and_checked(tmp_path: Path) -> None:
+    """thumbnails is stored as true/false and anything else is refused."""
+    store = ProfileStore(tmp_path / "profiles.yaml")
+    store.save(Profile("quick", thumbnails=False))
+
+    assert store.get("quick").thumbnails is False
+    assert "no preview pictures" in store.get("quick").summary()
+    (tmp_path / "profiles.yaml").write_text("bad:\n  thumbnails: maybe\n")
+    with pytest.raises(ProfileError, match="thumbnails must be true or false"):
+        store.load()

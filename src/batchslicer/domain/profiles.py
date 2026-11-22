@@ -24,7 +24,7 @@ TARGET_FIELDS = ("slicer", "printer", "filament", "process", "send")
 RUN_FIELDS = ("input", "output")
 """The paths shared by every target in a run."""
 
-SETTING_FIELDS = ("orient", "allow_newer_files", "jobs", "exclude")
+SETTING_FIELDS = ("orient", "allow_newer_files", "jobs", "exclude", "thumbnails")
 """How the run slices (see :mod:`batchslicer.domain.options`), shared by every target."""
 
 _NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$")
@@ -67,6 +67,7 @@ class Profile:
     allow_newer_files: bool | None = None
     jobs: int | None = None
     exclude: tuple[str, ...] | None = None
+    thumbnails: bool | None = None
 
     @classmethod
     def single(
@@ -112,6 +113,8 @@ class Profile:
             parts.append(f"{self.jobs} job{'s' if self.jobs != 1 else ''}")
         if self.exclude:
             parts.append("excluding " + ", ".join(self.exclude))
+        if self.thumbnails is not None:
+            parts.append("preview pictures" if self.thumbnails else "no preview pictures")
         return ", ".join(parts) if parts else "no choices saved"
 
 
@@ -136,6 +139,7 @@ def combine(name: str, profiles: Iterable[Profile]) -> Profile:
         ),
         jobs=next((p.jobs for p in chosen if p.jobs is not None), None),
         exclude=next((p.exclude for p in chosen if p.exclude is not None), None),
+        thumbnails=next((p.thumbnails for p in chosen if p.thumbnails is not None), None),
     )
 
 

@@ -56,6 +56,8 @@ not slice. Everything below describes a normal run.
     model's folder, up to `--jobs` at a time. With `--orient retry` a failed
     model is sliced once more with auto-orient. The slicer's status files are
     read and removed; folders of failed or interrupted models are removed.
+    Preview pictures are drawn from each G-code file and inserted into it
+    (`services/thumbnails.py`) unless `--no-thumbnails` is given.
 12. **Report** (`services/report.py`, `services/gcode_stats.py`): write
     `report.csv` and `report.json` (kept up to date during a batch), show the
     summary with print time and filament totals and hints for failures an
