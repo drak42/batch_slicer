@@ -20,7 +20,7 @@ If the answer to any of these questions is "no", stop and rethink the implementa
 
 **Repository:** batch_slicer
 
-BatchSlicer is a professional print automation platform centred around OrcaSlicer. The long-term vision is to remove friction from the entire 3D printing workflow through reliable automation.
+BatchSlicer is a print automation platform that drives OrcaSlicer, Creality Print and Bambu Studio. The long-term vision is to remove friction from the entire 3D printing workflow through reliable automation.
 
 ---
 
@@ -62,13 +62,16 @@ The application follows a layered architecture.
 High-level responsibilities are:
 
 - Application
+- Core (configuration, logging, environment checks)
 - Services
 - Domain
 - Backends
-- Plugins
+- Plugins (planned)
 - CLI
-- Web
+- Web (planned)
 - Infrastructure
+
+docs/Modules.md lists every module and docs/Startup.md the run sequence.
 
 Do not introduce new architectural layers without discussion.
 

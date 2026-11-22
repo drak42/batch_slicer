@@ -185,9 +185,9 @@ it shows what it found and recommends the newest stable version:
 
 ```
 OrcaSlicer:
-  1) ~/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.4.0.AppImage  (version 2.4.0, recommended)
-  2) ~/Downloads/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage  (version 2.3.1)
-  3) ~/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.5.0-alpha.AppImage  (version 2.5.0, pre-release)
+  1) ~/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.5.2.AppImage  (version 2.5.2, recommended)
+  2) ~/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.4.0.AppImage  (version 2.4.0)
+  3) ~/Downloads/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.6.0-beta.AppImage  (version 2.6.0, pre-release)
   4) Don't use OrcaSlicer
 Enter for 1, or a number 1-4:
 ```
@@ -231,7 +231,7 @@ two paths; leave both empty for a slicer you do not use:
 
 ```yaml
 orca:
-  executable: "~/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.4.0.AppImage"
+  executable: "~/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.5.2.AppImage"
   datadir: "~/.config/OrcaSlicer"
 
 creality_print:
@@ -239,8 +239,8 @@ creality_print:
   datadir: "~/.config/Creality/Creality Print/7.3"
 
 bambu_studio:
-  executable: ""
-  datadir: ""
+  executable: "~/Apps/BambuStudio_ubu24-v02.09.01.70-20261103183404.AppImage"
+  datadir: "~/.config/BambuStudio"
 
 paths:              # all optional; empty means the default
   incoming: ""      # models offered for slicing   (default ~/BatchSlicer/incoming)
@@ -715,8 +715,9 @@ push to `main` and on every pull request, with Python 3.12 and 3.13):
 The tests never touch your real BatchSlicer folders or configuration.
 
 Some tests run your real slicers (checking that every option BatchSlicer uses
-is accepted, and slicing a test cube with your real presets). They are skipped
-unless you point them at your installation:
+is accepted, reading OrcaSlicer's packed `.opc` preset files, and slicing a
+test cube with your real presets). They are skipped unless you point them at
+your installation:
 
 ```bash
 BATCHSLICER_TEST_ORCA_EXECUTABLE=~/Apps/OrcaSlicer.AppImage \
@@ -724,6 +725,7 @@ BATCHSLICER_TEST_ORCA_DATADIR=~/.config/OrcaSlicer \
 BATCHSLICER_TEST_CREALITY_EXECUTABLE=~/Apps/CrealityPrint.AppImage \
 BATCHSLICER_TEST_CREALITY_DATADIR="$HOME/.config/Creality/Creality Print/7.3" \
 BATCHSLICER_TEST_BAMBU_EXECUTABLE=~/Apps/BambuStudio.AppImage \
+BATCHSLICER_TEST_BAMBU_DATADIR=~/.config/BambuStudio \
 .venv/bin/pytest
 ```
 
@@ -732,8 +734,8 @@ Re-run these after updating a slicer.
 GitHub Actions also runs these tests every week against the newest release of
 each slicer, using a minimal stand-in settings folder created by
 `scripts/make_test_slicer_data.py`, so a slicer update that changes its
-command line is noticed quickly. It can be started by hand from the Actions
-tab ("Latest slicers").
+command line or its presets is noticed quickly. It can be started by hand from
+the Actions tab ("Latest slicers").
 
 ## Current limitations
 
@@ -747,5 +749,5 @@ tab ("Latest slicers").
 - **Flatpak installs are not detected** by `batchslicer setup`; configure them
   by hand.
 
-See `docs/Architecture.md` for the design and planned features, and
-`CHANGELOG.md` for what has changed.
+See `docs/Roadmap.md` for planned features, `docs/Architecture.md` for the
+design, and `CHANGELOG.md` for what has changed.

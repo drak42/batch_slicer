@@ -40,6 +40,28 @@ If a feature does not solve a real problem, it probably should not exist.
 
 ---
 
+# Development Setup
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -e '.[dev]'
+```
+
+Before committing, run the same checks as GitHub Actions:
+
+```bash
+.venv/bin/ruff check src tests
+.venv/bin/mypy
+.venv/bin/pytest
+```
+
+After changing anything that talks to a slicer, also run the real-slicer tests
+against your installed slicers (see "Testing" in the README).
+[docs/Modules.md](docs/Modules.md) says where things live, and
+[docs/Startup.md](docs/Startup.md) what happens during a run.
+
+---
+
 # Development Workflow
 
 Every feature follows the same process.
@@ -125,7 +147,8 @@ A feature is not complete until tests pass.
    the only place the number is written.
 3. In `CHANGELOG.md`, move the entries under `[Unreleased]` into a new
    `## [X.Y.Z] - YYYY-MM-DD` section and update the comparison links at the
-   bottom. A test checks that the current version has a section.
+   bottom. A test checks that the current version has a section. In
+   `docs/Roadmap.md`, move the release's items to **Done**.
 4. Commit (`chore(release): X.Y.Z`) and merge to `main`.
 5. Tag and push: `git tag -a vX.Y.Z -m "BatchSlicer X.Y.Z"` then
    `git push origin vX.Y.Z`.

@@ -14,7 +14,7 @@
 # empty. executable is the slicer program (for example its AppImage); datadir is
 # the folder where the slicer keeps its settings and presets.
 orca:
-  executable: ""     # e.g. ~/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.4.0.AppImage
+  executable: ""     # e.g. ~/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.5.2.AppImage
   datadir: ""        # e.g. ~/.config/OrcaSlicer
 
 creality_print:
@@ -22,7 +22,7 @@ creality_print:
   datadir: ""        # e.g. ~/.config/Creality/Creality Print/7.3
 
 bambu_studio:
-  executable: ""     # e.g. ~/Apps/BambuStudio.AppImage
+  executable: ""     # e.g. ~/Apps/BambuStudio_ubu24-v02.09.01.70-20261103183404.AppImage
   datadir: ""        # e.g. ~/.config/BambuStudio
 
 # Folders. All optional; remove or leave empty to use the defaults shown.

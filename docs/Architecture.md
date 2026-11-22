@@ -1,8 +1,8 @@
 # BatchSlicer Architecture
 
-**Version:** 0.1.0-alpha  
-**Status:** Draft  
-**Last Updated:** August 2026
+**Version:** 0.6.0  
+**Status:** Current; parts marked *planned* are not built yet  
+**Last Updated:** November 2026
 
 ---
 
@@ -22,7 +22,7 @@ The architecture is expected to evolve over time, however the core design princi
 
 BatchSlicer exists to remove friction from the entire 3D printing workflow through reliable, maintainable, and thoughtfully engineered automation.
 
-The project began as a batch slicing tool for OrcaSlicer but has evolved into a print automation platform.
+The project began as a batch slicing tool for OrcaSlicer. It now drives OrcaSlicer, Creality Print and Bambu Studio, and is growing into a print automation platform.
 
 The long-term goal is to automate repetitive printing tasks while remaining understandable, extensible, and dependable.
 
@@ -86,41 +86,29 @@ Documentation should explain **why** the software behaves as it does, not simply
 
 # 4. High-Level Architecture
 
-BatchSlicer follows a layered architecture.
+BatchSlicer follows a layered architecture. As built today:
 
 ```
                         User
-
                           │
-
-                    CLI / Dashboard
-
+                    CLI (cli/)                    Dashboard (web/, planned)
                           │
-
-                    Application
-
+              Application (app.py: one run, start to finish)
                           │
-
-                  Service Registry
-
-     ┌──────────┬──────────┬──────────┐
-
-     │          │          │          │
-
- Configuration Logging Database Events
-
+        ┌─────────────────┼──────────────────┐
+        │                 │                  │
+  Core (core/)      Services (services/)   Infrastructure (infrastructure/)
+  configuration,    slicing, reports,      saved profiles
+  logging,          G-code statistics
+  environment checks      │
                           │
-
-                  Backend Manager
-
-                          │
-
-          ┌───────────────┴───────────────┐
-
-          │                               │
-
-      Orca Backend                Future Backends
+                  Backends (backends/)
+     one CLI backend for OrcaSlicer, Creality Print and Bambu Studio;
+     preset reading, .opc unpacking, installation detection
 ```
+
+Planned layers not built yet: a service registry, a database and history, an
+event system, a job queue, plugins and the web dashboard.
 
 Each layer has clearly defined responsibilities.
 
@@ -151,17 +139,20 @@ Startup failures should clearly identify the failing stage.
 ```
 src/
 └── batchslicer/
-    ├── application/
-    ├── services/
-    ├── domain/
-    ├── backends/
-    ├── plugins/
-    ├── cli/
-    ├── web/
-    └── infrastructure/
+    ├── app.py             # one run, start to finish (see Startup.md)
+    ├── core/              # configuration, locations, logging, environment checks
+    ├── cli/               # arguments, prompts, setup and doctor commands
+    ├── domain/            # plain value objects: presets, profiles, slicing options
+    ├── services/          # slicing jobs and batches, reports, G-code statistics
+    ├── backends/          # slicer CLI, presets, .opc reader, detection
+    ├── infrastructure/    # saved profiles (YAML)
+    ├── application/       # reserved (planned)
+    ├── plugins/           # reserved (planned)
+    └── web/               # reserved (planned dashboard)
 ```
 
-Each package has a single responsibility.
+Each package has a single responsibility. [Modules](Modules.md) lists every
+module.
 
 ---
 
@@ -171,19 +162,20 @@ Coordinates application startup.
 
 Contains no business logic.
 
+Today this role is filled by `app.py`; the package is reserved for when
+startup grows (for example a service registry).
+
 ---
 
 ## services
 
 Implements reusable application services.
 
-Examples:
+Built: slicing one model or a batch (`services/slicing.py`), the run report
+(`services/report.py`) and G-code statistics (`services/gcode_stats.py`).
+Configuration and logging live in `core/`.
 
-- Configuration
-- Logging
-- Queue
-- Database
-- History
+Planned: queue, database, history.
 
 ---
 
@@ -191,12 +183,8 @@ Examples:
 
 Contains pure business objects.
 
-Examples:
-
-- Job
-- Printer
-- Preset
-- Filament
+Built: `Preset`, `PresetSelection`, `Target`, `Profile`, `SliceOptions` (see
+[Data model](DataModel.md)). Planned: Job, Printer.
 
 Domain objects should never know about Flask, SQLite or OrcaSlicer.
 
@@ -242,11 +230,14 @@ Future:
 - PrusaSlicer
 - Cura
 
+Slicer processes are started and stopped by the backend itself, so several can
+run at once (`--jobs`) and Ctrl+C stops all of them.
+
 ---
 
 ## plugins
 
-Optional extensions.
+Optional extensions (planned).
 
 Plugins communicate through published interfaces only.
 
@@ -262,7 +253,7 @@ Responsible only for user interaction.
 
 ## web
 
-Flask dashboard.
+Flask dashboard (planned).
 
 Responsible only for presentation.
 
@@ -272,16 +263,16 @@ Responsible only for presentation.
 
 External integrations.
 
-Examples:
-
-- Filesystem
-- SQLite
-- Operating System
-- External Processes
+Built: the saved-profiles store (`infrastructure/profiles.py`). Planned:
+SQLite and other external storage. (Slicer processes are run by the backends.)
 
 ---
 
 # 7. Service Registry
+
+*Planned.* Today `app.py` creates the configuration, logging, profile store,
+backends and slicing services once per run and passes them on explicitly;
+modules do not create their own. A registry would formalise this.
 
 Application services are created once during startup.
 
@@ -298,43 +289,27 @@ Benefits include:
 
 # 8. Data Flow
 
-Typical slicing workflow:
+Typical slicing workflow, as built:
 
 ```
 User
-
-↓
-
-CLI
-
-↓
-
-Queue
-
-↓
-
-Backend Manager
-
-↓
-
-Orca Backend
-
-↓
-
-OrcaSlicer CLI
-
-↓
-
-Generated G-code
-
-↓
-
-Database
-
-↓
-
-History
+  ↓
+CLI: options, profiles and prompts choose slicer, presets, input, output
+  ↓
+Application (app.py)
+  ↓
+Preset library: resolves the chosen presets into complete files
+  ↓
+Slicing service: job or batch folders, up to --jobs at a time, retries
+  ↓
+Backend: slicer CLI (OrcaSlicer, Creality Print or Bambu Studio)
+  ↓
+G-code, named after each model
+  ↓
+Report (report.csv / report.json) and summary
 ```
+
+Planned: a queue before slicing, and a database and history after it.
 
 The flow should remain easy to follow.
 
@@ -397,8 +372,8 @@ The architecture should support future capabilities without major redesign.
 
 Examples include:
 
-- Multiple printers
-- Multiple slicers
+- Multiple printers (built: several printers per run)
+- Multiple slicers (built: OrcaSlicer, Creality Print, Bambu Studio)
 - Distributed workers
 - Remote dashboard
 - REST API
@@ -446,21 +421,17 @@ A feature is complete only when:
 
 ---
 
-16. Product Development Philosophy
+# 16. Product Development Philosophy
 
-This wouldn't be technical. It would capture the principles we've agreed on since the beginning:
+- We solve real problems, not hypothetical ones.
+- We favour steady, incremental improvement over rapid feature growth.
+- Every significant architectural decision is documented.
+- We challenge ideas, not people.
+- We build software that we would enjoy maintaining ourselves.
 
-We solve real problems, not hypothetical ones.
-We favour steady, incremental improvement over rapid feature growth.
-Every significant architectural decision is documented.
-We challenge ideas, not people.
-We build software that we would enjoy maintaining ourselves.
+---
 
-I think that final section will make BatchSlicer feel different. It's not just code—it's a project with a clear engineering culture. And that's something I believe will make a real difference as it grows.
-
-
-
-# Engineering Culture
+# 17. Engineering Culture
 
 This project is developed collaboratively.
 
