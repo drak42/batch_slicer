@@ -91,7 +91,7 @@ BatchSlicer follows a layered architecture. As built today:
 ```
                         User
                           │
-                    CLI (cli/)                    Dashboard (web/, planned)
+                    CLI (cli/)                    Web page (web/, planned; see WebPlan.md)
                           │
               Application (app.py: one run, start to finish)
                           │

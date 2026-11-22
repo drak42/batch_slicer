@@ -102,6 +102,10 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 ## Next
 
+- **Web interface** (agreed, see [WebPlan](WebPlan.md)): `batchslicer web`
+  in a browser on this computer, with upload, queue, results, download,
+  sending and the printers' CFS; network access with a password in the
+  release after; Docker later.
 - Multi-colour: colours for whole STL files, and the Bambu AMS.
 - Windows and macOS work continues on the `feat/windows` and `feat/macos`
   branches (draft pull requests), outside `main`.
