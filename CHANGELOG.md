@@ -6,6 +6,11 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Published on PyPI.** `pipx install batchslicer` installs it; each tagged
+  release is uploaded automatically through trusted publishing.
+
 ## [0.9.1] - 2026-11-22
 
 One failing part no longer splits a folder's plates.

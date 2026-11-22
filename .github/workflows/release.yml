@@ -1,6 +1,12 @@
-# Publish a GitHub release when a version tag (for example v0.2.0) is pushed.
-# The tag must match the version in src/batchslicer/version.py, and the release
-# notes are that version's section of CHANGELOG.md.
+# Publish a GitHub release when a version tag (for example v0.2.0) is pushed,
+# then upload the same files to PyPI. The tag must match the version in
+# src/batchslicer/version.py, and the release notes are that version's section
+# of CHANGELOG.md.
+#
+# PyPI uses trusted publishing: pypi.org trusts this workflow (owner drak42,
+# repository batch_slicer, workflow release.yml, environment pypi), so no
+# token is stored. The "pypi" environment in the repository settings can
+# require an approval before each upload.
 name: Release
 
 on:
@@ -44,6 +50,13 @@ jobs:
           python -m build
           twine check --strict dist/*
 
+      - name: Keep the package files for the PyPI upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
       - name: Release notes from CHANGELOG.md
         run: |
           python - <<'PY'
@@ -66,3 +79,22 @@ jobs:
             --title "BatchSlicer $VERSION" \
             --notes-file release-notes.md \
             $prerelease
+
+  pypi:
+    name: Publish to PyPI
+    needs: release
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/batchslicer
+    permissions:
+      id-token: write  # trusted publishing; nothing else is needed
+    steps:
+      - name: Get the package files built and checked by the release job
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Upload to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.12.4

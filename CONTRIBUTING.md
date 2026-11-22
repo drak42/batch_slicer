@@ -159,7 +159,11 @@ A feature is not complete until tests pass.
 Pushing the tag runs `.github/workflows/release.yml`: it checks that the tag
 matches the version, runs the full checks, builds the package, and publishes a
 GitHub release with the wheel and source archive attached and that version's
-changelog section as the release notes.
+changelog section as the release notes. A second job then uploads the same
+files to PyPI (https://pypi.org/p/batchslicer) through trusted publishing; if
+the `pypi` environment requires approval, approve it in the Actions tab. PyPI
+never accepts the same version twice, so a failed upload is fixed with a new
+version, not a re-run with changed files.
 
 ---
 

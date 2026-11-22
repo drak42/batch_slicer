@@ -16,7 +16,7 @@ farms spend less time managing printers and more time creating.
 ## Quick start
 
 ```bash
-pipx install ./batchslicer-*-py3-none-any.whl   # from the latest release
+pipx install batchslicer                         # from PyPI
 batchslicer setup                                # find your slicers, write the configuration
 cp ~/Downloads/*.stl ~/BatchSlicer/incoming/     # put some models where BatchSlicer looks
 batchslicer                                      # answer a few questions, get G-code
@@ -164,20 +164,27 @@ second.
 
 ## Installation
 
-### From a release (recommended)
+### From PyPI (recommended)
 
-Download the `.whl` file from the
-[latest release](https://github.com/drak42/batch_slicer/releases) and install
-it with [pipx](https://pipx.pypa.io/), which keeps BatchSlicer in its own
-environment and puts the `batchslicer` command on your PATH:
+Install it with [pipx](https://pipx.pypa.io/), which keeps BatchSlicer in its
+own environment and puts the `batchslicer` command on your PATH:
 
 ```bash
-pipx install ./batchslicer-*-py3-none-any.whl
+pipx install batchslicer
 batchslicer --version
 ```
 
-(`python3 -m pip install --user ./batchslicer-*-py3-none-any.whl` works too.)
-To upgrade, install the newer file with `pipx install --force`.
+To upgrade: `pipx upgrade batchslicer`. (`python3 -m pip install --user
+batchslicer` works too.)
+
+### From a release file
+
+Each [GitHub release](https://github.com/drak42/batch_slicer/releases) also
+has the `.whl` file attached, for installing without PyPI:
+
+```bash
+pipx install ./batchslicer-*-py3-none-any.whl
+```
 
 ### From source (for development)
 
