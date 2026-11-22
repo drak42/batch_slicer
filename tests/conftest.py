@@ -67,6 +67,8 @@ class FakeMoonraker:
     """File names whose upload is refused with an error."""
 
     klippy_state: str = "ready"
+    objects: dict[str, object] = field(default_factory=dict)
+    """Printer objects reported by /printer/objects/query, such as a CFS ``box``."""
 
 
 @pytest.fixture
@@ -97,6 +99,8 @@ def fake_moonraker() -> Iterator[FakeMoonraker]:
                 return
             if self.path == "/server/info":
                 self._send(200, {"result": {"klippy_state": state.klippy_state, "moonraker_version": "v0.9.3"}})
+            elif self.path.startswith("/printer/objects/query"):
+                self._send(200, {"result": {"status": state.objects, "eventtime": 1.0}})
             else:
                 self._send(404, {"error": {"code": 404, "message": "Not Found"}})
 

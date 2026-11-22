@@ -56,6 +56,8 @@ def test_report_is_written_as_csv_and_json(tmp_path: Path) -> None:
         "filament_g": "7.41",
         "filament_m": "2.486",
         "filament_cost": "0.15",
+        "filament_g_each": "",
+        "filament_changes": "",
         "slice_seconds": "2.9",
         "message": "",
     }

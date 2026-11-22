@@ -44,6 +44,9 @@ class RunOptions:
 
     printer: str | None = None
     filament: str | None = None
+    more_filaments: tuple[str, ...] = ()
+    """Filaments for slots 2, 3... (--filament given more than once)."""
+
     process: str | None = None
     input: Path | None = None
     output: Path | None = None
@@ -83,6 +86,9 @@ class RunOptions:
 
     start: bool = False
     """Start printing the sent G-code (--start); never remembered."""
+
+    loaded_filaments: bool | None = None
+    """Match multi-colour projects to the filaments loaded in the --send printer (--loaded-filaments)."""
 
     watch: bool = False
     """Keep running and slice each model or folder put in the input folder (--watch)."""
@@ -139,7 +145,8 @@ def parse_arguments(
     return RunOptions(
         slicer=namespace.slicer,
         printer=namespace.printer,
-        filament=namespace.filament,
+        filament=namespace.filament[0] if namespace.filament else None,
+        more_filaments=tuple(namespace.filament[1:]) if namespace.filament else (),
         process=namespace.process,
         input=namespace.input,
         output=namespace.output,
@@ -160,6 +167,7 @@ def parse_arguments(
         send=namespace.send,
         start=namespace.start,
         watch=namespace.watch,
+        loaded_filaments=namespace.loaded_filaments,
     )
 
 
@@ -353,7 +361,15 @@ def _parser() -> argparse.ArgumentParser:
         help="slicer to use: orca, creality or bambu",
     )
     parser.add_argument("--printer", metavar="NAME", help="printer preset name")
-    parser.add_argument("--filament", metavar="NAME", help="filament preset name")
+    parser.add_argument(
+        "--filament",
+        metavar="NAME",
+        action="append",
+        help=(
+            "filament preset name. Repeat for the slots of a multi-colour 3MF project "
+            "(slot 1, 2, ...); slots beyond those given use the last one"
+        ),
+    )
     parser.add_argument("--process", metavar="NAME", help="process (print settings) preset name")
     parser.add_argument(
         "--input",
@@ -460,6 +476,17 @@ def _parser() -> argparse.ArgumentParser:
         action="store_const",
         const="",
         help="don't send this run's G-code, even if the profile sends it",
+    )
+    sending.add_argument(
+        "--loaded-filaments",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "slice each colour of a multi-colour 3MF project with the filament loaded in "
+            "the --send printer's CFS that matches it best (colour and material), so the "
+            "G-code and its preview pictures show the real colours. Creality printers with "
+            "a CFS (asked in interactive runs; default: off)"
+        ),
     )
     sending.add_argument(
         "--start",

@@ -141,20 +141,38 @@ class PresetLibrary:
         process = self.resolve(selection.process)
         process["from"] = "User"
         process["print_settings_id"] = selection.process.name
-        filament = self.resolve(selection.filament)
-        filament["from"] = "User"
-        filament["filament_settings_id"] = [selection.filament.name]
 
         paths = []
-        for kind, data in (
-            (PresetKind.PRINTER, printer),
-            (PresetKind.PROCESS, process),
-            (PresetKind.FILAMENT, filament),
-        ):
+        for kind, data in ((PresetKind.PRINTER, printer), (PresetKind.PROCESS, process)):
             path = directory / f"{kind.value}.json"
             path.write_text(json.dumps(data, indent=4), encoding="utf-8")
             paths.append(path)
-        return [paths[0], paths[1]], [paths[2]]
+        filament_paths: list[Path] = []
+        written: dict[str, Path] = {}
+        for slot, preset in enumerate(selection.filaments, start=1):
+            if preset.name in written:  # the same filament in several slots shares one file
+                filament_paths.append(written[preset.name])
+                continue
+            filament = self.resolve_filament(preset)
+            name = PresetKind.FILAMENT.value + ("" if slot == 1 else f"-{slot}")
+            path = directory / f"{name}.json"
+            path.write_text(json.dumps(filament, indent=4), encoding="utf-8")
+            written[preset.name] = path
+            filament_paths.append(path)
+        return paths, filament_paths
+
+    def resolve_filament(self, preset: Preset, *, colour: str | None = None) -> dict[str, Any]:
+        """Return a filament preset as complete settings for ``--load-filaments``.
+
+        ``colour`` (``#RRGGBB``) replaces the filament's colour, which also
+        replaces the colour a 3MF project gives that slot.
+        """
+        filament = self.resolve(preset)
+        filament["from"] = "User"
+        filament["filament_settings_id"] = [preset.name]
+        if colour:
+            filament["filament_colour"] = [colour]
+        return filament
 
     def _printer_for_cli(self, printer: Preset, *, link_user_printer: bool = True) -> dict[str, Any]:
         """Return a resolved printer the CLI accepts and matches compatibility against.

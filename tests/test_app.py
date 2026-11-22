@@ -1671,7 +1671,7 @@ def _watching(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, looks: int = 2
     calls: list[tuple[SliceInput, object]] = []
 
     def slice_targets(targets: object, slice_input: SliceInput, output: Path, config: object,
-                      logger: object, options: object, jobs: int) -> int:
+                      logger: object, options: object, jobs: int, **kwargs: object) -> int:
         calls.append((slice_input, options))
         return app.EXIT_FAILURE if slice_input.models[0].name.startswith("broken") else app.EXIT_SUCCESS
 
@@ -1784,3 +1784,101 @@ def test_watch_option_conflicts(arguments: list[str], message: str, capsys: pyte
         app.main(arguments)
     assert stopped.value.code == 2
     assert message in capsys.readouterr().err
+
+
+# --- multi-material --------------------------------------------------------
+
+
+def test_a_multi_colour_print_is_sent_but_not_started(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_moonraker: FakeMoonraker,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--start never starts a multi-colour print remotely: the CFS slots are checked on the printer."""
+    from batchslicer.services.gcode_stats import GcodeStats
+
+    _store_with(monkeypatch, tmp_path)
+    _printer(monkeypatch, fake_moonraker, tmp_path)
+    outcome = app.SlicingService.return_value.slice.return_value
+    app.SlicingService.return_value.slice.return_value = replace(
+        outcome, stats=GcodeStats(filament_grams=12.0, grams_per_filament=(10.0, 2.0), filament_changes=12)
+    )
+
+    assert app.main(["--send", "k2", "--start"]) == 0
+
+    out = capsys.readouterr().out
+    assert "Not starting it: start a multi-colour print on the printer's screen" in out
+    assert fake_moonraker.forms[0]["print"] == "false"
+    assert "(10.0 g (slot 1) + 2.0 g (slot 2), 12 filament changes)" in out
+
+
+def test_loaded_filaments_are_read_and_matches_shown(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_moonraker: FakeMoonraker,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--loaded-filaments reads the printer's CFS and gives the matcher to the slicing service."""
+    from test_filaments import K2_STATUS
+
+    _store_with(monkeypatch, tmp_path)
+    _printer(monkeypatch, fake_moonraker, tmp_path)
+    fake_moonraker.objects = K2_STATUS
+    matcher = Mock()
+    matcher.loaded = ()
+    matcher.matches = {Path("/models/cube.stl"): ("slot 1 (black) -> CFS 1B dark blue PETG [PETG]",)}
+    build = Mock(return_value=matcher)
+    monkeypatch.setattr(app, "build_matcher", build)
+    monkeypatch.setattr(app, "_select_presets", Mock(return_value=_selection()))
+    monkeypatch.setattr(app, "_preset_library", Mock(return_value=Mock()))
+    monkeypatch.setattr(app, "input_from_path", Mock(return_value=_single_input()))
+
+    assert app.main(["--send", "k2", "--loaded-filaments", "--slicer", "creality", "--no-prompt",
+                     "--input", "cube.stl"]) == 0
+
+    assert [item.slot for item in build.call_args.args[0]] == ["1B", "1C", "external"]
+    assert app.SlicingService.call_args.kwargs["matcher"] is matcher
+    out = capsys.readouterr().out
+    assert "Colours matched to the loaded filaments:" in out
+    assert "    slot 1 (black) -> CFS 1B dark blue PETG [PETG]" in out
+
+
+def test_the_slot_question_offers_the_loaded_filaments(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_moonraker: FakeMoonraker,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """For a multi-colour project, the printer's loaded filaments, one filament, or a choice per slot are offered."""
+    import json
+    import zipfile
+
+    from batchslicer.domain.printers import PrinterHost
+    from test_filaments import K2_STATUS
+
+    model = tmp_path / "bumper.3mf"
+    with zipfile.ZipFile(model, "w") as archive:
+        archive.writestr("Metadata/project_settings.config", json.dumps(
+            {"filament_colour": ["#000000", "#FFFFFF"], "filament_type": ["PETG", "PETG"]}))
+    fake_moonraker.objects = K2_STATUS
+    library = Mock()
+    white = Preset("PLA White", PresetKind.FILAMENT, Path("w"), is_user=True)
+    library.filaments_for.return_value = [white]
+    target = app._ResolvedTarget(CREALITY_PRINT, library, _selection(), PrinterHost("k2", fake_moonraker.url))
+    slice_input = SliceInput(root=tmp_path, models=(model,), is_folder=False)
+    answers = iter(["1", "2", "3", "1"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(answers))
+
+    [loaded] = app._ask_filament_slots([target], slice_input, Mock())
+    [same] = app._ask_filament_slots([target], slice_input, Mock())
+    [chosen] = app._ask_filament_slots([target], slice_input, Mock())
+
+    out = capsys.readouterr().out
+    assert "bumper.3mf lists 2 filaments:" in out
+    assert "  slot 1: black PETG" in out
+    assert "Match them to the filaments loaded in k2 (CFS 1B dark blue PETG" in out
+    assert loaded.match_loaded and not same.match_loaded and same.selection == target.selection
+    assert chosen.selection is not None and chosen.selection.more_filaments == (white,)
+    single = SliceInput(root=tmp_path, models=(tmp_path / "cube.stl",), is_folder=False)
+    assert app._ask_filament_slots([target], single, Mock()) == [target]

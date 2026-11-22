@@ -6,6 +6,26 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Multi-colour 3MF projects: the slicer is given a filament for every slot
+  the project lists (before, such projects failed or kept the project's own
+  filaments for the extra slots).
+- `--filament` can be repeated, one per slot; in a profile `filament` takes a
+  list.
+- `--loaded-filaments` matches each colour of a multi-colour project to the
+  filament loaded in the `--send` printer's Creality CFS (or external spool)
+  that looks most like it, slicing it with a preset of that material in the
+  loaded colour. Interactive runs ask which way to fill the slots.
+- Preview pictures show each filament in its own colour.
+- The summary and report give the grams of each filament and the number of
+  filament changes (`filament_g_each`, `filament_changes`).
+
+### Changed
+
+- `--start` does not start a multi-colour print; it is sent, to be started on
+  the printer's screen where the CFS slots can be checked.
+
 ## [0.11.0] - 2026-11-23
 
 The watch folder runs in the background.

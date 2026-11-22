@@ -26,6 +26,7 @@ RUN_FIELDS = ("input", "output")
 
 SETTING_FIELDS = (
     "orient", "allow_newer_files", "jobs", "exclude", "thumbnails", "plates", "copies",
+    "loaded_filaments",
 )
 """How the run slices (see :mod:`batchslicer.domain.options`), shared by every target."""
 
@@ -45,9 +46,21 @@ class Target:
     send: str | None = None
     """Name of the configured printer the G-code is sent to (--send)."""
 
+    more_filaments: tuple[str, ...] = ()
+    """Filaments for slots 2, 3... of a multi-material printer (stored with ``filament`` as a list)."""
+
+    @property
+    def filaments(self) -> tuple[str, ...]:
+        """Return every chosen filament, slot 1 first; empty when none is chosen."""
+        return (self.filament, *self.more_filaments) if self.filament else ()
+
     def summary(self) -> str:
         """Return the target's choices as one line."""
-        parts = [getattr(self, key) for key in TARGET_FIELDS[:-1] if getattr(self, key)]
+        parts = [
+            " + ".join(self.filaments) if key == "filament" else getattr(self, key)
+            for key in TARGET_FIELDS[:-1]
+            if getattr(self, key)
+        ]
         if self.send:
             parts.append(f"send to {self.send}")
         return ", ".join(parts) if parts else "no choices saved"
@@ -72,6 +85,7 @@ class Profile:
     thumbnails: bool | None = None
     plates: bool | None = None
     copies: int | None = None
+    loaded_filaments: bool | None = None
 
     @classmethod
     def single(
@@ -123,6 +137,8 @@ class Profile:
             parts.append("models together on plates" if self.plates else "one model per plate")
         if self.thumbnails is not None:
             parts.append("preview pictures" if self.thumbnails else "no preview pictures")
+        if self.loaded_filaments:
+            parts.append("colours matched to the loaded filaments")
         return ", ".join(parts) if parts else "no choices saved"
 
 
@@ -150,6 +166,9 @@ def combine(name: str, profiles: Iterable[Profile]) -> Profile:
         thumbnails=next((p.thumbnails for p in chosen if p.thumbnails is not None), None),
         plates=next((p.plates for p in chosen if p.plates is not None), None),
         copies=next((p.copies for p in chosen if p.copies is not None), None),
+        loaded_filaments=next(
+            (p.loaded_filaments for p in chosen if p.loaded_filaments is not None), None
+        ),
     )
 
 

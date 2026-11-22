@@ -40,7 +40,7 @@ def test_orcaslicer_statistics_are_read(tmp_path: Path) -> None:
 
     stats = read_gcode_stats(gcode)
 
-    assert stats == GcodeStats(94330.0, 7.41, 2485.84, 0.15)
+    assert stats == GcodeStats(94330.0, 7.41, 2485.84, 0.15, (7.41,))
 
 
 def test_bambu_header_with_several_filaments_is_totalled(tmp_path: Path) -> None:
@@ -100,3 +100,30 @@ def test_durations_are_parsed(text: str, seconds: float | None) -> None:
 def test_durations_are_formatted(seconds: float, text: str) -> None:
     """Durations are shown to the minute."""
     assert format_duration(seconds) == text
+
+
+def test_multi_material_statistics_are_read(tmp_path: Path) -> None:
+    """Grams per filament and filament changes are read (OrcaSlicer and Bambu Studio wording)."""
+    orca = tmp_path / "orca.gcode"
+    orca.write_text(
+        "G1 X1\n; filament used [g] = 13.78, 0.39\n; total filament used [g] = 14.17\n"
+        "; total filament change = 36\n"
+    )
+    bambu = tmp_path / "bambu.gcode"
+    bambu.write_text("; total filament weight [g] : 10.66,0.29\nG1 X1\n")
+
+    stats = read_gcode_stats(orca)
+    assert stats.grams_per_filament == (13.78, 0.39)
+    assert stats.filament_changes == 36
+    assert stats.used_filaments() == ((1, 13.78), (2, 0.39))
+    assert read_gcode_stats(bambu).grams_per_filament == (10.66, 0.29)
+    assert read_gcode_stats(bambu).filament_changes is None
+
+    both = stats + read_gcode_stats(bambu) + GcodeStats(grams_per_filament=(1.0, 0.0, 2.0))
+    assert both.grams_per_filament == pytest.approx((25.44, 0.68, 2.0))
+    assert both.filament_changes == 36
+
+
+def test_unused_slots_are_not_counted_as_used() -> None:
+    """A project listing five filaments but printing with one uses one."""
+    assert GcodeStats(grams_per_filament=(7.4, 0.0, 0.0)).used_filaments() == ((1, 7.4),)

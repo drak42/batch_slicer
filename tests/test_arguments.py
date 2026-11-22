@@ -203,3 +203,12 @@ def test_copies_option(capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit):
             parse_arguments(["--copies", bad])
     assert "whole number from 1 to 500" in capsys.readouterr().err
+
+
+def test_filament_can_be_given_for_each_slot() -> None:
+    """--filament repeats for the slots; --loaded-filaments matches the CFS."""
+    options = parse_arguments(["--filament", "PLA Black", "--filament", "PLA White", "--loaded-filaments"])
+    assert options.filament == "PLA Black"  # type: ignore[union-attr]
+    assert options.more_filaments == ("PLA White",)  # type: ignore[union-attr]
+    assert options.loaded_filaments is True  # type: ignore[union-attr]
+    assert parse_arguments(["--no-loaded-filaments"]).loaded_filaments is False  # type: ignore[union-attr]

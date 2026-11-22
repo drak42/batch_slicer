@@ -3,7 +3,9 @@
 OrcaSlicer, Creality Print and Bambu Studio write these as comments, for
 example ``; estimated printing time (normal mode) = 1h 2m 3s`` and
 ``; total filament used [g] = 7.41``, near the end of the file (Bambu Studio
-also near the start). Only the start and end of the file are read, so large
+also near the start). A multi-material print also gives the grams of each
+filament (``; filament used [g] = 13.78, 0.39``) and the number of filament
+changes (``; total filament change = 36``). Only the start and end of the file are read, so large
 files stay quick. Values that are missing are left as ``None``. This module
 does not run slicers or change files.
 """
@@ -24,6 +26,8 @@ _TIME_NAMES = ("estimated printing time (normal mode)", "total estimated time")
 _GRAMS_NAMES = ("total filament used [g]", "total filament weight [g]", "filament used [g]")
 _LENGTH_NAMES = ("total filament length [mm]", "filament used [mm]")
 _COST_NAMES = ("total filament cost", "filament cost")
+_EACH_GRAMS_NAMES = ("filament used [g]", "total filament weight [g]")
+_CHANGES_NAMES = ("total filament change", "total filament changes")
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,14 +38,33 @@ class GcodeStats:
     filament_grams: float | None = None
     filament_millimetres: float | None = None
     filament_cost: float | None = None
+    grams_per_filament: tuple[float, ...] = ()
+    """Grams of each filament slot, in slot order; empty when not given."""
+
+    filament_changes: int | None = None
+    """How many times the printer changes filament (multi-material prints)."""
 
     def __add__(self, other: "GcodeStats") -> "GcodeStats":
         """Return the totals of two files (for example the plates of one project)."""
+        size = max(len(self.grams_per_filament), len(other.grams_per_filament))
+        mine = self.grams_per_filament + (0.0,) * (size - len(self.grams_per_filament))
+        theirs = other.grams_per_filament + (0.0,) * (size - len(other.grams_per_filament))
+        changes = _add(self.filament_changes, other.filament_changes)
         return GcodeStats(
             _add(self.print_seconds, other.print_seconds),
             _add(self.filament_grams, other.filament_grams),
             _add(self.filament_millimetres, other.filament_millimetres),
             _add(self.filament_cost, other.filament_cost),
+            tuple(a + b for a, b in zip(mine, theirs, strict=True)),
+            int(changes) if changes is not None else None,
+        )
+
+    def used_filaments(self) -> tuple[tuple[int, float], ...]:
+        """Return ``(slot number from 1, grams)`` for each filament slot that is used."""
+        return tuple(
+            (number, grams)
+            for number, grams in enumerate(self.grams_per_filament, start=1)
+            if grams > 0
         )
 
 
@@ -57,11 +80,14 @@ def read_gcode_stats(path: Path) -> GcodeStats:
         return GcodeStats()
     values = _comment_values(text)
     duration = _first(values, _TIME_NAMES)
+    changes = _number(_first(values, _CHANGES_NAMES))
     return GcodeStats(
         print_seconds=parse_duration(duration) if duration else None,
         filament_grams=_number(_first(values, _GRAMS_NAMES)),
         filament_millimetres=_number(_first(values, _LENGTH_NAMES)),
         filament_cost=_number(_first(values, _COST_NAMES)),
+        grams_per_filament=_numbers(_first(values, _EACH_GRAMS_NAMES)),
+        filament_changes=int(changes) if changes is not None else None,
     )
 
 
@@ -147,6 +173,13 @@ def _number(value: str | None) -> float | None:
         return None
     numbers = re.findall(r"-?\d+(?:\.\d+)?", value)
     return sum(float(number) for number in numbers) if numbers else None
+
+
+def _numbers(value: str | None) -> tuple[float, ...]:
+    """Return the comma-separated numbers in ``value`` (one per filament), or ``()``."""
+    if value is None:
+        return ()
+    return tuple(float(number) for number in re.findall(r"-?\d+(?:\.\d+)?", value))
 
 
 def _add(first: float | None, second: float | None) -> float | None:

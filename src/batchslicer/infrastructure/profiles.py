@@ -141,7 +141,7 @@ class ProfileStore:
             if not isinstance(values["allow_newer_files"], bool):
                 raise ProfileError(f"{where}: allow_newer_files must be true or false.")
             settings["allow_newer_files"] = values["allow_newer_files"]
-        for key in ("thumbnails", "plates"):
+        for key in ("thumbnails", "plates", "loaded_filaments"):
             if values.get(key) is not None:
                 if not isinstance(values[key], bool):
                     raise ProfileError(f"{where}: {key} must be true or false.")
@@ -175,21 +175,32 @@ class ProfileStore:
                 f"Profile '{name}' in {self._path} has unknown target settings: "
                 + ", ".join(sorted(str(key) for key in unknown))
             )
+        filament = values.get("filament")
+        more: tuple[str, ...] = ()
+        if isinstance(filament, list):
+            names = [str(item) for item in filament if item not in (None, "")]
+            if not names:
+                raise ProfileError(f"Profile '{name}' in {self._path}: filament is an empty list.")
+            filament, more = names[0], tuple(names[1:])
         return Target(
             **{
-                key: str(values[key])
+                key: str(filament if key == "filament" else values[key])
                 for key in TARGET_FIELDS
-                if values.get(key) not in (None, "")
-            }
+                if values.get(key) not in (None, "", [])
+            },
+            more_filaments=more,
         )
 
     @staticmethod
     def _stored(profile: Profile) -> dict[str, Any]:
         """Return the settings written for ``profile``."""
-        def choices(target: Target) -> dict[str, str]:
-            return {
+        def choices(target: Target) -> dict[str, Any]:
+            stored: dict[str, Any] = {
                 key: getattr(target, key) for key in TARGET_FIELDS if getattr(target, key)
             }
+            if target.more_filaments:
+                stored["filament"] = list(target.filaments)
+            return stored
 
         stored: dict[str, Any] = (
             {"targets": [choices(target) for target in profile.targets]}
@@ -218,8 +229,9 @@ class ProfileStore:
             "# slice for several printers), plus input and output, and optionally\n"
             "# orient (off/retry/always), allow_newer_files (true/false), jobs,\n"
             "# exclude (a list of patterns), thumbnails and plates (true/false), copies\n"
-            "# (a number, for a single model) and, per\n"
-            "# printer, send (a printer's address or configured name).\n"
+            "# (a number, for a single model), loaded_filaments (true/false) and, per\n"
+            "# printer, send (a printer's address or configured name). filament may\n"
+            "# be a list, one per slot of a multi-material printer (CFS, AMS).\n"
             + yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
         )
         try:

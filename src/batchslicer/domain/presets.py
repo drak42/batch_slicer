@@ -40,4 +40,13 @@ class PresetSelection:
 
     printer: Preset
     filament: Preset
+    """The filament for slot 1 (the only one, for a single-material print)."""
+
     process: Preset
+    more_filaments: tuple[Preset, ...] = ()
+    """Filaments for slots 2, 3... of a multi-material printer, when chosen."""
+
+    @property
+    def filaments(self) -> tuple[Preset, ...]:
+        """Return the filament of every chosen slot, slot 1 first."""
+        return (self.filament, *self.more_filaments)

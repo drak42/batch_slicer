@@ -27,6 +27,7 @@ from pathlib import Path
 from batchslicer.backends.orca import OrcaBackend
 from batchslicer.backends.presets import PresetError, PresetLibrary
 from batchslicer.backends.profiles import find_system_profiles
+from batchslicer.backends.projects import project_filaments
 from batchslicer.backends.slicers import SLICERS, SlicerDefinition, get_slicer, is_configured
 from batchslicer.banner import get_banner
 from batchslicer.cli.arguments import RunOptions, parse_arguments
@@ -37,9 +38,9 @@ from batchslicer.cli.file_prompt import (
     input_from_path,
     prompt_for_input,
 )
-from batchslicer.cli.menu import ask_number, confirm
+from batchslicer.cli.menu import ask_number, choose, confirm
 from batchslicer.cli.output_prompt import output_from_path, prompt_for_output
-from batchslicer.cli.preset_prompt import find_preset, select_presets
+from batchslicer.cli.preset_prompt import choose_preset, find_preset, select_presets
 from batchslicer.cli.profile_prompt import prompt_for_profile
 from batchslicer.cli.send_prompt import prompt_for_printer
 from batchslicer.cli.service import ServiceOptions, run_service
@@ -48,6 +49,7 @@ from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slice
 from batchslicer.core.config import Config, find_config_file, get_config
 from batchslicer.core.environment import EnvironmentService
 from batchslicer.core.logging import configure_logging, current_log_file
+from batchslicer.domain.filaments import LoadedFilament, ProjectFilament, describe_project_slot
 from batchslicer.domain.options import COPYABLE_SUFFIXES, MAX_COPIES, SliceOptions
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.domain.printers import PrinterHost, host_from_address, printer_hosts
@@ -55,6 +57,7 @@ from batchslicer.domain.profiles import LAST_RUN, Profile, Target, combine, is_v
 from batchslicer.infrastructure.printer_api import PrinterError
 from batchslicer.infrastructure.printer_clients import client_for
 from batchslicer.infrastructure.profiles import ProfileError, ProfileStore
+from batchslicer.services.filament_matching import FilamentMatcher, build_matcher
 from batchslicer.services.gcode_stats import GcodeStats, format_duration
 from batchslicer.services.report import write_report
 from batchslicer.services.sending import SendingService, SendOutcome, SentFile, plan_uploads
@@ -83,6 +86,12 @@ _HINTS = (
         lambda options: not options.allow_newer_files,
         "{count} project(s) were saved by a newer slicer version; --allow-newer-files "
         "lets the slicer try them (or update the slicer).",
+    ),
+    (
+        ("temperature difference of the filaments",),
+        lambda options: True,
+        "{count} multi-colour project(s) were given filaments that print at temperatures "
+        "too far apart (such as PLA with PETG); choose filaments of one kind for all slots.",
     ),
 )
 """(texts in a failure message, whether the hint applies, hint) for failures an option may fix."""
@@ -184,6 +193,15 @@ def _run(options: RunOptions) -> int:
         _check_options(targets, slice_options)
         if not from_profile and options.send is None and not options.no_prompt:
             targets = _ask_to_send(targets, profiles, config)
+        if (
+            not from_profile
+            and not options.no_prompt
+            and options.filament is None
+            and options.loaded_filaments is None
+        ):
+            targets = _ask_filament_slots(targets, slice_input, logger)
+            if any(target.match_loaded for target in targets):
+                options = replace(options, loaded_filaments=True)
         _check_start(options.start, targets, slice_input)
         output_directory = _select_output(options, config)
         _check_printers(targets, logger)
@@ -204,6 +222,7 @@ def _run(options: RunOptions) -> int:
             slice_options,
             jobs,
             start=options.start,
+            loaded_filaments=bool(options.loaded_filaments),
         )
     except _StartupFailed:
         return EXIT_FAILURE
@@ -263,13 +282,17 @@ class _ResolvedTarget:
     host: PrinterHost | None = None
     """The printer the G-code is sent to, if any."""
 
+    match_loaded: bool = False
+    """Match multi-colour projects to the filaments loaded in ``host`` (asked interactively)."""
+
     def describe(self) -> str:
         """Return the slicer and presets as one line."""
         if self.selection is None:
             return self.slicer.display_name
+        filaments = " + ".join(preset.name for preset in self.selection.filaments)
         return (
             f"{self.slicer.display_name}: {self.selection.printer.name} / "
-            f"{self.selection.filament.name} / {self.selection.process.name}"
+            f"{filaments} / {self.selection.process.name}"
         )
 
     def folder_name(self) -> str:
@@ -285,6 +308,11 @@ class _ResolvedTarget:
             filament=self.selection.filament.name if self.selection else None,
             process=self.selection.process.name if self.selection else None,
             send=self.host.name if self.host else None,
+            more_filaments=(
+                tuple(preset.name for preset in self.selection.more_filaments)
+                if self.selection
+                else ()
+            ),
         )
 
 
@@ -331,6 +359,11 @@ def _plan_targets(
             thumbnails=options.thumbnails if options.thumbnails is not None else plan.thumbnails,
             plates=options.plates if options.plates is not None else plan.plates,
             copies=options.copies if options.copies is not None else plan.copies,
+            loaded_filaments=(
+                options.loaded_filaments
+                if options.loaded_filaments is not None
+                else plan.loaded_filaments
+            ),
         )
 
     if len(targets) > 1:
@@ -349,6 +382,7 @@ def _plan_targets(
                 filament=options.filament or base.filament,
                 process=options.process or base.process,
                 send=options.send or base.send,
+                more_filaments=options.more_filaments if options.filament else base.more_filaments,
             )
         ]
     if options.send == "":
@@ -582,6 +616,7 @@ def _remember_choices(
         thumbnails=options.thumbnails,
         plates=options.plates,
         copies=options.copies,
+        loaded_filaments=options.loaded_filaments,
     )
     if remember_last:
         try:
@@ -662,7 +697,8 @@ def _watch(
                 copies=copies if copyable else 1,
             )
             status = _slice_targets(
-                targets, slice_input, output_directory, config, logger, drop_options, jobs
+                targets, slice_input, output_directory, config, logger, drop_options, jobs,
+                loaded_filaments=bool(options.loaded_filaments),
             )
         except (SlicerSelectionError, PresetError, PrinterError, OSError, ValueError) as error:
             _error(f"Could not slice {drop.name}: {error}")
@@ -794,10 +830,19 @@ def _select_presets(
         process=spec.process,
         prompt=not no_prompt,
     )
+    if spec.more_filaments:
+        compatible = library.filaments_for(selection.printer)
+        selection = replace(
+            selection,
+            more_filaments=tuple(
+                find_preset(PresetKind.FILAMENT, compatible, name, printer=selection.printer)
+                for name in spec.more_filaments
+            ),
+        )
     logger.info(
         "Selected presets: printer=%s, filament=%s, process=%s",
         selection.printer.name,
-        selection.filament.name,
+        " + ".join(preset.name for preset in selection.filaments),
         selection.process.name,
     )
     return selection
@@ -869,7 +914,13 @@ def _show_ready(
         print(f"BatchSlicer ready. Slicer: {target.slicer.display_name}.")
         if target.selection is not None:
             print(f"  Printer:  {target.selection.printer.name}")
-            print(f"  Filament: {target.selection.filament.name}")
+            filaments = target.selection.filaments
+            if len(filaments) == 1:
+                print(f"  Filament: {filaments[0].name}")
+            else:
+                print("  Filaments:")
+                for slot, preset in enumerate(filaments, start=1):
+                    print(f"    slot {slot}: {preset.name}")
             print(f"  Process:  {target.selection.process.name}")
         if target.host is not None:
             then = ", then start printing" if start else ""
@@ -894,12 +945,15 @@ def _slice_targets(
     jobs: int = 1,
     *,
     start: bool = False,
+    loaded_filaments: bool = False,
 ) -> int:
     """Slice the input for every target and return the run's exit status.
 
     With several targets, each one's results go into its own subfolder of the
     output folder, named after the printer. A target with a printer to send to
-    has its G-code sent once it is sliced.
+    has its G-code sent once it is sliced. With ``loaded_filaments``, the
+    filaments loaded in that printer are read first, and multi-colour projects
+    are matched to them.
     """
     multi = len(targets) > 1
     folders = _unique_folder_names(targets) if multi else [""]
@@ -910,12 +964,18 @@ def _slice_targets(
             print("")
             print(f"=== Printer {number} of {len(targets)}: {target.describe()} ===")
         backend = OrcaBackend(slicer=target.slicer, config=config, logger=logger)
+        matcher = (
+            _filament_matcher(target, logger)
+            if loaded_filaments or target.match_loaded
+            else None
+        )
         service = SlicingService(
-            backend, presets=target.library, logger=logger, options=options
+            backend, presets=target.library, logger=logger, options=options, matcher=matcher
         )
         if slice_input.is_folder:
             batch = _slice_folder(service, slice_input, destination, target.selection, jobs)
             _report_batch(batch, slice_input.root, options or SliceOptions())
+            _report_matches(matcher, slice_input.root)
             if batch.interrupted:
                 skipped = len(targets) - number
                 if skipped:
@@ -928,6 +988,7 @@ def _slice_targets(
             print(f"Slicing {model.name} with {target.slicer.display_name}...")
             outcome = service.slice(model, destination, target.selection)
             _report(outcome, options or SliceOptions())
+            _report_matches(matcher, slice_input.root)
             sent = _send(target, [outcome], destination, logger, start=start)
             results.append((target, outcome.success and sent))
 
@@ -938,6 +999,131 @@ def _slice_targets(
         for target, ok in results:
             print(f"  {'ok    ' if ok else 'FAILED'} {target.describe()}")
     return EXIT_SUCCESS if all(ok for _, ok in results) else EXIT_FAILURE
+
+
+_MAX_PROJECTS_CHECKED = 2000
+"""How many 3MF files are looked into for the multi-colour question."""
+
+
+def _multi_colour_projects(slice_input: SliceInput) -> list[tuple[Path, tuple[ProjectFilament, ...]]]:
+    """Return the input's 3MF projects listing filaments of different colours or materials.
+
+    The one listing the most filaments comes first.
+    """
+    projects = []
+    models = [model for model in slice_input.models if model.suffix.casefold() == ".3mf"]
+    for model in models[:_MAX_PROJECTS_CHECKED]:
+        slots = project_filaments(model)
+        kinds = {(slot.colour.casefold(), slot.material.casefold()) for slot in slots}
+        if len(slots) > 1 and len(kinds) > 1:
+            projects.append((model, slots))
+    return sorted(projects, key=lambda item: -len(item[1]))
+
+
+def _ask_filament_slots(
+    targets: list[_ResolvedTarget],
+    slice_input: SliceInput,
+    logger: logging.Logger,
+) -> list[_ResolvedTarget]:
+    """Ask how to fill the filament slots when the input has a multi-colour project.
+
+    Offered for each printer: matching the colours to the filaments loaded in
+    the printer it sends to (when it reports any), the chosen filament in every
+    slot, or a filament chosen for each slot.
+    """
+    projects = _multi_colour_projects(slice_input)
+    if not projects:
+        return targets
+    model, slots = projects[0]
+    print("")
+    more = f" (of {len(projects)} multi-colour projects, the one with the most)" if len(projects) > 1 else ""
+    print(f"{_label(model, slice_input.root)} lists {len(slots)} filaments{more}:")
+    for number, slot in enumerate(slots, start=1):
+        print(f"  slot {number}: {describe_project_slot(slot)}")
+    answered = []
+    for target in targets:
+        if target.selection is None or target.library is None:
+            answered.append(target)
+            continue
+        answered.append(_fill_slots(target, slots, len(targets) > 1, logger))
+    return answered
+
+
+def _fill_slots(
+    target: _ResolvedTarget,
+    slots: Sequence[ProjectFilament],
+    several: bool,
+    logger: logging.Logger,
+) -> _ResolvedTarget:
+    """Ask one printer's way of filling the slots and return it with the answer."""
+    if target.selection is None or target.library is None:
+        return target
+    loaded: list[LoadedFilament] = []
+    if target.host is not None:
+        try:
+            loaded = client_for(target.host).loaded_filaments()
+        except PrinterError as error:
+            logger.warning("Could not read loaded filaments from %s: %s", target.host.name, error)
+    ways: list[tuple[str, str]] = []
+    if loaded and target.host is not None:
+        names = ", ".join(filament.describe() for filament in loaded)
+        ways.append(("loaded", f"Match them to the filaments loaded in {target.host.name} ({names})"))
+    ways.append(("same", f"Use {target.selection.filament.name} in every slot"))
+    ways.append(("choose", "Choose a filament for each slot"))
+    where = f" for {target.selection.printer.name}" if several else ""
+    way = choose(
+        ways,
+        noun="way to fill the slots",
+        plural="ways to fill the slots",
+        label=lambda item: item[1],
+        read_line=input,
+        write=print,
+        prompt="Number: ",
+        heading=f"How should the filament slots be filled{where}?",
+    )[0]
+    if way == "loaded":
+        return replace(target, match_loaded=True)
+    if way == "same":
+        return target
+    compatible = target.library.filaments_for(target.selection.printer)
+    print(f"Slot 1 uses {target.selection.filament.name}.")
+    chosen = []
+    for number, slot in enumerate(slots[1:], start=2):
+        print(f"Filament for slot {number} ({describe_project_slot(slot)}):")
+        chosen.append(choose_preset(PresetKind.FILAMENT, compatible, input, print))
+    return replace(target, selection=replace(target.selection, more_filaments=tuple(chosen)))
+
+
+def _filament_matcher(target: _ResolvedTarget, logger: logging.Logger) -> FilamentMatcher | None:
+    """Return a matcher for the filaments loaded in the target's printer, or None (saying why)."""
+    if target.host is None or target.library is None or target.selection is None:
+        print("Not matching colours to loaded filaments: that needs --send PRINTER and presets.")
+        return None
+    try:
+        loaded = client_for(target.host).loaded_filaments()
+    except PrinterError as error:
+        _error(f"Could not read the filaments loaded in {target.host.name}: {error}")
+        logger.warning("Could not read loaded filaments from %s: %s", target.host.name, error)
+        return None
+    matcher = build_matcher(loaded, target.library, target.selection, logger=logger)
+    if matcher is None:
+        print(f"{target.host.name} reports no loaded filaments; using the chosen filaments.")
+        return None
+    print(f"Filaments loaded in {target.host.name}:")
+    for item in matcher.loaded:
+        print(f"  {item.loaded.describe()}  (sliced as {item.preset.name})")
+    return matcher
+
+
+def _report_matches(matcher: FilamentMatcher | None, root: Path) -> None:
+    """Show which loaded filament each slot of each multi-colour project uses."""
+    if matcher is None or not matcher.matches:
+        return
+    print("Colours matched to the loaded filaments:")
+    for model, lines in matcher.matches.items():
+        print(f"  {_label(model, root)}:")
+        for line in lines:
+            print(f"    {line}")
 
 
 def _send(
@@ -962,6 +1148,12 @@ def _send(
         state = "sent" if result.success else f"FAILED: {result.error}"
         print(f"  [{number}/{count}] {result.upload.remote_path} ... {state}", flush=True)
 
+    if start and any(len(item.stats.used_filaments()) > 1 for item in outcomes):
+        print(
+            "  Not starting it: start a multi-colour print on the printer's screen, where you "
+            "can check which CFS slot each colour comes from."
+        )
+        start = False
     service = SendingService(client_for(target.host), logger=logger)
     outcome = service.send(uploads, start=start, on_result=on_result)
     _report_sending(outcome, start)
@@ -1207,6 +1399,13 @@ def _describe_stats(stats: GcodeStats) -> str:
     if stats.filament_grams is not None:
         grams = stats.filament_grams
         parts.append(f"{grams / 1000:.2f} kg filament" if grams >= 1000 else f"{grams:.0f} g filament")
+        used = stats.used_filaments()
+        if len(used) > 1:
+            each = " + ".join(f"{amount:.1f} g (slot {number})" for number, amount in used)
+            changes = (
+                f", {stats.filament_changes} filament changes" if stats.filament_changes else ""
+            )
+            parts[-1] += f" ({each}{changes})"
     if stats.filament_cost is not None and stats.filament_cost > 0:
         parts.append(f"filament cost {stats.filament_cost:.2f}")
     return ", ".join(parts)

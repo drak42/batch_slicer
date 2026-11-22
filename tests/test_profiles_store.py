@@ -317,3 +317,24 @@ def test_copies_setting_is_saved_and_checked(tmp_path: Path) -> None:
     (tmp_path / "profiles.yaml").write_text("bad:\n  copies: lots\n")
     with pytest.raises(ProfileError, match="copies must be a whole number"):
         store.load()
+
+
+def test_filaments_per_slot_are_saved_as_a_list(tmp_path: Path) -> None:
+    """Several filaments are stored as a list under filament and read back in order."""
+    from batchslicer.domain.profiles import Target
+
+    store = ProfileStore(tmp_path / "profiles.yaml")
+    target = Target(slicer="orca", printer="K2", filament="PLA Black", more_filaments=("PLA White", "PLA Red"))
+    store.save(Profile("colours", targets=(target,), loaded_filaments=True))
+
+    assert yaml.safe_load((tmp_path / "profiles.yaml").read_text())["colours"]["filament"] == [
+        "PLA Black", "PLA White", "PLA Red",
+    ]
+    saved = store.get("colours")
+    assert saved.targets[0].filaments == ("PLA Black", "PLA White", "PLA Red")
+    assert saved.loaded_filaments is True
+    assert "PLA Black + PLA White + PLA Red" in saved.summary()
+    assert "colours matched to the loaded filaments" in saved.summary()
+    (tmp_path / "profiles.yaml").write_text("bad:\n  filament: []\n")
+    with pytest.raises(ProfileError):
+        store.load()

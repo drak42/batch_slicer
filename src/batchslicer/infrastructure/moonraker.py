@@ -2,17 +2,22 @@
 
 Two calls are used: ``GET /server/info`` to check that the printer answers,
 and ``POST /server/files/upload`` to store a G-code file in the printer's
-``gcodes`` folder, optionally starting it as a print. Files are streamed from
+``gcodes`` folder, optionally starting it as a print. On Creality printers
+with a CFS, ``GET /printer/objects/query?box&filament_rack`` tells which
+filaments are loaded. Files are streamed from
 disk, so large G-code is not read into memory. Only the Python standard
 library is used. This module does not choose files or decide whether to
 start a print; that is the sending service's job.
 """
 
+import re
+from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.error import HTTPError
 from urllib.request import Request
 
+from batchslicer.domain.filaments import LoadedFilament
 from batchslicer.domain.printers import PrinterHost
 from batchslicer.infrastructure.printer_api import (
     PrinterError,
@@ -64,6 +69,16 @@ class MoonrakerClient:
             software=f"Moonraker {version}".strip(),
         )
 
+    def loaded_filaments(self) -> list[LoadedFilament]:
+        """Return the filaments loaded in the printer's CFS and external spool holder.
+
+        Printers without a CFS (or whose Moonraker does not report one) give an
+        empty list.
+        """
+        request = Request(self._url("/printer/objects/query?box&filament_rack"), headers=self._headers())
+        status = self._request(request, self._timeout).get("status", {})
+        return parse_creality_filaments(status if isinstance(status, Mapping) else {})
+
     def upload(self, path: Path, folder: str = "", *, start: bool = False) -> UploadResult:
         """Upload ``path`` into ``folder`` of the printer's G-code files.
 
@@ -103,6 +118,55 @@ class MoonrakerClient:
             raise PrinterError(f"{self._host.describe()} gave an unexpected answer.")
         result = data.get("result", data)
         return result if isinstance(result, dict) else {}
+
+
+def parse_creality_filaments(status: Mapping[str, Any]) -> list[LoadedFilament]:
+    """Return the loaded filaments in a Creality printer's ``box`` and ``filament_rack`` status.
+
+    Each CFS unit (``T1`` to ``T4``) has four slots, A to D, each with a
+    ``color_value`` (a digit, then ``RRGGBB``) and a ``material_type`` code;
+    ``same_material`` names the codes in use. A slot whose ``vender`` is
+    ``none`` or ``-1``, or without a colour or material, is empty. The external
+    spool holder is ``filament_rack``.
+    """
+    box = status.get("box")
+    box = box if isinstance(box, Mapping) else {}
+    names: dict[str, str] = {}
+    for group in box.get("same_material") or []:
+        if isinstance(group, list) and len(group) >= 4 and isinstance(group[3], str):
+            names[str(group[0])] = group[3]
+    loaded: list[LoadedFilament] = []
+    for unit in range(1, 5):
+        values = box.get(f"T{unit}")
+        if not isinstance(values, Mapping):
+            continue
+        colours = _list(values.get("color_value"))
+        materials = _list(values.get("material_type"))
+        vendors = _list(values.get("vender"))
+        for index, letter in enumerate("ABCD"):
+            vendor = vendors[index] if index < len(vendors) else "-1"
+            colour = _creality_colour(colours[index] if index < len(colours) else "-1")
+            material = materials[index] if index < len(materials) else "-1"
+            if vendor in ("none", "-1") or colour is None or material in ("-1", ""):
+                continue
+            loaded.append(LoadedFilament(f"{unit}{letter}", colour, names.get(material, "")))
+    rack = status.get("filament_rack")
+    if isinstance(rack, Mapping):
+        colour = _creality_colour(str(rack.get("color_value", "-1")))
+        material = str(rack.get("material_type", "-1"))
+        if colour is not None and material not in ("-1", ""):
+            loaded.append(LoadedFilament("external", colour, names.get(material, "")))
+    return loaded
+
+
+def _list(value: Any) -> list[str]:
+    return [str(item) for item in value] if isinstance(value, list) else []
+
+
+def _creality_colour(value: str) -> str | None:
+    """Return a Creality ``color_value`` (``0RRGGBB``) as ``#RRGGBB``, or None."""
+    match = re.fullmatch(r"[0-9A-Fa-f]?([0-9A-Fa-f]{6})", value.strip())
+    return f"#{match.group(1).upper()}" if match else None
 
 
 def _refusal(host: PrinterHost, error: HTTPError, body: Any) -> str:

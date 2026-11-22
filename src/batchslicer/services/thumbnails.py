@@ -5,7 +5,9 @@ their windows; G-code sliced from the command line has none. This module
 draws them from the toolpaths in the G-code: every extruding move of the
 model (walls, surfaces, bridges; not skirt, brim, support, purge lines or
 hidden infill) is seen from the front at an angle, shaded, and coloured with
-the filament colour. Because the picture comes from the G-code, it shows the
+the filament colour; a multi-material print shows each part of the model in
+the colour of the filament that prints it (following the ``T0``, ``T1``...
+tool changes). Because the picture comes from the G-code, it shows the
 part exactly as it will print, including auto-orient and each plate of a
 project. The sizes are the ones the printer preset asks for
 (``; thumbnails = 300x300/PNG, 96x96/PNG``), written as PNG in the block
@@ -23,6 +25,7 @@ import zlib
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TypeGuard, cast
 
 DEFAULT_SIZES: tuple[tuple[int, int], ...] = ((300, 300), (96, 96))
 """Sizes used when the G-code does not say which the printer wants."""
@@ -53,9 +56,13 @@ _LIGHT = (-0.45, -0.55, 0.70)
 """Light direction in picture space (x right, y down, towards the viewer)."""
 
 _DEFAULT_COLOUR = (0x9A, 0x9F, 0xA6)
+_MAX_TOOLS = 64
+"""Tool numbers from here on are not filaments (Bambu uses ``T255`` and ``T1000`` for other jobs)."""
 
-Segment = tuple[float, float, float, float, float]
-"""An extruding move: ``(x0, y0, x1, y1, z)`` in millimetres."""
+Colour = tuple[int, int, int]
+
+Segment = tuple[float, float, float, float, float, int]
+"""An extruding move: ``(x0, y0, x1, y1, z, tool)`` in millimetres; ``tool`` is the filament slot from 0."""
 
 
 class ThumbnailError(Exception):
@@ -95,9 +102,9 @@ def add_thumbnails(path: Path, sizes: Sequence[tuple[int, int]] | None = None) -
     segments = list(extrusions(text.splitlines()))
     if not segments:
         return ThumbnailResult(reason="no model toolpaths found")
-    colour = _filament_colour(tail)
+    colours = _filament_colours(tail)
     blocks = "".join(
-        _thumbnail_block(width, height, render_png(segments, width, height, colour))
+        _thumbnail_block(width, height, render_png(segments, width, height, colours))
         for width, height in wanted
     )
     _write_with_block(path, text, blocks)
@@ -111,9 +118,11 @@ def extrusions(lines: Iterable[str]) -> Iterable[Segment]:
     relative (``M83``) or absolute (``M82``, with ``G92`` resets). Arcs
     (``G2``/``G3``) are followed in short straight pieces. Moves before the
     first feature marker (``;TYPE:`` or ``; FEATURE:``), such as a purge line,
-    and features in :data:`_HIDDEN_FEATURES` are skipped.
+    and features in :data:`_HIDDEN_FEATURES` are skipped. Each move carries the
+    tool (filament slot) chosen by the last ``T<n>`` line before it.
     """
     x = y = z = e = 0.0
+    tool = 0
     relative_xyz = False
     relative_e = False
     shown = False
@@ -126,6 +135,11 @@ def extrusions(lines: Iterable[str]) -> Iterable[Segment]:
                 shown = line[6:].strip().casefold() not in _HIDDEN_FEATURES
             elif line.startswith("; FEATURE:"):
                 shown = line[10:].strip().casefold() not in _HIDDEN_FEATURES
+            continue
+        if first == "T":
+            number = line[1:].partition(";")[0].strip()
+            if number.isdigit() and int(number) < _MAX_TOOLS:
+                tool = int(number)
             continue
         if first not in "GM":
             continue
@@ -155,9 +169,9 @@ def extrusions(lines: Iterable[str]) -> Iterable[Segment]:
             if extruding and shown and code != "G0":
                 if code == "G1":
                     if nx != x or ny != y:
-                        yield (x, y, nx, ny, nz)
+                        yield (x, y, nx, ny, nz, tool)
                 else:
-                    yield from _arc(x, y, nx, ny, nz, words, clockwise=code == "G2")
+                    yield from _arc(x, y, nx, ny, nz, tool, words, clockwise=code == "G2")
             x, y, z = nx, ny, nz
         elif code == "G90":
             relative_xyz = False
@@ -176,10 +190,10 @@ def render_png(
     segments: Sequence[Segment],
     width: int,
     height: int,
-    colour: tuple[int, int, int] = _DEFAULT_COLOUR,
+    colours: Colour | Sequence[Colour] = _DEFAULT_COLOUR,
 ) -> bytes:
     """Return a PNG picture of ``segments``, ``width`` by ``height``, transparent around the part."""
-    pixels = render(segments, width, height, colour)
+    pixels = render(segments, width, height, colours)
     return encode_png(pixels, width, height)
 
 
@@ -187,9 +201,13 @@ def render(
     segments: Sequence[Segment],
     width: int,
     height: int,
-    colour: tuple[int, int, int] = _DEFAULT_COLOUR,
+    colours: Colour | Sequence[Colour] = _DEFAULT_COLOUR,
 ) -> bytearray:
-    """Return RGBA pixels (rows top to bottom) of ``segments`` seen from the front at an angle."""
+    """Return RGBA pixels (rows top to bottom) of ``segments`` seen from the front at an angle.
+
+    ``colours`` is one colour for every filament, or one per filament slot
+    (a slot without a colour uses the last one given).
+    """
     if not (0 < width <= _MAX_SIDE and 0 < height <= _MAX_SIDE):
         raise ThumbnailError(f"Unsupported picture size {width}x{height}")
     cos_a, sin_a = math.cos(_AZIMUTH), math.sin(_AZIMUTH)
@@ -205,7 +223,7 @@ def render(
     # Fit the part (all segment ends) into the picture with a small margin.
     xs: list[float] = []
     ys: list[float] = []
-    for x0, y0, x1, y1, z in segments:
+    for x0, y0, x1, y1, z, _ in segments:
         for px, py in ((x0, y0), (x1, y1)):
             across, up, _ = project(px, py, z)
             xs.append(across)
@@ -219,9 +237,10 @@ def render(
 
     inf = math.inf
     depth_buffer = [inf] * (width * height)
+    tool_buffer = [0] * (width * height)
     radius = 1 if scale * 0.45 >= 1.6 else 0
     step = 0.7 / scale  # millimetres between samples: under one pixel
-    for x0, y0, x1, y1, z in segments:
+    for x0, y0, x1, y1, z, tool in segments:
         length = math.hypot(x1 - x0, y1 - y0)
         count = max(1, int(length / step))
         a0, u0, d0 = project(x0, y0, z)
@@ -242,13 +261,16 @@ def render(
                         for qx in (px, px + 1):
                             if 0 <= qx < width and depth < depth_buffer[row + qx]:
                                 depth_buffer[row + qx] = depth
+                                tool_buffer[row + qx] = tool
             elif 0 <= px < width and 0 <= py < height:
                 index = py * width + px
                 if depth < depth_buffer[index]:
                     depth_buffer[index] = depth
+                    tool_buffer[index] = tool
 
-    _fill_pinholes(depth_buffer, width, height)
-    return _shade(depth_buffer, width, height, scale, colour)
+    _fill_pinholes(depth_buffer, tool_buffer, width, height)
+    palette = [colours] if _is_colour(colours) else list(cast(Sequence[Colour], colours))
+    return _shade(depth_buffer, tool_buffer, width, height, scale, palette)
 
 
 def encode_png(pixels: bytes | bytearray, width: int, height: int) -> bytes:
@@ -294,6 +316,7 @@ def _arc(
     x1: float,
     y1: float,
     z: float,
+    tool: int,
     words: dict[str, float],
     *,
     clockwise: bool,
@@ -303,7 +326,7 @@ def _arc(
     cy = y0 + words.get("J", 0.0)
     radius = math.hypot(x0 - cx, y0 - cy)
     if radius < 1e-6:
-        yield (x0, y0, x1, y1, z)
+        yield (x0, y0, x1, y1, z, tool)
         return
     start = math.atan2(y0 - cy, x0 - cx)
     end = math.atan2(y1 - cy, x1 - cx)
@@ -317,12 +340,16 @@ def _arc(
     for i in range(1, pieces + 1):
         angle = start + sweep * i / pieces
         nx, ny = (x1, y1) if i == pieces else (cx + radius * math.cos(angle), cy + radius * math.sin(angle))
-        yield (px, py, nx, ny, z)
+        yield (px, py, nx, ny, z, tool)
         px, py = nx, ny
 
 
-def _fill_pinholes(depth: list[float], width: int, height: int) -> None:
-    """Fill empty pixels surrounded by the part (gaps between toolpaths) with their neighbours."""
+def _fill_pinholes(depth: list[float], tools: list[int], width: int, height: int) -> None:
+    """Fill empty pixels surrounded by the part (gaps between toolpaths) with their neighbours.
+
+    A filled pixel takes the depth average of its neighbours and the tool of
+    the nearest one.
+    """
     inf = math.inf
     holes = []
     for py in range(1, height - 1):
@@ -331,37 +358,36 @@ def _fill_pinholes(depth: list[float], width: int, height: int) -> None:
             index = row + px
             if depth[index] != inf:
                 continue
-            around = [
-                value
-                for value in (
-                    depth[index - 1], depth[index + 1], depth[index - width], depth[index + width],
-                    depth[index - width - 1], depth[index - width + 1],
-                    depth[index + width - 1], depth[index + width + 1],
-                )
-                if value != inf
-            ]
+            neighbours = (
+                index - 1, index + 1, index - width, index + width,
+                index - width - 1, index - width + 1, index + width - 1, index + width + 1,
+            )
+            around = [other for other in neighbours if depth[other] != inf]
             if len(around) >= 5:
-                holes.append((index, sum(around) / len(around)))
-    for index, value in holes:
+                nearest = min(around, key=depth.__getitem__)
+                holes.append((index, sum(depth[other] for other in around) / len(around), tools[nearest]))
+    for index, value, tool in holes:
         depth[index] = value
+        tools[index] = tool
 
 
 def _shade(
     depth: list[float],
+    tools: list[int],
     width: int,
     height: int,
     scale: float,
-    colour: tuple[int, int, int],
+    palette: Sequence[Colour],
 ) -> bytearray:
-    """Return RGBA pixels lit from the upper left, using surface directions from the depths."""
+    """Return RGBA pixels lit from the upper left, using surface directions from the depths.
+
+    Each pixel is coloured with its tool's colour from ``palette``.
+    """
     inf = math.inf
     lx, ly, lz = _LIGHT
     norm = math.sqrt(lx * lx + ly * ly + lz * lz)
     lx, ly, lz = lx / norm, ly / norm, lz / norm
-    red, green, blue = colour
-    # Dark filaments are lifted so their shape still shows.
-    brightness = (0.299 * red + 0.587 * green + 0.114 * blue) / 255
-    lift = max(0.0, 0.35 - brightness) * 255
+    lifted = [_lifted(colour) for colour in palette] or [_lifted(_DEFAULT_COLOUR)]
     limit = 6.0  # steepest slope used for shading; beyond it is an edge
     pixels = bytearray(width * height * 4)
     for py in range(height):
@@ -385,12 +411,26 @@ def _shade(
             diffuse = max(0.0, (nx * lx + ny * ly + nz * lz) / length)
             light = 0.35 + 0.65 * diffuse
             highlight = diffuse ** 12 * 60
+            red, green, blue = lifted[min(tools[index], len(lifted) - 1)]
             out = index * 4
-            pixels[out] = min(255, int((red + lift) * light + highlight))
-            pixels[out + 1] = min(255, int((green + lift) * light + highlight))
-            pixels[out + 2] = min(255, int((blue + lift) * light + highlight))
+            pixels[out] = min(255, int(red * light + highlight))
+            pixels[out + 1] = min(255, int(green * light + highlight))
+            pixels[out + 2] = min(255, int(blue * light + highlight))
             pixels[out + 3] = 255
     return pixels
+
+
+def _is_colour(value: Colour | Sequence[Colour]) -> TypeGuard[Colour]:
+    """Return whether ``value`` is one colour rather than a list of them."""
+    return len(value) == 3 and all(isinstance(part, int) for part in value)
+
+
+def _lifted(colour: Colour) -> tuple[float, float, float]:
+    """Return a colour with dark filaments lifted, so their shape still shows."""
+    red, green, blue = colour
+    brightness = (0.299 * red + 0.587 * green + 0.114 * blue) / 255
+    lift = max(0.0, 0.35 - brightness) * 255
+    return red + lift, green + lift, blue + lift
 
 
 def _slope(before: float, here: float, after: float) -> float:
@@ -426,13 +466,25 @@ def _wanted_sizes(text: str) -> list[tuple[int, int]]:
     return sorted(set(sizes), key=lambda item: -item[0] * item[1])
 
 
-def _filament_colour(text: str) -> tuple[int, int, int]:
-    """Return the first filament's colour from the G-code's settings, or a neutral grey."""
+def _filament_colours(text: str) -> list[Colour]:
+    """Return each filament slot's colour from the G-code's settings, or a neutral grey.
+
+    ``filament_colour`` is preferred over ``extruder_colour``; a slot whose
+    colour cannot be read is grey.
+    """
     for match in _COLOUR_PATTERN.finditer(text):
-        first = match.group(1).split(";")[0].strip().strip('"').lstrip("#")
-        if re.fullmatch(r"[0-9A-Fa-f]{6}", first):
-            return int(first[0:2], 16), int(first[2:4], 16), int(first[4:6], 16)
-    return _DEFAULT_COLOUR
+        colours = [_hex_colour(item) for item in match.group(1).split(";")]
+        if any(colour is not None for colour in colours):
+            return [colour or _DEFAULT_COLOUR for colour in colours]
+    return [_DEFAULT_COLOUR]
+
+
+def _hex_colour(text: str) -> Colour | None:
+    """Return ``#RRGGBB`` (or ``#RRGGBBAA``) as a colour, or None."""
+    value = text.strip().strip('"').lstrip("#")
+    if re.fullmatch(r"[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?", value):
+        return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16)
+    return None
 
 
 def _thumbnail_block(width: int, height: int, png: bytes) -> str:

@@ -91,6 +91,9 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 ## Next
 
+- **Multi-colour projects** (built, unreleased): a filament per slot, chosen
+  per slot or matched to the loaded CFS filaments, with colour preview
+  pictures. Still to come: colours for whole STL files, and the Bambu AMS.
 - Windows and macOS work continues on the `feat/windows` and `feat/macos`
   branches (draft pull requests), outside `main`.
 
@@ -109,7 +112,6 @@ These need a decision from the project owner before work starts.
 
 | Feature | Why |
 |---|---|
-| Multi-material (several filaments per printer) | Creality CFS, Bambu AMS |
 | Flat output option | all G-code in one folder |
 
 ## Later: platform

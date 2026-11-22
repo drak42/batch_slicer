@@ -41,9 +41,11 @@ from pathlib import Path
 
 from batchslicer.backends.orca import OrcaBackend, OrcaResult
 from batchslicer.backends.presets import PresetLibrary
+from batchslicer.backends.projects import project_filaments
 from batchslicer.core.logging import get_logger
 from batchslicer.domain.options import MAX_JOBS, SliceOptions
 from batchslicer.domain.presets import PresetSelection
+from batchslicer.services.filament_matching import FilamentMatcher
 from batchslicer.services.gcode_stats import GcodeStats, total_stats
 from batchslicer.services.thumbnails import ThumbnailError, add_thumbnails
 
@@ -193,6 +195,7 @@ class SlicingService:
         logger: logging.Logger | None = None,
         clock: Callable[[], datetime] = datetime.now,
         options: SliceOptions | None = None,
+        matcher: FilamentMatcher | None = None,
     ) -> None:
         """Create a service that slices with ``backend``.
 
@@ -204,6 +207,7 @@ class SlicingService:
         self._logger = logger or get_logger()
         self._clock = clock
         self._options = options or SliceOptions()
+        self._matcher = matcher
 
     def slice(
         self,
@@ -480,8 +484,32 @@ class SlicingService:
             copies=copies,
             allow_newer_file=self._options.allow_newer_files,
             load_settings=settings,
-            load_filaments=filaments,
+            load_filaments=self._filaments_for(model, job_directory, filaments),
         )
+
+    def _filaments_for(self, model: Path, job_directory: Path, filaments: list[Path]) -> list[Path]:
+        """Return one filament file per slot the model's project lists.
+
+        With a matcher (``--loaded-filaments``), a multi-colour project's slots
+        get the loaded filaments that match them. Otherwise the chosen
+        filaments fill the slots in order, and as the slicer would keep the
+        project's own filament for any slot it is not given, the last chosen
+        filament fills the remaining slots.
+        """
+        if not filaments:
+            return filaments
+        if self._matcher is not None:
+            matched = self._matcher.files_for(model, job_directory)
+            if matched is not None:
+                return matched
+        slots = len(project_filaments(model))
+        if slots <= len(filaments):
+            return filaments
+        self._logger.info(
+            "%s lists %d filaments; using %s for slots %d-%d",
+            model.name, slots, filaments[-1].name, len(filaments) + 1, slots,
+        )
+        return [*filaments, *[filaments[-1]] * (slots - len(filaments))]
 
     def _write_presets(
         self,

@@ -186,6 +186,21 @@ def test_write_resolved_produces_cli_ready_files(datadir: Path, tmp_path: Path) 
     assert filament["type"] == "filament"
 
 
+def test_each_filament_slot_gets_a_file(datadir: Path, tmp_path: Path) -> None:
+    """Slots 2, 3... get their own files; a filament in several slots is written once."""
+    library = _library(datadir)
+    k2 = next(printer for printer in library.printers() if printer.name == K2)
+    mine, generic = library.filaments_for(k2)[:2]
+    selection = PresetSelection(k2, mine, library.processes_for(k2)[0], more_filaments=(generic, mine))
+
+    _, filaments = library.write_resolved(selection, tmp_path / "resolved")
+
+    folder = tmp_path / "resolved"
+    assert filaments == [folder / "filament.json", folder / "filament-2.json", folder / "filament.json"]
+    assert json.loads(filaments[1].read_text())["filament_settings_id"] == [f"Generic PLA @{K2}"]
+    assert library.resolve_filament(mine, colour="#1B04AE")["filament_colour"] == ["#1B04AE"]
+
+
 def test_written_user_printer_keeps_link_to_its_shipped_printer(datadir: Path, tmp_path: Path) -> None:
     """The CLI matches a user's printer by its shipped parent, so that link is kept."""
     _write(datadir / "user" / USER_ID / "machine" / "k2_mine.json", {"name": "My K2", "inherits": K2, "bed_x": "300"})

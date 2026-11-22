@@ -45,6 +45,7 @@ repeats the same run.
 - [Slicing for several printers](#slicing-for-several-printers)
 - [Sending G-code to a printer](#sending-g-code-to-a-printer)
 - [Watch folder](#watch-folder)
+- [Multi-colour projects](#multi-colour-projects)
 - [Output](#output) (including [several models per plate](#several-models-per-plate), [reports](#reports) and [speed](#speed))
 - [Exit status and logs](#exit-status-and-logs)
 - [Troubleshooting](#troubleshooting)
@@ -82,7 +83,11 @@ repeats the same run.
   downloaded models this fixed 97 of 115 "Failed slicing the model" errors.
 - **Adds preview pictures for printer screens.** Slicers draw these only in
   their windows, so BatchSlicer draws them from the G-code itself: the part as
-  it will print, in the filament's colour.
+  it will print, in the filament's colour, or in each filament's colour for a
+  multi-colour print.
+- **Handles multi-colour projects.** A 3MF project painted in several colours
+  is sliced with a filament for every colour: yours in every slot, one chosen
+  per slot, or matched to the filaments loaded in your Creality CFS.
 - **Reports print time and filament.** Every run writes `report.csv` and
   `report.json` with each model's status, print time, filament weight, length
   and cost, and the summary shows the totals.
@@ -848,6 +853,82 @@ The service 'watch' is watching, and starts again whenever you log in.
 Without systemd, run `batchslicer --watch ...` in a `tmux` or `screen`
 session instead.
 
+## Multi-colour projects
+
+A 3MF project can be painted in several colours, or give its parts different
+filaments; it lists one filament per slot of a multi-material printer (a
+Creality CFS, a Bambu AMS). BatchSlicer gives the slicer a filament for every
+slot, so the colours print as designed.
+
+```text
+Sliced Zuul Front Bumper 2 Color.3mf in 6.2s:
+  To print: 1h 9m, 14 g filament (13.8 g (slot 1) + 0.4 g (slot 2), 36 filament changes)
+```
+
+There are three ways to fill the slots:
+
+1. **Your filament in every slot** (what happens without any other choice).
+   Each slot prints with the filament you chose, in the project's own colours.
+   Your printer's screen then asks which CFS or AMS slot each colour comes
+   from.
+2. **A filament for each slot**: repeat `--filament`, slot 1 first. Slots
+   beyond those given use the last one.
+
+   ```bash
+   batchslicer --profile k2 --input bumper.3mf \
+     --filament "Generic PLA @System" --filament "Generic PLA High Speed @System"
+   ```
+
+   In a profile, `filament` takes a list:
+
+   ```yaml
+   k2-colours:
+     slicer: orca
+     printer: Creality K2 Plus 0.4 nozzle
+     filament: [Generic PLA @System, Generic PLA High Speed @System]
+   ```
+
+3. **Matched to the filaments loaded in your printer** (`--loaded-filaments`,
+   Creality printers with a CFS, with `--send`). BatchSlicer reads which
+   filaments are loaded in the CFS and the external spool holder, and gives
+   each colour of the project the loaded filament that looks most like it,
+   preferring the same material and using each loaded filament once while
+   there are enough. Each slot is sliced with a preset of the loaded material
+   (one you chose if it is that material, else your own preset for it, else a
+   "Generic" one), in the loaded filament's colour:
+
+   ```text
+   Filaments loaded in k2plus:
+     CFS 1B dark blue PETG  (sliced as Generic PETG @K2 Plus-all)
+     CFS 1C light grey PETG  (sliced as Generic PETG @K2 Plus-all)
+     external spool white PETG  (sliced as Generic PETG @K2 Plus-all)
+   ...
+   Colours matched to the loaded filaments:
+     zuul.3mf:
+       slot 1 (black PETG) -> CFS 1B dark blue PETG [Generic PETG @K2 Plus-all]
+       slot 2 (white PETG) -> external spool white PETG [Generic PETG @K2 Plus-all]
+   ```
+
+   The G-code and its preview picture then show the colours that will really
+   print. In a watch run the CFS is read again for every drop.
+
+In an interactive run, when the input holds a multi-colour project,
+BatchSlicer lists its filaments and asks which of the three to use (the first
+is offered only when the printer you send to reports loaded filaments).
+
+- **Preview pictures** show each part of the model in its filament's colour.
+- **Single-colour models** in the same run (STL files, plain 3MF files) print
+  with the first filament as usual. A downloaded project that lists several
+  filaments but uses one prints with one; the others are not used.
+- **`--start` never starts a multi-colour print**: it is sent, and you start
+  it on the printer's screen, where you can check which slot each colour
+  comes from.
+- **Filaments that print at very different temperatures** (PLA with PETG) are
+  refused by the slicer; the summary says so.
+- Tested with OrcaSlicer and Bambu Studio. **Creality Print cannot use your
+  presets for any 3MF project** (its command line refuses to load presets
+  into a project), multi-colour or not.
+
 ## Output
 
 Each run creates a new folder inside the output folder, so earlier results are
@@ -989,6 +1070,7 @@ same, for scripts) with one row per model:
 | `gcode` | the G-code file(s), relative to the run's folder |
 | `print_time`, `print_seconds` | the slicer's estimated print time |
 | `filament_g`, `filament_m`, `filament_cost` | filament weight (g), length (m) and cost, as calculated by the slicer from the filament preset |
+| `filament_g_each`, `filament_changes` | for a multi-colour print: the grams of each filament slot, and how many times the printer changes filament |
 | `slice_seconds` | how long slicing took |
 | `message` | why the model failed |
 
@@ -1185,8 +1267,13 @@ the Actions tab ("Latest slicers").
 ## Current limitations
 
 - **Linux only.** Windows and macOS are not supported yet.
-- **One filament per printer.** Multi-material setups (Creality CFS, Bambu AMS)
-  need several filaments and are not supported yet.
+- **Colours for whole STL files.** Multi-colour comes from 3MF projects;
+  giving separate STL files their own filament is not supported yet.
+- **Loaded filaments from Creality's CFS only.** Reading a Bambu AMS needs the
+  Bambu connection, which is not built yet.
+- **Creality Print and 3MF projects.** Creality Print's command line cannot
+  apply your presets to a 3MF project; use OrcaSlicer or Bambu Studio for
+  projects.
 - **The same presets for every model.** Within a run, each printer uses one
   filament and process for all models; to vary them, use separate runs or
   profiles.

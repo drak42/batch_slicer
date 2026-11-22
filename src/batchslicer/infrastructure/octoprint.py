@@ -14,6 +14,7 @@ from typing import Any
 from urllib.error import HTTPError
 from urllib.request import Request
 
+from batchslicer.domain.filaments import LoadedFilament
 from batchslicer.domain.printers import PrinterHost
 from batchslicer.infrastructure.printer_api import (
     PrinterError,
@@ -66,6 +67,10 @@ class OctoPrintClient:
             ready=state == _READY_STATE,
             software=f"OctoPrint {version.get('server', '')}".strip(),
         )
+
+    def loaded_filaments(self) -> list[LoadedFilament]:
+        """Return no loaded filaments: OctoPrint does not report a multi-material unit."""
+        return []
 
     def upload(self, path: Path, folder: str = "", *, start: bool = False) -> UploadResult:
         """Upload ``path`` into ``folder`` of OctoPrint's local files.

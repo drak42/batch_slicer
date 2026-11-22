@@ -51,7 +51,10 @@ the first argument; they do not slice. A service runs a normal watch run
    Creality Print (a profile's copies are left out with a note). An interactive run without a profile, `--send`
    or `--no-send` then asks whether to send the G-code
    (`cli/send_prompt.py`), when a printer is configured or the last run sent
-   to one. `--start` is refused here unless every target
+   to one. When the input holds a multi-colour 3MF project and no filaments
+   or `--loaded-filaments` were given, it asks how to fill the filament
+   slots: matched to the filaments loaded in the printer it sends to, the
+   chosen filament in every slot, or one chosen per slot. `--start` is refused here unless every target
    sends and a single model was chosen, and each printer to send to must
    answer (`infrastructure/printer_clients.py`), so nothing is sliced for a
    printer that is off.
@@ -68,8 +71,13 @@ the first argument; they do not slice. A service runs a normal watch run
     together on plates. With `--orient retry` a failed
     model is sliced once more with auto-orient. The slicer's status files are
     read and removed; folders of failed or interrupted models are removed.
-    Preview pictures are drawn from each G-code file and inserted into it
-    (`services/thumbnails.py`) unless `--no-thumbnails` is given.
+    A 3MF project is given one filament per slot it lists
+    (`backends/projects.py`): the chosen filaments in order, the last one
+    filling the rest, or with `--loaded-filaments` the loaded filaments that
+    match its colours (`services/filament_matching.py`, the printer's CFS read
+    once per target). Preview pictures are drawn from each G-code file, each
+    filament in its colour, and inserted into it (`services/thumbnails.py`)
+    unless `--no-thumbnails` is given.
 12. **Report** (`services/report.py`, `services/gcode_stats.py`): write
     `report.csv` and `report.json` (kept up to date during a batch), show the
     summary with print time and filament totals and hints for failures an

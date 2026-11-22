@@ -44,6 +44,8 @@ docstring says more, including what it intentionally does not do.
 | `domain/presets.py` | `Preset`, `PresetKind`, `PresetSelection` |
 | `domain/profiles.py` | `Target`, `Profile`, combining profiles, valid names |
 | `domain/options.py` | `SliceOptions`, orient modes, the `--jobs` limit |
+| `domain/colours.py` | name `#RRGGBB` colours ("dark blue") and measure how alike two colours look |
+| `domain/filaments.py` | `ProjectFilament`, `LoadedFilament`, and matching a project's slots to the loaded filaments |
 | `domain/printers.py` | `PrinterHost`: printers for `--send`, read and checked from the `printers` section |
 
 ## services
@@ -54,6 +56,7 @@ docstring says more, including what it intentionally does not do.
 | `services/report.py` | write `report.csv` and `report.json` |
 | `services/gcode_stats.py` | read print time and filament use from G-code |
 | `services/thumbnails.py` | draw preview pictures from G-code toolpaths and insert them as PNG blocks |
+| `services/filament_matching.py` | match multi-colour projects to the filaments loaded in the printer (`--loaded-filaments`) and write their filament files |
 | `services/sending.py` | plan where each G-code file goes on the printer and send them (`--send`, `--start`) |
 | `services/watching.py` | watch a folder (`--watch`): find drops that have finished copying and move them to `sliced` or `failed` once handled |
 
@@ -64,6 +67,7 @@ docstring says more, including what it intentionally does not do.
 | `backends/slicers.py` | the supported slicers and how their command lines differ |
 | `backends/orca.py` | build and run slicer commands (all three slicers share this CLI) |
 | `backends/presets.py` | list compatible presets and resolve them into complete files |
+| `backends/projects.py` | read the filament slots a 3MF project lists |
 | `backends/profiles.py` | locate built-in presets, extracting or unpacking them into the cache |
 | `backends/opc.py` | read OrcaSlicer's packed `.opc` preset files |
 | `backends/detection.py` | find installed slicers and their settings folders |

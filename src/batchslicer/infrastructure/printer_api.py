@@ -17,6 +17,7 @@ from typing import Any, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from batchslicer.domain.filaments import LoadedFilament
 from batchslicer.domain.printers import PrinterHost
 
 _CHUNK_BYTES = 1024 * 1024
@@ -71,6 +72,10 @@ class PrinterClient(Protocol):
 
     def upload(self, path: Path, folder: str = "", *, start: bool = False) -> UploadResult:
         """Upload ``path`` into ``folder``, replacing a file of the same name."""
+        ...
+
+    def loaded_filaments(self) -> list[LoadedFilament]:
+        """Return the filaments loaded in the printer's multi-material unit, if it reports one."""
         ...
 
 

@@ -33,6 +33,8 @@ COLUMNS = (
     "filament_g",
     "filament_m",
     "filament_cost",
+    "filament_g_each",
+    "filament_changes",
     "slice_seconds",
     "message",
 )
@@ -62,6 +64,10 @@ def report_rows(outcomes: Sequence[SliceOutcome], directory: Path, root: Path) -
                     3,
                 ),
                 "filament_cost": _rounded(stats.filament_cost, 2),
+                "filament_g_each": [round(grams, 2) for grams in stats.grams_per_filament]
+                if len(stats.used_filaments()) > 1
+                else [],
+                "filament_changes": stats.filament_changes if len(stats.used_filaments()) > 1 else None,
                 "slice_seconds": round(outcome.elapsed, 1),
                 "message": "" if outcome.success else outcome.message,
             }
@@ -92,6 +98,7 @@ def write_report(
                     "auto_oriented": "yes" if row["auto_oriented"] else "",
                     "gcode": "; ".join(row["gcode"]),
                     "models": "; ".join(row["models"]),
+                    "filament_g_each": "; ".join(str(grams) for grams in row["filament_g_each"]),
                 }
             )
 

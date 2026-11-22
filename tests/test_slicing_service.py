@@ -93,6 +93,29 @@ def test_presets_are_written_into_the_job_and_passed_to_the_slicer(tmp_path: Pat
     }
 
 
+def test_a_multi_colour_project_gets_a_filament_for_every_slot(tmp_path: Path) -> None:
+    """The last chosen filament fills the slots a 3MF project lists beyond those chosen."""
+    import zipfile
+
+    model = tmp_path / "bumper.3mf"
+    with zipfile.ZipFile(model, "w") as archive:
+        archive.writestr(
+            "Metadata/project_settings.config",
+            json.dumps({"filament_colour": ["#000000", "#FFFFFF", "#FF0000"]}),
+        )
+    backend = _backend()
+    library = Mock()
+    filament = tmp_path / "filament.json"
+    library.write_resolved.return_value = ([tmp_path / "machine.json"], [filament])
+    service = SlicingService(backend, presets=library, logger=Mock(), clock=lambda: NOW)
+
+    service.slice(model, tmp_path / "output", _selection())
+    service.slice(tmp_path / "cube.stl", tmp_path / "output", _selection())
+
+    assert backend.slice.call_args_list[0].kwargs["load_filaments"] == [filament, filament, filament]
+    assert backend.slice.call_args_list[1].kwargs["load_filaments"] == [filament]
+
+
 def test_slicing_with_presets_needs_a_library(tmp_path: Path) -> None:
     """Presets cannot be used without the library that resolves them."""
     service = SlicingService(_backend(), logger=Mock(), clock=lambda: NOW)

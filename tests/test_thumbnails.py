@@ -77,8 +77,8 @@ def test_only_the_models_extrusions_are_drawn() -> None:
     segments = list(extrusions(_box_gcode().splitlines()))
 
     assert len(segments) == 25 * 4
-    assert segments[0] == (100.0, 100.0, 120.0, 100.0, 0.2)
-    assert all(100 <= x <= 120 and 100 <= y <= 110 for _, _, x, y, _ in segments)
+    assert segments[0] == (100.0, 100.0, 120.0, 100.0, 0.2, 0)
+    assert all(100 <= x <= 120 and 100 <= y <= 110 for _, _, x, y, _, _ in segments)
 
 
 def test_absolute_extrusion_relative_moves_and_arcs() -> None:
@@ -91,13 +91,13 @@ def test_absolute_extrusion_relative_moves_and_arcs() -> None:
 
     segments = list(extrusions(lines))
 
-    assert segments[0] == (0.0, 0.0, 10.0, 0.0, 0.0)
-    assert segments[1] == (20.0, 0.0, 30.0, 0.0, 0.0)
-    assert segments[2] == (30.0, 0.0, 35.0, 0.0, 0.0)
+    assert segments[0] == (0.0, 0.0, 10.0, 0.0, 0.0, 0)
+    assert segments[1] == (20.0, 0.0, 30.0, 0.0, 0.0, 0)
+    assert segments[2] == (30.0, 0.0, 35.0, 0.0, 0.0, 0)
     arc = segments[3:]
     assert len(arc) >= 2
     assert arc[-1][2:4] == (35.0, 10.0)
-    assert min(x for _, _, x, _, _ in arc) < 31  # went round the left side (clockwise)
+    assert min(x for _, _, x, _, _, _ in arc) < 31  # went round the left side (clockwise)
 
 
 def test_pictures_are_inserted_after_the_header(tmp_path: Path) -> None:
@@ -171,7 +171,7 @@ def test_unreadable_file_and_bad_sizes_are_errors(tmp_path: Path) -> None:
     with pytest.raises(ThumbnailError, match="Cannot read"):
         add_thumbnails(tmp_path / "missing.gcode")
     with pytest.raises(ThumbnailError, match="Unsupported picture size"):
-        render([(0, 0, 1, 1, 0)], 0, 10)
+        render([(0, 0, 1, 1, 0, 0)], 0, 10)
 
 
 def test_png_encoding_round_trips() -> None:
@@ -182,3 +182,39 @@ def test_png_encoding_round_trips() -> None:
 
     assert (width, height) == (2, 1)
     assert raw == b"\x00" + pixels
+
+
+def test_tool_changes_colour_the_picture() -> None:
+    """Moves after T1 belong to filament slot 1 and are drawn in its colour."""
+    lines = [";TYPE:Outer wall", "T0", "G1 X0 Y0 F600", "G1 X10 Y0 E1", "T1 ; change", "G1 X10 Y10 E2",
+             "T255", "G1 X0 Y10 E3", "M620 S1A", "G1 X0 Y0 E4"]
+
+    segments = list(extrusions(lines))
+
+    assert [segment[5] for segment in segments] == [0, 1, 1, 1]
+
+
+def test_each_filament_has_its_colour_in_the_picture() -> None:
+    """A two-colour part shows both colours; a slot without a colour uses the last one."""
+    left = [(x, 0.0, x, 20.0, z / 5, 0) for x in range(0, 10) for z in range(5)]
+    right = [(x, 0.0, x, 20.0, z / 5, 1) for x in range(10, 20) for z in range(5)]
+
+    pixels = render(left + right, 48, 48, [(0xFF, 0x00, 0x00), (0x00, 0x00, 0xFF)])
+
+    colours = {
+        (pixels[i], pixels[i + 1], pixels[i + 2]) for i in range(0, len(pixels), 4) if pixels[i + 3] == 255
+    }
+    assert any(red > 150 and blue < 80 for red, _, blue in colours)
+    assert any(blue > 150 and red < 80 for red, _, blue in colours)
+    only_one = render(left + right, 48, 48, [(0x00, 0xFF, 0x00)])
+    assert all(only_one[i] < 120 for i in range(0, len(only_one), 4) if only_one[i + 3] == 255)
+
+
+def test_filament_colours_are_read_for_every_slot(tmp_path: Path) -> None:
+    """add_thumbnails colours by the G-code's filament_colour list, alpha included."""
+    from batchslicer.services.thumbnails import _filament_colours
+
+    assert _filament_colours("; filament_colour = #000000;#FFFFFFFF;bad\n") == [
+        (0, 0, 0), (255, 255, 255), (0x9A, 0x9F, 0xA6),
+    ]
+    assert _filament_colours("; nothing\n") == [(0x9A, 0x9F, 0xA6)]

@@ -335,3 +335,13 @@ def test_moonraker_address_is_not_octoprint(fake_moonraker: FakeMoonraker) -> No
     client = OctoPrintClient(PrinterHost("x", fake_moonraker.url, "k", OCTOPRINT), timeout_seconds=5)
     with pytest.raises(PrinterError, match="no OctoPrint at that address"):
         client.status()
+
+
+def test_loaded_filaments_are_read_from_moonraker(fake_moonraker: FakeMoonraker) -> None:
+    """The CFS state comes from /printer/objects/query; a printer without one reports none."""
+    from test_filaments import K2_STATUS
+
+    assert _client(fake_moonraker).loaded_filaments() == []
+    fake_moonraker.objects = K2_STATUS
+    assert [item.slot for item in _client(fake_moonraker).loaded_filaments()] == ["1B", "1C", "external"]
+    assert OctoPrintClient(PrinterHost("x", "http://x", "k", OCTOPRINT)).loaded_filaments() == []
