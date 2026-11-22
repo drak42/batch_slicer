@@ -6,6 +6,12 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The repository is public: README badges, issue forms for bug reports
+  (asking for `batchslicer doctor` output) and feature requests, and
+  `SECURITY.md` with private vulnerability reporting.
+
 ## [0.9.2] - 2026-11-22
 
 The first release on PyPI.

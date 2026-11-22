@@ -81,8 +81,8 @@ Nothing is scheduled: the next steps need the decisions below.
 
 These need a decision from the project owner before work starts.
 
-- **Visibility**: make the repository public? The code is public on PyPI
-  from 0.9.2, but the project links there lead to the private repository.
+- **Visibility**: decided; the repository is public (with issue templates,
+  private vulnerability reporting and `SECURITY.md`).
 - **PyPI**: decided; published from 0.9.2 with trusted publishing.
 - **Audience**: Linux command-line users only, or also people who expect a
   graphical interface and Windows/macOS? This decides between the feature work

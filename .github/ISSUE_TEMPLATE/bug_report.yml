@@ -1,0 +1,54 @@
+name: Bug report
+description: Something doesn't work as described in the README.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. The details below let it be reproduced.
+        Please remove anything private (paths you'd rather not share, printer addresses, API keys).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what happened instead. Paste the messages BatchSlicer printed.
+      placeholder: |
+        batchslicer --profile k2-pla --input ~/models/kit --plates
+        ...
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `batchslicer doctor`
+      description: It shows the versions, the configuration and each slicer's state.
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: slicer
+    attributes:
+      label: Slicer
+      options:
+        - OrcaSlicer
+        - Creality Print
+        - Bambu Studio
+        - Not about a slicer
+    validations:
+      required: true
+  - type: input
+    id: slicer-version
+    attributes:
+      label: Slicer version and how it is installed
+      placeholder: OrcaSlicer 2.5.2, AppImage
+  - type: input
+    id: printer
+    attributes:
+      label: Printer (if it matters)
+      placeholder: Creality K2 Plus, 0.4 mm nozzle
+  - type: textarea
+    id: log
+    attributes:
+      label: Log (optional)
+      description: The relevant part of `batchslicer.log` (in `~/.local/state/batchslicer/` by default).
+      render: text

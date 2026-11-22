@@ -1,5 +1,10 @@
 # BatchSlicer
 
+[![PyPI](https://img.shields.io/pypi/v/batchslicer)](https://pypi.org/project/batchslicer/)
+[![Python](https://img.shields.io/pypi/pyversions/batchslicer)](https://pypi.org/project/batchslicer/)
+[![CI](https://github.com/drak42/batch_slicer/actions/workflows/ci.yml/badge.svg)](https://github.com/drak42/batch_slicer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/drak42/batch_slicer/blob/main/LICENSE)
+
 Slice one 3D model or whole folders of them with **OrcaSlicer**, **Creality
 Print** or **Bambu Studio**, using the printer, filament and process presets
 you already have in those slicers. Run it interactively and answer a few
@@ -1002,7 +1007,9 @@ settings folder exists, and how many printers it offers. It also checks that
 each printer for `--send` answers, and that saved profiles can be read. It ends with "No problems found." or a list of
 problems and what to do about them, and exits with status 0 or 1.
 
-When reporting a problem, please include the output of `batchslicer doctor`.
+When reporting a problem, please include the output of `batchslicer doctor`
+([open an issue](https://github.com/drak42/batch_slicer/issues/new/choose); the
+bug report form asks for it). Security problems: see `SECURITY.md`.
 Use `--config PATH` to check a specific configuration file.
 
 ## Testing
