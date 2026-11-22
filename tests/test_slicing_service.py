@@ -688,3 +688,82 @@ def test_copies_apply_to_a_single_model_only(tmp_path: Path) -> None:
     assert backend.slice.call_args_list[0].kwargs["copies"] == 4
     assert backend.slice.call_args_list[1].kwargs["copies"] == 1
     assert batch.outcomes[0].copies == 1
+
+
+def _picky_backend(*, bad: str = "bad.stl", needs_orient: str = "") -> Mock:
+    """Return a backend where ``bad`` never slices and ``needs_orient`` slices only auto-oriented.
+
+    Several models together fail if any of them would fail on its own.
+    """
+    backend = Mock()
+    backend.resolves_inherits.return_value = False
+
+    def slices(model: Path, orient: bool) -> bool:
+        return model.name != bad and (model.name != needs_orient or orient)
+
+    def slice_(model: object, job: Path, **kwargs: object) -> OrcaResult:
+        models = model if isinstance(model, tuple) else (model,)
+        if all(slices(m, bool(kwargs.get("orient"))) for m in models):
+            (job / "plate_1.gcode").write_text("G1")
+            return OrcaResult(True, 0, "", "", 1.0, ())
+        failing = next(m for m in models if not slices(m, bool(kwargs.get("orient"))))
+        (job / "result.json").write_text(json.dumps({"error_string": f"{failing.name}: empty first layer"}))
+        return OrcaResult(False, 1, "", "", 1.0, ())
+
+    backend.slice.side_effect = slice_
+    return backend
+
+
+def test_good_parts_go_back_on_plates_when_one_fails(tmp_path: Path) -> None:
+    """The failing part is reported on its own; the others still share plates."""
+    source = tmp_path / "models"
+    kit = [source / "kit" / name for name in ("a.stl", "bad.stl", "b.stl", "c.stl")]
+    backend = _picky_backend()
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(plates=True))
+
+    batch = service.slice_batch(kit, source, tmp_path / "out")
+
+    failed, together = batch.outcomes
+    assert (failed.model, failed.success) == (kit[1], False)
+    assert "bad.stl: empty first layer" in failed.message
+    assert together.success and together.model == source / "kit"
+    assert together.models == (kit[0], kit[2], kit[3])
+    assert [p.relative_to(batch.batch_directory).as_posix() for p in together.gcode_files] == [
+        "kit/plates/kit.gcode"
+    ]
+    assert together.elapsed == 1.0 + 1.0 + 3 * 1.0  # first try, regroup, the three on their own
+    assert sorted(p.name for p in (batch.batch_directory / "kit").iterdir()) == ["plates"]
+    assert (batch.models_succeeded, batch.planned) == (3, 4)
+
+
+def test_parts_rescued_by_auto_orient_keep_their_own_plate(tmp_path: Path) -> None:
+    """A part that only slices auto-oriented stays apart; the rest share plates."""
+    source = tmp_path / "models"
+    kit = [source / "kit" / name for name in ("a.stl", "tilted.stl", "b.stl")]
+    service = SlicingService(
+        _picky_backend(bad="", needs_orient="tilted.stl"),
+        logger=Mock(),
+        clock=lambda: NOW,
+        options=SliceOptions(plates=True, orient="retry"),
+    )
+
+    batch = service.slice_batch(kit, source, tmp_path / "out")
+
+    alone, together = batch.outcomes
+    assert alone.model == kit[1] and alone.success and alone.auto_oriented
+    assert together.models == (kit[0], kit[2])
+    assert batch.models_succeeded == 3
+
+
+def test_one_good_part_is_not_put_on_plates_alone(tmp_path: Path) -> None:
+    """With only one part left that slices, the one-by-one results are kept."""
+    source = tmp_path / "models"
+    kit = [source / "kit" / "a.stl", source / "kit" / "bad.stl"]
+    service = SlicingService(_picky_backend(), logger=Mock(), clock=lambda: NOW, options=SliceOptions(plates=True))
+
+    batch = service.slice_batch(kit, source, tmp_path / "out")
+
+    assert [(o.model, o.success, o.models) for o in batch.outcomes] == [
+        (kit[0], True, ()),
+        (kit[1], False, ()),
+    ]

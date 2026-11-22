@@ -788,14 +788,25 @@ output/
   model slices as usual. Subfolders are separate groups.
 - **Names:** the G-code is named after the folder. Sent to a printer, it lands
   at `kits-.../Lastman kit/Lastman kit.gcode`.
-- **If a part fails,** for example a damaged file, the folder's models are
-  sliced one by one instead, so the rest still slice:
-  `Lastman kit/ (models together on plates) ... could not share plates; sliced one by one:`.
+- **If a part fails,** for example a damaged file, each part is sliced on its
+  own to find which one, and the others are put back together on plates:
+
+  ```
+  [1/1] kit/ (models together on plates) ... not every part could share plates:
+  [1/1] kit/broken.stl ... FAILED: broken.stl: One object has an empty first layer ...
+  [1/1] kit/ (models together on plates) ... done (14.5s, 4 models on 1 plate)
+  ```
+
+  This takes longer than slicing them together once (each part is also sliced
+  on its own), but only happens when something fails.
 - **The report** has one row per folder, with its models in the `models`
   column; the summary counts every model and the plates they're on.
 - `--orient always` auto-orients the parts before arranging. With
-  `--orient retry`, a part that fails is retried with auto-orient when the
-  folder falls back to one by one.
+  `--orient retry`, a part that fails is retried on its own with auto-orient;
+  if that works, it keeps its own plate (it needs a different orientation
+  from the others).
+- If even the parts that slice on their own cannot share plates, each keeps
+  its own plate.
 - OrcaSlicer and Bambu Studio only: Creality Print cannot arrange from its
   command line.
 - Profiles can save the choice (`--plates` or `--no-plates`).
@@ -956,10 +967,10 @@ used with it"** (or "**cannot make copies**", for `--copies`): Creality
 Print's command line has no arrange or copies. Use OrcaSlicer or Bambu Studio
 for these, or slice each model on its own.
 
-**A folder's line says "could not share plates; sliced one by one"**: one of
-its parts failed when sliced together (its reason is listed under "Failed").
-The other parts were sliced one per plate. Fix or `--exclude` the failed part
-and run again to get them on plates.
+**A folder's line says "not every part could share plates"**: one of its
+parts failed (its reason is listed under "Failed"), or needed auto-orient.
+The other parts were still put together on plates. Fix or `--exclude` the
+failed part to stop the extra slicing.
 
 **"No printer named ..."**: the name after `--send` must match one in the
 configuration's `printers` section (the message lists them), or be the
@@ -1035,8 +1046,6 @@ the Actions tab ("Latest slicers").
   profiles.
 - **Copies are for single models.** `--copies` does not apply to folders
   (each part of a `--plates` folder is printed once).
-- **One bad part splits a folder.** If any part fails, the whole folder is
-  sliced one model per plate, not just the failed part.
 - **Sending needs Klipper with Moonraker.** Bambu Lab printers (LAN mode),
   OctoPrint and Creality printers without Moonraker are not supported yet.
 - **Flatpak installs are not detected** by `batchslicer setup`; configure them

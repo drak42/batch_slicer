@@ -67,7 +67,7 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 ## Next
 
-- [ ] Putting the parts that slice back together on plates when one part of a
+- [x] Putting the parts that slice back together on plates when one part of a
   folder fails.
 
 ## Then: decisions on reach

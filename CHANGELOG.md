@@ -6,6 +6,14 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **One failing part no longer splits a folder's plates.** With `--plates`,
+  when a folder's parts cannot be sliced together, each is sliced on its own
+  to find the failing ones, and the rest are put back together on plates
+  (before, every part of the folder got its own plate). Parts that only slice
+  after an auto-orient retry keep their own plate. Tested with OrcaSlicer 2.5.2.
+
 ## [0.9.0] - 2026-11-22
 
 Copies of a part, arranged by the slicer.

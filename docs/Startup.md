@@ -62,8 +62,9 @@ not slice. Everything below describes a normal run.
     job folder (one model) or batch folder (a folder of models) is created, the
     resolved presets are written into it, and the slicer runs inside each
     model's folder, up to `--jobs` at a time. With `--plates` the loose models
-    of each folder are one job (`--arrange 1`, named after the folder), sliced
-    one by one if that fails. With `--orient retry` a failed
+    of each folder are one job (`--arrange 1`, named after the folder); if that
+    fails, each is sliced on its own and those that slice as they are go back
+    together on plates. With `--orient retry` a failed
     model is sliced once more with auto-orient. The slicer's status files are
     read and removed; folders of failed or interrupted models are removed.
     Preview pictures are drawn from each G-code file and inserted into it

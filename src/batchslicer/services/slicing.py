@@ -15,7 +15,9 @@ slicer's auto-orient; with ``"always"`` every model is. With ``plates`` the
 loose models (STL, OBJ, STEP) of each folder in a batch are sliced together:
 the slicer arranges them, adding plates for any that do not fit, into a
 ``plates`` folder whose G-code is named after the source folder. If that
-fails, the folder's models are sliced one by one instead. 3MF projects keep
+fails, the folder's models are sliced one by one to find the ones that fail,
+and the rest are put back together on plates (parts that only slice after
+an auto-orient retry keep their own plate). 3MF projects keep
 their own plates. A single model (not a batch) can be sliced as several
 copies (``copies``), which the slicer arranges, adding plates as needed. Several models can be
 sliced at the same time (``jobs``), each by its own slicer process. The
@@ -349,18 +351,76 @@ class SlicingService:
         filaments: list[Path],
         created: list[Path],
     ) -> tuple[SliceOutcome, ...]:
-        """Slice a folder's models together on plates, or one by one if that fails.
+        """Slice a folder's models together on plates.
 
-        Folders made for the one-by-one models are added to ``created`` so an
-        interrupted batch can remove them.
+        If that fails, each model is sliced on its own to find the ones that
+        fail, and those that slice as they are go back together on plates. The
+        result lists the models left out (failed, or needing auto-orient)
+        first and the plates last; if the models cannot go back together,
+        the one-by-one results are returned. Folders made along the way are
+        added to ``created`` so an interrupted batch can remove them.
         """
         assert work.folder is not None
+        first = self._slice_models_together(work.folder, work.models, job_directory, settings, filaments)
+        if first.success:
+            return (first,)
+        self._logger.info(
+            "Slicing %s together failed (%s); slicing its models one by one.",
+            work.folder,
+            first.message or "unknown error",
+        )
+        shutil.rmtree(job_directory, ignore_errors=True)
+        singles = []
+        for model in work.models:
+            directory = self._create_unique_directory(job_directory.parent / model.stem)
+            created.append(directory)
+            singles.append(self._slice_into(model, directory, settings, filaments))
+
+        oriented = self._options.orient == "always"
+        fit = [o for o in singles if o.success and o.auto_oriented == oriented]
+        if len(fit) < 2 or len(fit) == len(work.models):
+            return tuple(singles)
+        regroup_directory = self._create_unique_directory(job_directory)
+        created.append(regroup_directory)
+        together = self._slice_models_together(
+            work.folder, tuple(o.model for o in fit), regroup_directory, settings, filaments
+        )
+        if not together.success:
+            self._logger.info(
+                "The %d models of %s that slice on their own could not share plates either (%s).",
+                len(fit),
+                work.folder,
+                together.message or "unknown error",
+            )
+            shutil.rmtree(regroup_directory, ignore_errors=True)
+            return tuple(singles)
+        for outcome in fit:
+            shutil.rmtree(outcome.job_directory, ignore_errors=True)
+        self._logger.info(
+            "Put %d of the %d models of %s back together on plates.",
+            len(fit),
+            len(work.models),
+            work.folder,
+        )
+        left_out = tuple(o for o in singles if o not in fit)
+        elapsed = first.elapsed + together.elapsed + sum(o.elapsed for o in fit)
+        return (*left_out, replace(together, elapsed=elapsed))
+
+    def _slice_models_together(
+        self,
+        folder: Path,
+        models: tuple[Path, ...],
+        job_directory: Path,
+        settings: list[Path],
+        filaments: list[Path],
+    ) -> SliceOutcome:
+        """Run the slicer once for ``models`` together, arranged on plates."""
         orient = self._options.orient == "always"
         self._logger.info(
-            "Slicing %d models from %s together into %s", len(work.models), work.folder, job_directory
+            "Slicing %d models from %s together into %s", len(models), folder, job_directory
         )
         result = self._backend.slice(
-            work.models,
+            models,
             job_directory,
             orient=orient,
             arrange=True,
@@ -368,23 +428,7 @@ class SlicingService:
             load_settings=settings,
             load_filaments=filaments,
         )
-        outcome = self._outcome(
-            work.folder, job_directory, result, auto_oriented=orient, models=work.models
-        )
-        if outcome.success:
-            return (outcome,)
-        self._logger.info(
-            "Slicing %s together failed (%s); slicing its models one by one.",
-            work.folder,
-            outcome.message or "unknown error",
-        )
-        shutil.rmtree(job_directory, ignore_errors=True)
-        outcomes = []
-        for model in work.models:
-            directory = self._create_unique_directory(job_directory.parent / model.stem)
-            created.append(directory)
-            outcomes.append(self._slice_into(model, directory, settings, filaments))
-        return tuple(outcomes)
+        return self._outcome(folder, job_directory, result, auto_oriented=orient, models=models)
 
     def _slice_into(
         self,

@@ -951,8 +951,8 @@ def _slice_folder(
     def on_result(number: int, count: int, outcome: SliceOutcome) -> None:
         nonlocal last_report, open_line
         if open_line is not None and open_line != outcome.model:
-            # A folder's models could not share plates and were sliced one by one.
-            print("could not share plates; sliced one by one:")
+            # Not every model of a folder could share plates; each is listed.
+            print("not every part could share plates:")
             open_line = None
         if open_line is None:
             print(f"  [{number}/{count}] {_label(outcome.model, slice_input.root)} ... ", end="")
