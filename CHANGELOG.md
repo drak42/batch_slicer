@@ -6,6 +6,14 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Bambu Studio's multi-colour G-code now shows its number of filament
+  changes too (counted from the tool changes, as Bambu Studio does not write
+  it).
+- A watch run without a terminal (a `batchslicer service`) no longer says
+  "Press Ctrl+C to stop"; it says how to stop the service instead.
+
 ### Documentation
 
 - Matching to the CFS is confirmed on a Creality K2 Plus: the touchscreen's

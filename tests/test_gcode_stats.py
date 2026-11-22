@@ -110,20 +110,33 @@ def test_multi_material_statistics_are_read(tmp_path: Path) -> None:
         "; total filament change = 36\n"
     )
     bambu = tmp_path / "bambu.gcode"
-    bambu.write_text("; total filament weight [g] : 10.66,0.29\nG1 X1\n")
+    bambu.write_text(
+        "; total filament weight [g] : 10.66,0.29\nM620 S0A\nT0\nG1 X1\nT1 ; change\nT1\nT255\n"
+        "T0\nT1000\nT0\nG1 X2\n"
+    )
 
     stats = read_gcode_stats(orca)
     assert stats.grams_per_filament == (13.78, 0.39)
     assert stats.filament_changes == 36
     assert stats.used_filaments() == ((1, 13.78), (2, 0.39))
     assert read_gcode_stats(bambu).grams_per_filament == (10.66, 0.29)
-    assert read_gcode_stats(bambu).filament_changes is None
+    assert read_gcode_stats(bambu).filament_changes == 2  # counted: T0 -> T1 -> T0, other tools ignored
 
     both = stats + read_gcode_stats(bambu) + GcodeStats(grams_per_filament=(1.0, 0.0, 2.0))
     assert both.grams_per_filament == pytest.approx((25.44, 0.68, 2.0))
-    assert both.filament_changes == 36
+    assert both.filament_changes == 38
 
 
 def test_unused_slots_are_not_counted_as_used() -> None:
     """A project listing five filaments but printing with one uses one."""
     assert GcodeStats(grams_per_filament=(7.4, 0.0, 0.0)).used_filaments() == ((1, 7.4),)
+
+
+def test_single_material_files_are_not_scanned_for_changes(tmp_path: Path) -> None:
+    """Only multi-material files are counted; unreadable files give no count."""
+    from batchslicer.services.gcode_stats import count_filament_changes
+
+    single = tmp_path / "single.gcode"
+    single.write_text("; total filament weight [g] : 7.4\nT0\nT1\n")
+    assert read_gcode_stats(single).filament_changes is None
+    assert count_filament_changes(tmp_path / "missing.gcode") is None

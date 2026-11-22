@@ -5,14 +5,15 @@ example ``; estimated printing time (normal mode) = 1h 2m 3s`` and
 ``; total filament used [g] = 7.41``, near the end of the file (Bambu Studio
 also near the start). A multi-material print also gives the grams of each
 filament (``; filament used [g] = 13.78, 0.39``) and the number of filament
-changes (``; total filament change = 36``). Only the start and end of the file are read, so large
+changes (``; total filament change = 36``); Bambu Studio does not write the
+latter, so it is counted from the tool changes (``T0``, ``T1``...) instead. Only the start and end of the file are read, so large
 files stay quick. Values that are missing are left as ``None``. This module
 does not run slicers or change files.
 """
 
 import re
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 _HEAD_BYTES = 64 * 1024
@@ -27,6 +28,8 @@ _GRAMS_NAMES = ("total filament used [g]", "total filament weight [g]", "filamen
 _LENGTH_NAMES = ("total filament length [mm]", "filament used [mm]")
 _COST_NAMES = ("total filament cost", "filament cost")
 _EACH_GRAMS_NAMES = ("filament used [g]", "total filament weight [g]")
+_MAX_TOOLS = 64
+"""Tool numbers from here on are not filament slots (Bambu uses ``T255`` and ``T1000``)."""
 _CHANGES_NAMES = ("total filament change", "total filament changes")
 
 
@@ -81,7 +84,7 @@ def read_gcode_stats(path: Path) -> GcodeStats:
     values = _comment_values(text)
     duration = _first(values, _TIME_NAMES)
     changes = _number(_first(values, _CHANGES_NAMES))
-    return GcodeStats(
+    stats = GcodeStats(
         print_seconds=parse_duration(duration) if duration else None,
         filament_grams=_number(_first(values, _GRAMS_NAMES)),
         filament_millimetres=_number(_first(values, _LENGTH_NAMES)),
@@ -89,6 +92,33 @@ def read_gcode_stats(path: Path) -> GcodeStats:
         grams_per_filament=_numbers(_first(values, _EACH_GRAMS_NAMES)),
         filament_changes=int(changes) if changes is not None else None,
     )
+    if stats.filament_changes is None and len(stats.used_filaments()) > 1:
+        stats = replace(stats, filament_changes=count_filament_changes(path))
+    return stats
+
+
+def count_filament_changes(path: Path) -> int | None:
+    """Return how many times the G-code switches to another filament slot, or None if unreadable.
+
+    The first ``T`` line loads a filament and is not a change; tool numbers
+    of :data:`_MAX_TOOLS` and more are other jobs, not filament slots.
+    """
+    changes = 0
+    current: int | None = None
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as file:
+            for line in file:
+                if not line.startswith("T"):
+                    continue
+                number = line[1:].partition(";")[0].strip()
+                if not number.isdigit() or int(number) >= _MAX_TOOLS:
+                    continue
+                if current is not None and int(number) != current:
+                    changes += 1
+                current = int(number)
+    except OSError:
+        return None
+    return changes
 
 
 def total_stats(paths: Iterable[Path]) -> GcodeStats:

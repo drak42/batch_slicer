@@ -676,7 +676,7 @@ def _watch(
     print(
         f"Put a model file or a folder of models in it. When it has finished copying it is "
         f"sliced, then moved to {watched.sliced.name}/ (or {watched.failed.name}/ if any "
-        "model failed). Press Ctrl+C to stop.",
+        f"model failed). {_how_to_stop()}",
         flush=True,
     )
     logger.info("Watching %s; output to %s", folder, output_directory)
@@ -720,6 +720,17 @@ def _watch(
     print(f"Stopped watching. Sliced {summary.sliced}, failed {summary.failed}.")
     logger.info("Stopped watching %s: %d sliced, %d failed", folder, summary.sliced, summary.failed)
     return EXIT_SUCCESS
+
+
+def _how_to_stop() -> str:
+    """Return how to stop watching: Ctrl+C in a terminal, stopping the service otherwise."""
+    try:
+        interactive = sys.stdin.isatty()
+    except (AttributeError, ValueError):
+        interactive = False
+    if interactive:
+        return "Press Ctrl+C to stop."
+    return "It runs until it is stopped (for a service: batchslicer service uninstall, or systemctl --user stop)."
 
 
 def _ask_watch_plates(profiles: ProfileStore) -> bool:

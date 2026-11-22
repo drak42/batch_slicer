@@ -1882,3 +1882,11 @@ def test_the_slot_question_offers_the_loaded_filaments(
     assert chosen.selection is not None and chosen.selection.more_filaments == (white,)
     single = SliceInput(root=tmp_path, models=(tmp_path / "cube.stl",), is_folder=False)
     assert app._ask_filament_slots([target], single, Mock()) == [target]
+
+
+def test_watch_says_how_to_stop(monkeypatch: pytest.MonkeyPatch) -> None:
+    """In a terminal Ctrl+C stops watching; without one (a service) stopping the service does."""
+    monkeypatch.setattr(app.sys.stdin, "isatty", lambda: True, raising=False)
+    assert app._how_to_stop() == "Press Ctrl+C to stop."
+    monkeypatch.setattr(app.sys.stdin, "isatty", lambda: False, raising=False)
+    assert "batchslicer service uninstall" in app._how_to_stop()
