@@ -221,3 +221,10 @@ def test_slots_are_given_as_pattern_equals_slot(capsys: pytest.CaptureFixture[st
     with pytest.raises(SystemExit):
         parse_arguments(["--slot", "*_lens.stl=red"])
     assert "not a filament slot" in capsys.readouterr().err
+
+
+def test_flat_output_can_be_turned_on_and_off() -> None:
+    """--flat and --no-flat set the option; leaving both out keeps the profile's choice."""
+    assert parse_arguments(["--flat"]).flat is True  # type: ignore[union-attr]
+    assert parse_arguments(["--no-flat"]).flat is False  # type: ignore[union-attr]
+    assert parse_arguments([]).flat is None  # type: ignore[union-attr]

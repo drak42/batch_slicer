@@ -165,6 +165,7 @@ def _run(options: RunOptions) -> int:
             plates=bool(options.plates),
             copies=options.copies or 1,
             slots=options.slots or (),
+            flat=bool(options.flat),
         )
         jobs = options.jobs or 1
         _check_options(targets, slice_options)
@@ -367,6 +368,7 @@ def _plan_targets(
                 else plan.loaded_filaments
             ),
             slots=options.slots if options.slots is not None else plan.slots,
+            flat=options.flat if options.flat is not None else plan.flat,
         )
 
     if len(targets) > 1:
@@ -621,6 +623,7 @@ def _remember_choices(
         copies=options.copies,
         loaded_filaments=options.loaded_filaments,
         slots=options.slots,
+        flat=options.flat,
     )
     if remember_last:
         try:

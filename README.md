@@ -457,6 +457,7 @@ asking; anything you leave out is still asked for, unless you add
 | `--jobs N` | slice N models at the same time (default 1); see [Speed](#speed) |
 | `--plates` | when slicing a folder, put the loose models of each folder together on as few plates as fit (see [Several models per plate](#several-models-per-plate)); `--no-plates` slices each model on its own |
 | `--copies N` | slice N copies of a single STL, OBJ or STEP model, arranged on as many plates as needed (see [Copies](#copies)); not for folders or 3MF projects |
+| `--flat` | put all of a batch's G-code in one folder, here and on the printer (see [Output](#output)) |
 | `--no-thumbnails` | don't add preview pictures to the G-code (see [Output](#output)); `--thumbnails` turns them back on over a profile |
 | `--exclude PATTERN` | leave out folders or files matching PATTERN when slicing a folder; repeat for several (see [Leaving models out](#leaving-models-out)) |
 | `--send PRINTER` | after slicing, upload the G-code to PRINTER: its address (`192.168.1.50`, `k2.local:4408` or a full URL) or a name from the configuration's `printers` section (see [Sending G-code to a printer](#sending-g-code-to-a-printer)); `--no-send` turns off a profile's printer |
@@ -1006,6 +1007,20 @@ output/
   one file per plate: `kit_plate_1.gcode`, `kit_plate_2.gcode`, and so on.
 - With `--plates`, a folder's models sliced together go into a `plates` folder
   instead (see below).
+- **`--flat`** puts all of a batch's G-code straight into its folder (and into
+  one folder on the printer, with `--send`), for printers whose file lists
+  handle deep folders badly. A name used twice gets the model's folders in
+  front (`old-v1.gcode`), then a number:
+
+  ```
+  output/
+    brackets-20261120-144808/
+      left.gcode
+      v1.gcode
+      presets/
+      report.csv
+      report.json
+  ```
 - Two models with the same name in one folder (`part.stl` and `part.3mf`) get
   separate folders (`part` and `part-2`).
 - A model that fails leaves no folder; its reason is in the summary, the

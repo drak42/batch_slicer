@@ -94,6 +94,9 @@ class RunOptions:
     start: bool = False
     """Start printing the sent G-code (--start); never remembered."""
 
+    flat: bool | None = None
+    """Put a batch's G-code in one folder (--flat / --no-flat)."""
+
     slots: tuple[tuple[str, str], ...] | None = None
     """Filament slots for loose models (--slot PATTERN=SLOT)."""
 
@@ -179,6 +182,7 @@ def parse_arguments(
         watch=namespace.watch,
         loaded_filaments=namespace.loaded_filaments,
         slots=tuple(namespace.slot) if namespace.slot else None,
+        flat=namespace.flat,
     )
 
 
@@ -465,6 +469,16 @@ def _parser() -> argparse.ArgumentParser:
             "slice N copies of a single model (STL, OBJ or STEP), arranged by the slicer "
             "on as many plates as needed. Not for folders, 3MF projects or Creality Print "
             "(asked in interactive runs; default: 1)"
+        ),
+    )
+    slicing.add_argument(
+        "--flat",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "when slicing a folder, put all the G-code straight into the run's folder (and "
+            "one folder on the printer) instead of mirroring the input's subfolders; a name "
+            "used twice gets its folder in front, such as kits-arm.gcode (default: off)"
         ),
     )
     slicing.add_argument(

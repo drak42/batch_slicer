@@ -124,9 +124,8 @@ These need a decision from the project owner before work starts.
 
 ## Later: features
 
-| Feature | Why |
-|---|---|
-| Flat output option | all G-code in one folder |
+The features planned here are built. New ones will come from what users ask
+for after the launch.
 
 ## Later: platform
 

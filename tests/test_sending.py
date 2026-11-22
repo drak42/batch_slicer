@@ -345,3 +345,16 @@ def test_loaded_filaments_are_read_from_moonraker(fake_moonraker: FakeMoonraker)
     fake_moonraker.objects = K2_STATUS
     assert [item.slot for item in _client(fake_moonraker).loaded_filaments()] == ["1B", "1C", "external"]
     assert OctoPrintClient(PrinterHost("x", "http://x", "k", OCTOPRINT)).loaded_filaments() == []
+
+
+def test_flat_gcode_is_sent_into_the_batch_folder(tmp_path: Path) -> None:
+    """G-code moved up into the batch folder (--flat) goes into that one folder on the printer."""
+    batch = tmp_path / "out" / "kits-20261123-073000"
+    outcome = SliceOutcome(
+        success=True, model=tmp_path / "in" / "b" / "arm.stl", job_directory=batch / "b" / "arm",
+        gcode_files=(batch / "b-arm.gcode",), message="", elapsed=1.0,
+    )
+
+    [upload] = plan_uploads([outcome], tmp_path / "out")
+
+    assert upload.remote_path == "kits-20261123-073000/b-arm.gcode"

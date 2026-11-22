@@ -8,6 +8,9 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ### Added
 
+- `--flat` puts all of a batch's G-code straight into its folder, and into one
+  folder on the printer; a name used twice gets its folders in front
+  (`kits-arm.gcode`). Profiles store it as `flat`.
 - `batchslicer doctor` lists what is loaded in each Creality printer's CFS and
   external spool holder.
 

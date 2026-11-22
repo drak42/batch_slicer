@@ -351,3 +351,12 @@ def test_slots_are_saved_as_a_mapping(tmp_path: Path) -> None:
     (tmp_path / "profiles.yaml").write_text("bad:\n  slots: {'*': 99}\n")
     with pytest.raises(ProfileError, match="not a filament slot"):
         store.load()
+
+
+def test_flat_setting_is_saved(tmp_path: Path) -> None:
+    """flat is stored as true/false and shown in the summary."""
+    store = ProfileStore(tmp_path / "profiles.yaml")
+    store.save(Profile("printer-list", flat=True))
+
+    assert store.get("printer-list").flat is True
+    assert "all G-code in one folder" in store.get("printer-list").summary()

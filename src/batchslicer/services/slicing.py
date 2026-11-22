@@ -303,6 +303,11 @@ class SlicingService:
                     done, _ = wait(running, return_when=FIRST_COMPLETED)
                     for future in sorted(done, key=running.__getitem__):
                         outcomes = future.result()
+                        if self._options.flat:
+                            outcomes = tuple(
+                                self._flatten(outcome, batch_directory, source_root)
+                                for outcome in outcomes
+                            )
                         index = running.pop(future)
                         finished[index] = outcomes
                         if on_result is not None:
@@ -515,6 +520,33 @@ class SlicingService:
             load_settings=settings,
             load_filaments=self._filaments_for(model, job_directory, filaments),
         )
+
+    def _flatten(self, outcome: SliceOutcome, batch_directory: Path, root: Path) -> SliceOutcome:
+        """Move a finished model's G-code straight into the batch folder (``--flat``).
+
+        A name already taken there gets the model's folders in front
+        (``kits-arm.gcode``), then a number. The emptied folders are removed
+        when the batch ends.
+        """
+        if not outcome.success or not outcome.gcode_files:
+            return outcome
+        try:
+            folders = outcome.model.parent.relative_to(root).parts
+        except ValueError:
+            folders = ()
+        moved: list[Path] = []
+        for gcode in outcome.gcode_files:
+            target = batch_directory / gcode.name
+            if target.exists() and folders:
+                target = batch_directory / f"{'-'.join(folders)}-{gcode.name}"
+            number = 2
+            while target.exists():
+                target = batch_directory / f"{gcode.stem} ({number}){gcode.suffix}"
+                number += 1
+            gcode.rename(target)
+            moved.append(target)
+        self._logger.info("Moved the G-code of %s into %s", outcome.model.name, batch_directory)
+        return replace(outcome, gcode_files=tuple(moved))
 
     def _slot_filaments(
         self, models: Sequence[Path], job_directory: Path, filaments: list[Path]

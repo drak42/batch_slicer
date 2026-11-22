@@ -815,3 +815,23 @@ def test_one_good_part_is_not_put_on_plates_alone(tmp_path: Path) -> None:
         (kit[0], True, ()),
         (kit[1], False, ()),
     ]
+
+
+def test_flat_output_puts_all_gcode_in_the_batch_folder(tmp_path: Path) -> None:
+    """--flat moves each G-code up; a name used twice gets its folders in front, then a number."""
+    from batchslicer.domain.options import SliceOptions
+
+    root = tmp_path / "in"
+    models = [root / "a" / "arm.stl", root / "b" / "arm.stl", root / "arm.stl", root / "b" / "deep" / "rest.stl"]
+    for model in models:
+        model.parent.mkdir(parents=True, exist_ok=True)
+        model.write_text("solid")
+    service = SlicingService(_backend(), logger=Mock(), clock=lambda: NOW, options=SliceOptions(flat=True))
+
+    batch = service.slice_batch(models, root, tmp_path / "out")
+
+    folder = batch.batch_directory
+    assert [outcome.gcode_files for outcome in batch.outcomes] == [
+        (folder / "arm.gcode",), (folder / "b-arm.gcode",), (folder / "arm (2).gcode",), (folder / "rest.gcode",),
+    ]
+    assert sorted(path.name for path in folder.iterdir()) == ["arm (2).gcode", "arm.gcode", "b-arm.gcode", "rest.gcode"]

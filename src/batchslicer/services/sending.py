@@ -91,13 +91,17 @@ def plan_uploads(outcomes: Sequence[SliceOutcome], base: Path) -> list[Upload]:
         if not outcome.success:
             continue
         job = outcome.job_directory.absolute()
-        try:
-            parent = job.parent.relative_to(root)
-        except ValueError:
-            parent = Path()
         for gcode in outcome.gcode_files:
+            # G-code is normally in the model's own job folder; with --flat it was
+            # moved up into the batch folder and is sent from there.
+            holder = gcode.absolute().parent
+            in_job = holder == job
+            try:
+                parent = (job.parent if in_job else holder).relative_to(root)
+            except ValueError:
+                parent = Path()
             short = Upload(gcode, _posix(parent))
-            full = Upload(gcode, _posix(parent / job.name) if parent.parts else "")
+            full = Upload(gcode, _posix(parent / job.name) if parent.parts and in_job else _posix(parent))
             uploads.append((short, full))
 
     counts: dict[str, int] = {}
