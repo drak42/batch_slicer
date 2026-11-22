@@ -6,6 +6,10 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-23
+
+Colours for STL kits, and clearer Creality Print failures.
+
 ### Added
 
 - `--slot PATTERN=SLOT` gives STL, OBJ and STEP models their own filament
@@ -405,7 +409,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/drak42/batch_slicer/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/drak42/batch_slicer/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/drak42/batch_slicer/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/drak42/batch_slicer/compare/v0.10.0...v0.11.0

@@ -100,14 +100,18 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - Bambu Studio's filament changes are counted; a watch service says how to
   stop it; CFS matching confirmed on a Creality K2 Plus.
 
+### 0.13.0 (2026-11-23): colours for STL kits
+
+- `--slot PATTERN=SLOT` gives STL models their own filament slot, numbered or
+  a loaded CFS slot; Creality Print 3MF projects fail at once with the reason.
+
 ## Next
 
 - **Web interface** (agreed, see [WebPlan](WebPlan.md)): `batchslicer web`
   in a browser on this computer, with upload, queue, results, download,
   sending and the printers' CFS; network access with a password in the
   release after; Docker later.
-- Multi-colour: the Bambu AMS. (Colours for STL files with `--slot`: built,
-  unreleased.)
+- Multi-colour: the Bambu AMS.
 - Windows and macOS work continues on the `feat/windows` and `feat/macos`
   branches (draft pull requests), outside `main`.
 
