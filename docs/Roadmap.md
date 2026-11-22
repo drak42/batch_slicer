@@ -69,6 +69,10 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 - When one part of a folder fails, the others still go back together on plates.
 
+### 0.9.2 (2026-11-22): on PyPI
+
+- `pipx install batchslicer`; each tagged release is uploaded automatically.
+
 ## Next
 
 Nothing is scheduled: the next steps need the decisions below.
@@ -77,9 +81,9 @@ Nothing is scheduled: the next steps need the decisions below.
 
 These need a decision from the project owner before work starts.
 
-- **Visibility**: make the repository public?
-- **PyPI**: publish with trusted publishing so `pipx install batchslicer` works
-  for anyone (the name is available).
+- **Visibility**: make the repository public? The code is public on PyPI
+  from 0.9.2, but the project links there lead to the private repository.
+- **PyPI**: decided; published from 0.9.2 with trusted publishing.
 - **Audience**: Linux command-line users only, or also people who expect a
   graphical interface and Windows/macOS? This decides between the feature work
   below and the platform work further down.
