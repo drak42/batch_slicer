@@ -6,6 +6,10 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-11-22
+
+The repository is public. The program is unchanged from 0.9.2.
+
 ### Added
 
 - The repository is public: README badges, issue forms for bug reports
@@ -305,7 +309,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.9.3...HEAD
+[0.9.3]: https://github.com/drak42/batch_slicer/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/drak42/batch_slicer/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/drak42/batch_slicer/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/drak42/batch_slicer/compare/v0.8.0...v0.9.0

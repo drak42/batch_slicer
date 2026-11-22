@@ -73,6 +73,11 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 - `pipx install batchslicer`; each tagged release is uploaded automatically.
 
+### 0.9.3 (2026-11-22): public
+
+- The repository is public, with issue forms, private vulnerability reporting,
+  Dependabot and a protected `main`.
+
 ## Next
 
 Nothing is scheduled: the next steps need the decisions below.
