@@ -42,7 +42,10 @@ not slice. Everything below describes a normal run.
    `printers` section, or from the address given (`domain/printers.py`).
 8. **Choose what to slice** (`cli/file_prompt.py`), leave out models matching
    `--exclude` (`exclude_models`), and **choose the output folder**
-   (`cli/output_prompt.py`). `--start` is refused here unless every target
+   (`cli/output_prompt.py`). An interactive run without a profile, `--send`
+   or `--no-send` then asks whether to send the G-code
+   (`cli/send_prompt.py`), when a printer is configured or the last run sent
+   to one. `--start` is refused here unless every target
    sends and a single model was chosen, and each printer to send to must
    answer (`infrastructure/moonraker.py`), so nothing is sliced for a
    printer that is off.

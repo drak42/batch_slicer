@@ -73,6 +73,7 @@ def startup_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, Mock, Mock, Mo
         config.get(section, key)
     )
     config.path = Path("/settings/config.yaml")
+    config.section.return_value = None  # no 'printers' section
     monkeypatch.setattr(app, "find_config_file", Mock(return_value=Path("/settings/config.yaml")))
     monkeypatch.setattr(app, "confirm", Mock(return_value=False))
     profile_store = Mock()
@@ -1287,6 +1288,7 @@ def test_send_problems_stop_before_slicing(
 ) -> None:
     """An unknown printer or an impossible --start is refused before anything is sliced."""
     _printer(monkeypatch, fake_moonraker, tmp_path)
+    monkeypatch.setattr(app, "prompt_for_printer", Mock(return_value=None))  # "Don't send"
     if folder:
         _folder_batch(monkeypatch, _outcome(success=True))
 
@@ -1370,3 +1372,65 @@ def test_printer_address_can_be_given_without_configuration(
     assert list(fake_moonraker.files) == ["cube.gcode"]
     assert f"Send to:  {address} ({fake_moonraker.url})" in capsys.readouterr().out
     assert ProfileStore(store).get("last").targets[0].send == address
+
+
+def test_interactive_run_asks_whether_to_send(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_moonraker: FakeMoonraker,
+) -> None:
+    """With a printer configured, an interactive run asks; the answer is used and remembered."""
+    from batchslicer.domain.printers import PrinterHost
+    from batchslicer.infrastructure.profiles import ProfileStore
+
+    store = _store_with(monkeypatch, tmp_path)
+    _printer(monkeypatch, fake_moonraker, tmp_path)
+    ask = Mock(side_effect=lambda hosts, last: hosts[0])
+    monkeypatch.setattr(app, "prompt_for_printer", ask)
+    monkeypatch.setattr(app, "prompt_for_profile", Mock(return_value=None))  # choose everything
+
+    assert app.main([]) == 0
+
+    assert ask.call_args.args[0] == [PrinterHost("k2", fake_moonraker.url)]
+    assert list(fake_moonraker.files) == ["cube.gcode"]
+    assert ProfileStore(store).get("last").targets[0].send == "k2"
+
+    # The next run offers the printer used last time as the default.
+    assert app.main([]) == 0
+    assert ask.call_args.kwargs["last"] == PrinterHost("k2", fake_moonraker.url)
+
+
+@pytest.mark.parametrize(
+    "arguments", [["--no-send"], ["--send", "k2"], ["--profile", "k2"]], ids=["no-send", "send", "profile"]
+)
+def test_no_question_when_sending_is_already_decided(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_moonraker: FakeMoonraker,
+    arguments: list[str],
+) -> None:
+    """--send, --no-send or a profile settle it, so nothing is asked."""
+    from batchslicer.domain.profiles import Profile, Target
+
+    _store_with(monkeypatch, tmp_path, Profile("k2", targets=(Target(slicer="bambu_studio"),)))
+    _printer(monkeypatch, fake_moonraker, tmp_path)
+    monkeypatch.setattr(app, "prompt_for_profile", Mock(return_value=None))
+    ask = Mock(side_effect=AssertionError("asked"))
+    monkeypatch.setattr(app, "prompt_for_printer", ask)
+
+    assert app.main(arguments) == 0
+    ask.assert_not_called()
+
+
+def test_no_question_without_any_printer_to_offer(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """People who never send are never asked."""
+    _store_with(monkeypatch, tmp_path)
+    monkeypatch.setattr(app, "prompt_for_printer", Mock(side_effect=AssertionError("asked")))
+
+    assert app.main([]) == 0

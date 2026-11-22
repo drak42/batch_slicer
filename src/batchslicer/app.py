@@ -41,6 +41,7 @@ from batchslicer.cli.menu import confirm
 from batchslicer.cli.output_prompt import output_from_path, prompt_for_output
 from batchslicer.cli.preset_prompt import find_preset, select_presets
 from batchslicer.cli.profile_prompt import prompt_for_profile
+from batchslicer.cli.send_prompt import prompt_for_printer
 from batchslicer.cli.setup import SetupOptions, run_setup
 from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slicer
 from batchslicer.core.config import Config, find_config_file, get_config
@@ -129,7 +130,7 @@ def _run(options: RunOptions) -> int:
             deleted = profiles.delete(options.delete_profile)
             print(f"Deleted profile '{deleted.name}'.")
             return EXIT_SUCCESS
-        options, specs, offered_more = _plan_targets(options, profiles, logger)
+        options, specs, offered_more, from_profile = _plan_targets(options, profiles, logger)
 
         if options.list_presets:
             if len(specs) > 1:
@@ -151,6 +152,8 @@ def _run(options: RunOptions) -> int:
         _check_options(targets, slice_options)
         _show_ready(targets, slice_options, jobs, start=options.start)
         slice_input = _apply_exclude(_select_input(options, config), options.exclude or ())
+        if not from_profile and options.send is None and not options.no_prompt:
+            targets = _ask_to_send(targets, profiles, config)
         _check_start(options.start, targets, slice_input)
         output_directory = _select_output(options, config)
         _check_printers(targets, logger)
@@ -258,9 +261,9 @@ def _plan_targets(
     options: RunOptions,
     profiles: ProfileStore,
     logger: logging.Logger,
-) -> tuple[RunOptions, list[Target], bool]:
+) -> tuple[RunOptions, list[Target], bool, bool]:
     """Return the options with profile choices filled in, the targets to slice for,
-    and whether to offer adding more printers.
+    whether to offer adding more printers, and whether a profile was used.
 
     Profiles come from --profile/--last (several combine their printers), or one
     is offered interactively when nothing was given and profiles exist.
@@ -318,7 +321,7 @@ def _plan_targets(
     if options.send == "":
         targets = [replace(target, send=None) for target in targets]
     offer_more = interactive and not options.profiles and not options.has_target_choices()
-    return options, targets, offer_more
+    return options, targets, offer_more, bool(chosen)
 
 
 def _resolve_targets(
@@ -386,6 +389,41 @@ def _attach_printers(
             )
         attached.append(replace(target, host=host))
     return attached
+
+
+def _ask_to_send(
+    targets: list[_ResolvedTarget],
+    profiles: ProfileStore,
+    config: Config,
+) -> list[_ResolvedTarget]:
+    """Ask whether to send a one-printer run's G-code, when there is a printer to offer.
+
+    Printers come from the configuration and from the last run. Nothing is
+    asked when there are none, or when the run slices for several printers.
+    """
+    if len(targets) != 1 or targets[0].host is not None:
+        return targets
+    hosts = list(printer_hosts(config.section("printers")).values())
+    last: PrinterHost | None = None
+    try:
+        previous = profiles.load().get(LAST_RUN)
+    except ProfileError:
+        previous = None
+    if previous is not None and not previous.is_multi and previous.targets[0].send:
+        name = previous.targets[0].send
+        last = next((host for host in hosts if host.name.casefold() == name.casefold()), None)
+        if last is None:
+            try:
+                last = host_from_address(name)
+            except ValueError:
+                last = None
+    if not hosts and last is None:
+        return targets
+    chosen = prompt_for_printer(hosts, last=last)
+    if chosen is None:
+        return targets
+    print(f"  Send to:  {chosen.describe()}")
+    return [replace(targets[0], host=chosen)]
 
 
 def _check_start(start: bool, targets: list[_ResolvedTarget], slice_input: SliceInput) -> None:

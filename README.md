@@ -356,6 +356,23 @@ Press Enter for the default, pick an existing folder by number, or type a new
 name (created inside the output folder) or a full path (used as typed). BatchSlicer asks
 before creating a folder.
 
+Last, if you have a printer to send to (one in the configuration's `printers`
+section, or the one the last run sent to), BatchSlicer asks whether to send
+the G-code there (see [Sending G-code to a printer](#sending-g-code-to-a-printer)):
+
+```
+Send the G-code to a printer?
+  0) Don't send
+  1) k2plus (http://192.168.1.242:7125)  (last time)
+  Or type another printer's address, such as 192.168.1.50
+Enter for 1, a number 0-1, or an address:
+```
+
+Enter keeps what the last run did. If you have never sent to a printer, this
+question is not asked. It is also skipped when the run comes from a profile
+or `--last` (the profile decides), with `--send` or `--no-send`, and for runs
+that slice for several printers.
+
 ## Using the command line
 
 Every question has a matching option. Options you give are used without
@@ -618,6 +635,9 @@ batchslicer --profile k2-pla --input bracket.stl --send k2plus --start
 - A profile remembers the printer (`--send`), but never `--start`, so a saved
   profile cannot start prints by itself. `--no-send` skips sending for one run.
 - With several printers, each profile sends to its own printer.
+- In an interactive run, BatchSlicer asks whether to send (see
+  [Using BatchSlicer interactively](#using-batchslicer-interactively)), and
+  offers the printer used last time as the default.
 - `batchslicer doctor` checks that every configured printer answers.
 - **Creality K2 Plus** (tested): Moonraker answers on port 7125 and on 4408,
   with no API key needed, and the touchscreen shows the batch folders and

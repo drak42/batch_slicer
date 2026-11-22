@@ -6,6 +6,13 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Interactive runs ask whether to send the G-code** to a printer, when one
+  is configured or the last run sent to one ("Enter keeps what the last run
+  did"; another address can be typed). Runs from a profile or with `--send` /
+  `--no-send` are not asked, and people who never send are never asked.
+
 ## [0.7.1] - 2026-11-22
 
 Preview pictures on the printer's screen, checked with a real K2 Plus.

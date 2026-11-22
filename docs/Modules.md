@@ -32,6 +32,7 @@ docstring says more, including what it intentionally does not do.
 | `cli/profile_prompt.py` | offer saved profiles |
 | `cli/file_prompt.py` | choose a model file or a folder of models; apply `--exclude` patterns |
 | `cli/output_prompt.py` | choose or create the output folder |
+| `cli/send_prompt.py` | ask whether to send the G-code to a printer, and to which |
 | `cli/setup.py` | `batchslicer setup`: detect slicers, write the configuration |
 | `cli/doctor.py` | `batchslicer doctor`: check the setup and report problems |
 
