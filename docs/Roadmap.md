@@ -78,13 +78,15 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - The repository is public, with issue forms, private vulnerability reporting,
   Dependabot and a protected `main`.
 
+### 0.10.0 (2026-11-23): watch folder, OctoPrint
+
+- `--watch` slices each model or folder dropped into a folder and moves it to
+  `sliced` or `failed`.
+- `--send` uploads to OctoPrint as well as Klipper/Moonraker (tested against a
+  stand-in OctoPrint; still to be tried with a real server).
+
 ## Next
 
-- **Sending to OctoPrint** (built, unreleased): `type: octoprint` printers in
-  the configuration; tested against a stand-in OctoPrint, still to be tried
-  with a real server.
-- **Watch folder** (built, unreleased): `--watch` slices each model or
-  folder dropped into a folder and moves it to `sliced` or `failed`.
 - Windows and macOS work continues on the `feat/windows` and `feat/macos`
   branches (draft pull requests), outside `main`.
 

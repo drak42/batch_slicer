@@ -6,6 +6,10 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-23
+
+A watch folder, and sending to OctoPrint.
+
 ### Added
 
 - Watch folder: `--watch` keeps running and slices each model file or folder
@@ -19,6 +23,12 @@ All notable changes to BatchSlicer are recorded here. The format follows
   needed, `--start` selects and prints a single file when the printer is
   ready, and `batchslicer doctor` checks it. Tested against a stand-in
   OctoPrint; not yet with a real server.
+
+### Changed
+
+- `batchslicer doctor` shows a Klipper printer as "Klipper is ready" and leaves
+  out Moonraker's version when the printer reports none (the Creality K2 Plus
+  reports "?").
 
 ## [0.9.3] - 2026-11-22
 
@@ -323,7 +333,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.9.3...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/drak42/batch_slicer/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/drak42/batch_slicer/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/drak42/batch_slicer/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/drak42/batch_slicer/compare/v0.9.0...v0.9.1

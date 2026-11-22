@@ -43,8 +43,9 @@ Much of that is in place: it slices for several printers at once, reports
 print time and filament, puts a folder's parts together on plates, adds
 preview pictures for printer screens, and sends G-code to Klipper and
 OctoPrint printers.
-Next come copies on plates, multi-material printers, watch folders and other
-kinds of printer connection.
+It also watches a folder and slices whatever is dropped into it. Next come
+multi-material printers, Bambu Lab printers over the local network, and
+Windows and macOS.
 
 See [Roadmap](Roadmap.md) for the concrete plan and
 [Architecture](Architecture.md) for how the software is built.
