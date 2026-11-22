@@ -314,10 +314,12 @@ def fake_octoprint() -> Iterator[FakeOctoPrint]:
 def linux_layout(monkeypatch: pytest.MonkeyPatch) -> None:
     """Use the Linux folder layout whatever system runs the tests.
 
-    Tests of the Windows layout switch it on with the ``windows`` fixture.
+    Tests of the Windows or macOS layout switch it on with the ``windows`` or
+    ``macos`` fixture.
     """
     monkeypatch.setattr(detection, "is_windows", lambda: False)
     monkeypatch.setattr(locations, "is_windows", lambda: False)
+    monkeypatch.setattr(detection, "is_macos", lambda: False)
 
 
 @pytest.fixture
@@ -325,3 +327,9 @@ def windows(monkeypatch: pytest.MonkeyPatch) -> None:
     """Use the Windows folder layout (Program Files, %APPDATA%, %LOCALAPPDATA%)."""
     monkeypatch.setattr(detection, "is_windows", lambda: True)
     monkeypatch.setattr(locations, "is_windows", lambda: True)
+
+
+@pytest.fixture
+def macos(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Detect slicers as on macOS."""
+    monkeypatch.setattr(detection, "is_macos", lambda: True)

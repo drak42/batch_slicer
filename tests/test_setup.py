@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from batchslicer.backends import detection
 from batchslicer.cli.setup import SetupOptions, run_setup
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
 from batchslicer.core.config import Config, render_config
@@ -172,3 +173,22 @@ def test_new_configuration_shows_this_systems_default_folders(
     assert f"(default {(tmp_path / 'Local' / 'BatchSlicer' / 'logs').as_posix()})" in text
     assert f"(default {(tmp_path / 'Roaming' / 'BatchSlicer' / 'profiles.yaml').as_posix()})" in text
     assert ".local/state" not in text
+
+
+@pytest.mark.usefixtures("macos")
+def test_setup_on_a_mac(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """On macOS, setup configures the app in ~/Applications and its Application Support folder."""
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setattr(detection, "_MAC_APP_FOLDERS", (tmp_path / "Applications",))
+    program = home / "Applications" / "OrcaSlicer.app" / "Contents" / "MacOS" / "OrcaSlicer"
+    program.parent.mkdir(parents=True)
+    program.write_text("")
+    (home / "Library" / "Application Support" / "OrcaSlicer").mkdir(parents=True)
+    target = home / ".config" / "batchslicer" / "config.yaml"
+
+    run_setup(SetupOptions(config=target, no_prompt=True), write=lambda _: None, home=home, environ={"PATH": ""})
+
+    config = Config(target)
+    assert config.get("orca", "executable") == "~/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer"
+    assert config.get("orca", "datadir") == "~/Library/Application Support/OrcaSlicer"

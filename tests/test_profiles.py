@@ -145,6 +145,21 @@ def test_installed_profiles_next_to_the_program_are_used(tmp_path: Path) -> None
     assert found == profiles
 
 
+def test_presets_inside_a_mac_app_are_used(tmp_path: Path) -> None:
+    """A macOS app keeps its presets in Contents/Resources/profiles."""
+    contents = tmp_path / "OrcaSlicer.app" / "Contents"
+    (contents / "MacOS").mkdir(parents=True)
+    executable = contents / "MacOS" / "OrcaSlicer"
+    executable.write_text("")
+    profiles = contents / "Resources" / "profiles"
+    (profiles / "Creality" / "machine").mkdir(parents=True)
+    (profiles / "Creality" / "machine" / "k2.json").write_text("{}")
+
+    found = find_system_profiles(executable, _data_directory(tmp_path, "Creality"), tmp_path / "cache")
+
+    assert found in (profiles, contents / "resources" / "profiles")  # same on a case-insensitive disk
+
+
 def test_no_presets_anywhere_is_reported(tmp_path: Path) -> None:
     """Without JSON presets, .opc files or a usable program, PresetError explains why."""
     with pytest.raises(PresetError, match="No built-in presets"):

@@ -7,13 +7,16 @@ releases are recommended over pre-releases, newest first. On Windows it also
 looks in Program Files, ``%LOCALAPPDATA%\\Programs`` and portable copies
 unzipped into the usual folders, reads the version from Windows' list of
 installed programs (or else the program's version information or its folder
-name), and finds the settings folder under
-``%APPDATA%``. This module only looks; it does not write configuration or run
-slicers. Flatpak installs are
+name), and finds the settings folder under ``%APPDATA%``. On macOS it also
+looks for the slicer apps in ``/Applications`` and ``~/Applications``, reads
+their version from the app's ``Info.plist``, and finds the settings folder
+under ``~/Library/Application Support``. This module only looks; it does not
+write configuration or run slicers. Flatpak installs are
 not detected, because a Flatpak app is not a single program file.
 """
 
 import os
+import plistlib
 import re
 import shutil
 import sys
@@ -29,6 +32,10 @@ SEARCH_FOLDERS = ("Apps", "Applications", "AppImages", "Downloads", "Desktop", "
 """Folders under the home folder searched for AppImages."""
 
 _SYSTEM_FOLDERS = (Path("/opt"),)
+_MAC_APP_FOLDERS = (Path("/Applications"),)
+"""Folders searched for slicer apps on macOS, besides ~/Applications."""
+_MAC_SETTINGS = Path("Library") / "Application Support"
+"""Where macOS apps keep their settings, under the home folder."""
 _VERSION_PATTERN = re.compile(r"[vV]?(\d+(?:\.\d+)+)")
 _VERSION_FOLDER = re.compile(r"\d+(?:\.\d+)+")
 """A Creality Print settings folder name, such as 7.3."""
@@ -42,7 +49,8 @@ class _SlicerSignature:
     file_prefixes: tuple[str, ...]
     program_names: tuple[str, ...]
     data_directory: str
-    """Settings folder under ~/.config (%APPDATA% on Windows); Creality Print adds a version subfolder."""
+    """Settings folder under ~/.config (%APPDATA% on Windows, ~/Library/Application
+    Support on macOS); Creality Print adds a version subfolder."""
 
     versioned_data: bool = False
     windows_programs: tuple[str, ...] = ()
@@ -102,6 +110,13 @@ def find_installations(
     for candidate in _appimages(folders):
         if _matches(candidate.name, signature.file_prefixes):
             found.setdefault(candidate.resolve(), _installation(candidate))
+    if is_macos():
+        app_folders = [*_MAC_APP_FOLDERS, home / "Applications"]
+        for bundle in _app_bundles(app_folders):
+            if _matches(bundle.name, signature.file_prefixes):
+                installation = _app_installation(bundle)
+                if installation is not None:
+                    found.setdefault(installation.executable.resolve(), installation)
     for name in signature.program_names:
         program = shutil.which(name, path=environ.get("PATH", ""))
         if program:
@@ -131,12 +146,15 @@ def find_data_directory(
     the installation's major.minor version is preferred, then the newest.
     """
     signature = _SIGNATURES[slicer_key]
+    home = home or Path.home()
     environ = os.environ if environ is None else environ
     if is_windows():
-        config_home = _app_data(home or Path.home(), environ)
+        settings_home = _app_data(home, environ)
+    elif is_macos():
+        settings_home = home / _MAC_SETTINGS
     else:
-        config_home = _config_home(home or Path.home(), environ)
-    base = config_home / signature.data_directory
+        settings_home = _config_home(home, environ)
+    base = settings_home / signature.data_directory
     if not signature.versioned_data:
         return base if base.is_dir() else None
 
@@ -310,6 +328,66 @@ def _file_version(program: Path) -> tuple[int, ...]:
         return (major, minor, patch, build) if build else (major, minor, patch)
     except (OSError, AttributeError, ValueError):
         return ()
+
+
+def is_macos() -> bool:
+    """Return whether BatchSlicer is running on macOS."""
+    return sys.platform == "darwin"
+
+
+def _app_bundles(folders: Iterable[Path]) -> Iterable[Path]:
+    """Yield macOS app bundles (``*.app`` folders) directly inside ``folders``."""
+    for folder in folders:
+        try:
+            entries = list(folder.iterdir())
+        except OSError:
+            continue
+        yield from (
+            entry for entry in entries if entry.suffix.lower() == ".app" and entry.is_dir()
+        )
+
+
+def _app_installation(bundle: Path) -> Installation | None:
+    """Return the program inside a macOS app bundle, or None if it has none.
+
+    The program and version come from ``Contents/Info.plist``
+    (``CFBundleExecutable`` and ``CFBundleShortVersionString``); without them,
+    the program is the one file in ``Contents/MacOS`` and the version is read
+    from the bundle's name.
+    """
+    contents = bundle / "Contents"
+    info: dict[str, object] = {}
+    try:
+        with (contents / "Info.plist").open("rb") as file:
+            loaded = plistlib.load(file)
+        if isinstance(loaded, dict):
+            info = loaded
+    except (OSError, plistlib.InvalidFileException, ValueError):
+        pass
+
+    programs = contents / "MacOS"
+    executable: Path | None = None
+    name = info.get("CFBundleExecutable")
+    if isinstance(name, str) and (programs / name).is_file():
+        executable = programs / name
+    else:
+        try:
+            files = [entry for entry in programs.iterdir() if entry.is_file()]
+        except OSError:
+            files = []
+        if len(files) == 1:
+            executable = files[0]
+    if executable is None:
+        return None
+
+    version_text = info.get("CFBundleShortVersionString")
+    label = f"{bundle.name} {version_text}" if isinstance(version_text, str) else bundle.name
+    version = _parse_version(version_text) if isinstance(version_text, str) else ()
+    return Installation(
+        executable=executable,
+        version=version or _parse_version(bundle.name),
+        prerelease=bool(_PRERELEASE_PATTERN.search(label)),
+    )
 
 
 def _appimages(folders: Iterable[Path]) -> Iterable[Path]:
