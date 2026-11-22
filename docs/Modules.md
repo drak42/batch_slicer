@@ -26,7 +26,7 @@ docstring says more, including what it intentionally does not do.
 | Module | Purpose |
 |---|---|
 | `cli/arguments.py` | parse command-line options for runs, `setup` and `doctor` |
-| `cli/menu.py` | numbered menus with search, and yes/no questions |
+| `cli/menu.py` | numbered menus with search, yes/no questions and number questions |
 | `cli/slicer_prompt.py` | choose a slicer |
 | `cli/preset_prompt.py` | choose printer, filament and process; find presets by name |
 | `cli/profile_prompt.py` | offer saved profiles |
@@ -49,7 +49,7 @@ docstring says more, including what it intentionally does not do.
 
 | Module | Purpose |
 |---|---|
-| `services/slicing.py` | slice one model or a batch into job folders (parallel jobs, auto-orient retry, models together on plates, clean-up) |
+| `services/slicing.py` | slice one model or a batch into job folders (parallel jobs, auto-orient retry, models together on plates, copies, clean-up) |
 | `services/report.py` | write `report.csv` and `report.json` |
 | `services/gcode_stats.py` | read print time and filament use from G-code |
 | `services/thumbnails.py` | draw preview pictures from G-code toolpaths and insert them as PNG blocks |

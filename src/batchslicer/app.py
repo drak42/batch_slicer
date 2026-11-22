@@ -37,7 +37,7 @@ from batchslicer.cli.file_prompt import (
     input_from_path,
     prompt_for_input,
 )
-from batchslicer.cli.menu import confirm
+from batchslicer.cli.menu import ask_number, confirm
 from batchslicer.cli.output_prompt import output_from_path, prompt_for_output
 from batchslicer.cli.preset_prompt import find_preset, select_presets
 from batchslicer.cli.profile_prompt import prompt_for_profile
@@ -47,7 +47,7 @@ from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slice
 from batchslicer.core.config import Config, find_config_file, get_config
 from batchslicer.core.environment import EnvironmentService
 from batchslicer.core.logging import configure_logging, current_log_file
-from batchslicer.domain.options import SliceOptions
+from batchslicer.domain.options import COPYABLE_SUFFIXES, MAX_COPIES, SliceOptions
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.domain.printers import PrinterHost, host_from_address, printer_hosts
 from batchslicer.domain.profiles import LAST_RUN, Profile, Target, combine, is_valid_name
@@ -147,6 +147,8 @@ def _run(options: RunOptions) -> int:
             orient=options.orient or "off",
             allow_newer_files=bool(options.allow_newer_files),
             thumbnails=options.thumbnails is not False,
+            plates=bool(options.plates),
+            copies=options.copies or 1,
         )
         jobs = options.jobs or 1
         _check_options(targets, slice_options)
@@ -154,7 +156,14 @@ def _run(options: RunOptions) -> int:
         slice_input = _apply_exclude(_select_input(options, config), options.exclude or ())
         if options.plates is None and not from_profile and not options.no_prompt:
             options = replace(options, plates=_ask_plates(targets, slice_input, profiles))
-        slice_options = replace(slice_options, plates=bool(options.plates) and slice_input.is_folder)
+        if options.copies is None and not from_profile and not options.no_prompt:
+            options = replace(options, copies=_ask_copies(targets, slice_input))
+        options = replace(options, copies=_checked_copies(options.copies, slice_input, from_profile))
+        slice_options = replace(
+            slice_options,
+            plates=bool(options.plates) and slice_input.is_folder,
+            copies=options.copies or 1,
+        )
         _check_options(targets, slice_options)
         if not from_profile and options.send is None and not options.no_prompt:
             targets = _ask_to_send(targets, profiles, config)
@@ -303,6 +312,7 @@ def _plan_targets(
             exclude=options.exclude if options.exclude is not None else plan.exclude,
             thumbnails=options.thumbnails if options.thumbnails is not None else plan.thumbnails,
             plates=options.plates if options.plates is not None else plan.plates,
+            copies=options.copies if options.copies is not None else plan.copies,
         )
 
     if len(targets) > 1:
@@ -431,6 +441,47 @@ def _ask_to_send(
     return [replace(targets[0], host=chosen)]
 
 
+def _ask_copies(targets: list[_ResolvedTarget], slice_input: SliceInput) -> int | None:
+    """Ask how many copies of a single model to slice, when copies are possible."""
+    model = slice_input.models[0]
+    if slice_input.is_folder or model.suffix.casefold() not in COPYABLE_SUFFIXES:
+        return None
+    if not all(target.slicer.supports("--clone-objects") for target in targets):
+        return None
+    return ask_number(
+        f"How many copies of {model.name}?",
+        default=1,
+        minimum=1,
+        maximum=MAX_COPIES,
+        read_line=input,
+        write=print,
+    )
+
+
+def _checked_copies(copies: int | None, slice_input: SliceInput, from_profile: bool) -> int | None:
+    """Return the copies to slice, refusing them for a folder or a 3MF project.
+
+    A profile's copies are left out (with a note) when this run's input cannot
+    be copied; copies asked for on the command line stop the run instead.
+    """
+    if copies is None or copies <= 1:
+        return copies
+    model = slice_input.models[0]
+    if slice_input.is_folder:
+        problem = "--copies works with a single model file, not a folder (see --plates)."
+    elif model.suffix.casefold() not in COPYABLE_SUFFIXES:
+        problem = (
+            f"--copies works with STL, OBJ or STEP models; {model.name} is a project "
+            "that keeps its own plates."
+        )
+    else:
+        return copies
+    if from_profile:
+        print(f"Not making {copies} copies: {problem}")
+        return 1
+    raise SlicerSelectionError(problem)
+
+
 def _ask_plates(
     targets: list[_ResolvedTarget],
     slice_input: SliceInput,
@@ -511,6 +562,7 @@ def _remember_choices(
         exclude=options.exclude,
         thumbnails=options.thumbnails,
         plates=options.plates,
+        copies=options.copies,
     )
     try:
         profiles.save(choices)
@@ -656,6 +708,11 @@ def _print_names(presets: Sequence[Preset]) -> None:
 def _check_options(targets: list[_ResolvedTarget], options: SliceOptions) -> None:
     """Stop before slicing if a chosen slicer cannot do what the options ask."""
     for target in targets:
+        if options.copies > 1 and not target.slicer.supports("--clone-objects"):
+            raise SlicerSelectionError(
+                f"{target.slicer.display_name} cannot make copies from its command line, "
+                "so --copies cannot be used with it."
+            )
         if options.plates and not target.slicer.supports("--arrange"):
             raise SlicerSelectionError(
                 f"{target.slicer.display_name} cannot arrange models from its command line, "
@@ -1037,7 +1094,11 @@ def _report(outcome: SliceOutcome, options: SliceOptions) -> None:
         logging.getLogger("batchslicer").warning("Could not write the report: %s", error)
     if outcome.success:
         oriented = " with auto-orient" if outcome.auto_oriented else ""
-        print(f"Sliced {outcome.model.name}{oriented} in {outcome.elapsed:.1f}s:")
+        copies = ""
+        if outcome.copies > 1:
+            plates = len(outcome.gcode_files)
+            copies = f" ({outcome.copies} copies on {plates} plate{'s' if plates != 1 else ''})"
+        print(f"Sliced {outcome.model.name}{copies}{oriented} in {outcome.elapsed:.1f}s:")
         for gcode in outcome.gcode_files:
             print(f"  {gcode}")
         totals = _describe_stats(outcome.stats)

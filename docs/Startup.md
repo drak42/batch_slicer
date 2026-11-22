@@ -45,7 +45,9 @@ not slice. Everything below describes a normal run.
    (`cli/output_prompt.py`). For a folder with loose models to share plates,
    an interactive run without a profile, `--plates` or `--no-plates` asks
    whether to slice each folder's models together; `--plates` is refused for
-   Creality Print. An interactive run without a profile, `--send`
+   Creality Print. For a single STL, OBJ or STEP model it asks how many copies
+   to make (`--copies`); copies are refused for folders, 3MF projects and
+   Creality Print (a profile's copies are left out with a note). An interactive run without a profile, `--send`
    or `--no-send` then asks whether to send the G-code
    (`cli/send_prompt.py`), when a printer is configured or the last run sent
    to one. `--start` is refused here unless every target

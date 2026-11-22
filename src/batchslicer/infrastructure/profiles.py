@@ -13,7 +13,7 @@ from typing import Any
 
 import yaml
 
-from batchslicer.domain.options import MAX_JOBS, orient_mode
+from batchslicer.domain.options import MAX_COPIES, MAX_JOBS, orient_mode
 from batchslicer.domain.profiles import (
     RUN_FIELDS,
     SETTING_FIELDS,
@@ -146,6 +146,11 @@ class ProfileStore:
                 if not isinstance(values[key], bool):
                     raise ProfileError(f"{where}: {key} must be true or false.")
                 settings[key] = values[key]
+        if values.get("copies") is not None:
+            copies = values["copies"]
+            if isinstance(copies, bool) or not isinstance(copies, int) or not 1 <= copies <= MAX_COPIES:
+                raise ProfileError(f"{where}: copies must be a whole number from 1 to {MAX_COPIES}.")
+            settings["copies"] = copies
         if values.get("jobs") is not None:
             jobs = values["jobs"]
             if isinstance(jobs, bool) or not isinstance(jobs, int) or not 1 <= jobs <= MAX_JOBS:
@@ -212,7 +217,8 @@ class ProfileStore:
             "# slicer, printer, filament and process (or a 'targets' list of them, to\n"
             "# slice for several printers), plus input and output, and optionally\n"
             "# orient (off/retry/always), allow_newer_files (true/false), jobs,\n"
-            "# exclude (a list of patterns), thumbnails and plates (true/false) and, per\n"
+            "# exclude (a list of patterns), thumbnails and plates (true/false), copies\n"
+            "# (a number, for a single model) and, per\n"
             "# printer, send (a printer's address or configured name).\n"
             + yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
         )

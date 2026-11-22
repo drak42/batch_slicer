@@ -471,9 +471,9 @@ def test_creality_print_commands_start_with_cli_mode(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "option",
-    [{"orient": True}, {"arrange": True}, {"skip_modified_gcodes": True}],
+    [{"orient": True}, {"arrange": True}, {"skip_modified_gcodes": True}, {"copies": 2}],
 )
-def test_unsupported_slice_options_are_refused(tmp_path: Path, option: dict[str, bool]) -> None:
+def test_unsupported_slice_options_are_refused(tmp_path: Path, option: dict[str, object]) -> None:
     """Options Creality Print lacks raise a clear error instead of a bad command."""
     backend = _backend_for(CREALITY_PRINT, tmp_path)
 
@@ -656,3 +656,15 @@ def test_several_models_are_passed_together(backend: OrcaBackend, tmp_path: Path
 
     assert command[-2:] == (str(models[0]), str(models[1]))
     assert command[command.index("--arrange") + 1] == "1"
+
+
+def test_copies_are_cloned_and_arranged(backend: OrcaBackend, tmp_path: Path) -> None:
+    """copies=N asks for N copies in total, arranged by the slicer; 1 adds nothing."""
+    command = backend.build_slice_command(tmp_path / "part.stl", tmp_path / "out", copies=5)
+
+    assert command[command.index("--clone-objects") + 1] == "5"
+    assert command[command.index("--arrange") + 1] == "1"
+    single = backend.build_slice_command(tmp_path / "part.stl", tmp_path / "out")
+    assert "--clone-objects" not in single and "--arrange" not in single
+    with pytest.raises(ValueError, match="Copies must be 1 or more"):
+        backend.build_slice_command(tmp_path / "part.stl", tmp_path / "out", copies=0)

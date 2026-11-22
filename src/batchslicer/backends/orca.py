@@ -219,6 +219,7 @@ class OrcaBackend:
         plate: int = ALL_PLATES,
         orient: bool = False,
         arrange: bool = False,
+        copies: int = 1,
         enable_timelapse: bool = False,
         skip_modified_gcodes: bool = False,
         no_check: bool = False,
@@ -244,6 +245,7 @@ class OrcaBackend:
                 plate=plate,
                 orient=orient,
                 arrange=arrange,
+                copies=copies,
                 enable_timelapse=enable_timelapse,
                 skip_modified_gcodes=skip_modified_gcodes,
                 no_check=no_check,
@@ -274,6 +276,7 @@ class OrcaBackend:
         plate: int = ALL_PLATES,
         orient: bool = False,
         arrange: bool = False,
+        copies: int = 1,
         enable_timelapse: bool = False,
         skip_modified_gcodes: bool = False,
         no_check: bool = False,
@@ -290,10 +293,15 @@ class OrcaBackend:
         value. Settings and
         filament files are joined into the single semicolon-separated argument
         OrcaSlicer expects. The input models are the final positional arguments.
+        ``copies`` above 1 asks for that many copies in total
+        (``--clone-objects N``), arranged on as many plates as needed.
         Requesting an option the selected slicer lacks raises ``ValueError``.
         """
         if plate < 0:
             raise ValueError(f"Plate must be 0 (all plates) or a plate number: {plate}")
+        if copies < 1:
+            raise ValueError(f"Copies must be 1 or more: {copies}")
+        arrange = arrange or copies > 1
 
         command = list(
             self._base_command()
@@ -312,6 +320,9 @@ class OrcaBackend:
             if enabled:
                 self._require_option(option)
                 command.extend((option, "1"))
+        if copies > 1:
+            self._require_option("--clone-objects")
+            command.extend(("--clone-objects", str(copies)))
         command.extend(self._slicer.slice_arguments)
         for flag, enabled in (
             ("--enable-timelapse", enable_timelapse),

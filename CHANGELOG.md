@@ -6,6 +6,15 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Copies of a single model.** `--copies N` slices N copies of one STL, OBJ
+  or STEP model; the slicer arranges them, adding plates when they don't fit
+  (one G-code file per plate). Interactive single-model runs ask "How many
+  copies?" (Enter for 1), profiles can save the number, and the summary and
+  report show it. Not for folders (see `--plates`), 3MF projects or Creality
+  Print. Tested with OrcaSlicer 2.5.2.
+
 ## [0.8.0] - 2026-11-22
 
 Kits on plates, and sending to the printer from interactive runs.

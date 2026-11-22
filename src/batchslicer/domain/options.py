@@ -21,6 +21,12 @@ which may rotate parts that were saved in the orientation meant for printing.
 MAX_JOBS = 64
 """The most models that may be sliced at the same time."""
 
+MAX_COPIES = 500
+"""The most copies of a single model that may be asked for."""
+
+COPYABLE_SUFFIXES = frozenset({".stl", ".obj", ".step", ".stp"})
+"""Model files that can be copied (3MF projects keep their own plates)."""
+
 
 @dataclass(frozen=True, slots=True)
 class SliceOptions:
@@ -36,6 +42,9 @@ class SliceOptions:
     plates: bool = False
     """Slice the loose models of each folder together, arranged on as few plates as fit."""
 
+    copies: int = 1
+    """How many copies of a single model to slice, arranged on as many plates as needed."""
+
     def describe(self) -> str:
         """Return the options that differ from the defaults, as one line ("" if none)."""
         parts = []
@@ -45,6 +54,8 @@ class SliceOptions:
             parts.append("auto-orient every model")
         if self.allow_newer_files:
             parts.append("allow newer 3MF files")
+        if self.copies > 1:
+            parts.append(f"{self.copies} copies")
         if self.plates:
             parts.append("each folder's models together on plates")
         if not self.thumbnails:

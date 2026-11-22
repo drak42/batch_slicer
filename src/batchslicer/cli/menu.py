@@ -1,4 +1,4 @@
-"""Show a numbered, searchable list and return the item the user picks.
+"""Show a numbered, searchable list and return the item the user picks; ask yes/no and number questions.
 
 Entering a number picks that item. Entering text shows only items whose label
 contains it; an empty answer shows the full list again. A caller can also
@@ -97,6 +97,32 @@ def confirm(
         if answer in ("n", "no"):
             return False
         write("Please answer y or n.")
+
+
+def ask_number(
+    question: str,
+    *,
+    default: int,
+    minimum: int,
+    maximum: int,
+    read_line: Callable[[str], str],
+    write: Callable[[str], None],
+) -> int:
+    """Ask for a whole number from ``minimum`` to ``maximum``; an empty answer means ``default``.
+
+    Raises :class:`SlicerSelectionError` when input ends or is interrupted.
+    """
+    while True:
+        try:
+            answer = read_line(f"{question} (Enter for {default}): ").strip()
+        except (EOFError, KeyboardInterrupt) as error:
+            write("")
+            raise SlicerSelectionError("Cancelled.") from error
+        if not answer:
+            return default
+        if answer.isdigit() and minimum <= int(answer) <= maximum:
+            return int(answer)
+        write(f"Please enter a number from {minimum} to {maximum}.")
 
 
 def _show(

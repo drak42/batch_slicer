@@ -86,6 +86,7 @@ def test_presets_are_written_into_the_job_and_passed_to_the_slicer(tmp_path: Pat
     )
     assert backend.slice.call_args.kwargs == {
         "orient": False,
+        "copies": 1,
         "allow_newer_file": False,
         "load_settings": settings,
         "load_filaments": filaments,
@@ -673,3 +674,17 @@ def test_interrupted_plates_leave_no_partial_output(tmp_path: Path) -> None:
 
     assert batch.interrupted_models == (source,)
     assert list(batch.batch_directory.iterdir()) == []
+
+
+def test_copies_apply_to_a_single_model_only(tmp_path: Path) -> None:
+    """A single model is sliced as N copies; models in a batch are sliced once each."""
+    backend = _backend()
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(copies=4))
+
+    single = service.slice(tmp_path / "part.stl", tmp_path / "out")
+    batch = service.slice_batch([tmp_path / "m" / "a.stl"], tmp_path / "m", tmp_path / "out")
+
+    assert single.copies == 4
+    assert backend.slice.call_args_list[0].kwargs["copies"] == 4
+    assert backend.slice.call_args_list[1].kwargs["copies"] == 1
+    assert batch.outcomes[0].copies == 1

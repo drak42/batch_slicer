@@ -68,7 +68,13 @@ CREALITY_PRINT = SlicerDefinition(
     launch_arguments=("--cli",),
     # Checked against Creality Print 7.3 `--cli --help`.
     unsupported_options=frozenset(
-        {"--orient", "--arrange", "--skip-modified-gcodes", "--export-settings"}
+        {
+            "--orient",
+            "--arrange",
+            "--clone-objects",
+            "--skip-modified-gcodes",
+            "--export-settings",
+        }
     ),
     # Without this, Creality Print reports success but writes no G-code.
     slice_arguments=("--need-gcode-file",),

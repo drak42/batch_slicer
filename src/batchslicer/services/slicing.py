@@ -16,7 +16,8 @@ loose models (STL, OBJ, STEP) of each folder in a batch are sliced together:
 the slicer arranges them, adding plates for any that do not fit, into a
 ``plates`` folder whose G-code is named after the source folder. If that
 fails, the folder's models are sliced one by one instead. 3MF projects keep
-their own plates. Several models can be
+their own plates. A single model (not a batch) can be sliced as several
+copies (``copies``), which the slicer arranges, adding plates as needed. Several models can be
 sliced at the same time (``jobs``), each by its own slicer process. The
 slicer's own status files (``result.json``, ``NNNNN.log``) are read for the
 outcome and then removed, so a job folder holds only G-code (and presets); a
@@ -74,6 +75,9 @@ class SliceOutcome:
     models: tuple[Path, ...] = ()
     """The model files sliced together on plates; empty for a single model
     (then :attr:`model` is the model, otherwise the folder they came from)."""
+
+    copies: int = 1
+    """How many copies of the model the G-code prints."""
 
     @property
     def model_count(self) -> int:
@@ -210,7 +214,9 @@ class SlicingService:
             output_directory / f"{model.stem}-{self._stamp()}"
         )
         settings, filaments = self._write_presets(selection, job_directory)
-        return self._slice_into(model, job_directory, settings, filaments)
+        return self._slice_into(
+            model, job_directory, settings, filaments, copies=self._options.copies
+        )
 
     def slice_batch(
         self,
@@ -386,19 +392,27 @@ class SlicingService:
         job_directory: Path,
         settings: list[Path],
         filaments: list[Path],
+        *,
+        copies: int = 1,
     ) -> SliceOutcome:
-        """Run the slicer for one model into an existing job folder.
+        """Run the slicer for one model (``copies`` times over) into an existing job folder.
 
         With orient "retry", a failure is retried once with auto-orient.
         """
         orient = self._options.orient
-        self._logger.info("Slicing %s into %s", model, job_directory)
-        result = self._run_slicer(model, job_directory, settings, filaments, orient == "always")
-        outcome = self._outcome(model, job_directory, result, auto_oriented=orient == "always")
+        self._logger.info(
+            "Slicing %s%s into %s", model, f" ({copies} copies)" if copies > 1 else "", job_directory
+        )
+        result = self._run_slicer(
+            model, job_directory, settings, filaments, orient == "always", copies
+        )
+        outcome = self._outcome(
+            model, job_directory, result, auto_oriented=orient == "always", copies=copies
+        )
         if not outcome.success and orient == "retry" and result.exit_code != -1:
             self._logger.info("Retrying %s with auto-orient.", model)
-            retry = self._run_slicer(model, job_directory, settings, filaments, True)
-            retried = self._outcome(model, job_directory, retry, auto_oriented=True)
+            retry = self._run_slicer(model, job_directory, settings, filaments, True, copies)
+            retried = self._outcome(model, job_directory, retry, auto_oriented=True, copies=copies)
             if retried.success:
                 outcome = replace(retried, elapsed=outcome.elapsed + retried.elapsed)
             else:
@@ -412,12 +426,14 @@ class SlicingService:
         settings: list[Path],
         filaments: list[Path],
         orient: bool,
+        copies: int = 1,
     ) -> OrcaResult:
         """Run the slicer once for ``model``."""
         return self._backend.slice(
             model,
             job_directory,
             orient=orient,
+            copies=copies,
             allow_newer_file=self._options.allow_newer_files,
             load_settings=settings,
             load_filaments=filaments,
@@ -462,6 +478,7 @@ class SlicingService:
         *,
         auto_oriented: bool = False,
         models: tuple[Path, ...] = (),
+        copies: int = 1,
     ) -> SliceOutcome:
         """Combine the process result, the slicer's status files and the G-code found.
 
@@ -504,6 +521,7 @@ class SlicingService:
             auto_oriented=auto_oriented and success,
             stats=total_stats(gcode_files) if success else GcodeStats(),
             models=models,
+            copies=copies,
         )
 
 

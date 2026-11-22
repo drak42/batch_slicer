@@ -10,8 +10,8 @@ in `domain/` know nothing about files, slicers or the user interface.
 | `Preset` | `domain/presets.py` | one preset: name, kind (printer, filament or process), file, whether it is the user's own |
 | `PresetSelection` | `domain/presets.py` | the printer, filament and process chosen for one printer |
 | `Target` | `domain/profiles.py` | one slicer and its preset names, possibly not chosen yet, and the printer its G-code is sent to (`send`) |
-| `Profile` | `domain/profiles.py` | a named run: one or more targets, input, output, and slicing settings (`orient`, `allow_newer_files`, `jobs`, `exclude`, `thumbnails`, `plates`) |
-| `SliceOptions` | `domain/options.py` | how every model is sliced: auto-orient mode, newer-file handling, preview pictures, models together on plates |
+| `Profile` | `domain/profiles.py` | a named run: one or more targets, input, output, and slicing settings (`orient`, `allow_newer_files`, `jobs`, `exclude`, `thumbnails`, `plates`, `copies`) |
+| `SliceOptions` | `domain/options.py` | how every model is sliced: auto-orient mode, newer-file handling, preview pictures, models together on plates, copies of a single model |
 | `PrinterHost` | `domain/printers.py` | a printer G-code can be sent to: name (or the address as given), Moonraker address, API key |
 
 A profile with one target is stored flat in `profiles.yaml`; one with several
@@ -22,7 +22,7 @@ lists them under `targets` (`infrastructure/profiles.py`).
 | Object | Module | Holds |
 |---|---|---|
 | `OrcaResult` | `backends/orca.py` | one slicer process: success, exit code, output, time, command |
-| `SliceOutcome` | `services/slicing.py` | one model, or a folder's models sliced together on plates (`models`): success, G-code files, the slicer's reason, time, whether auto-oriented, `GcodeStats` |
+| `SliceOutcome` | `services/slicing.py` | one model, or a folder's models sliced together on plates (`models`), or copies of one (`copies`): success, G-code files, the slicer's reason, time, whether auto-oriented, `GcodeStats` |
 | `BatchOutcome` | `services/slicing.py` | a batch: outcomes in model order, planned count, interruption, wall-clock time, totals |
 | `ThumbnailResult` | `services/thumbnails.py` | the preview picture sizes added to one G-code file, or why none were |
 | `GcodeStats` | `services/gcode_stats.py` | print time, filament weight, length and cost read from G-code |

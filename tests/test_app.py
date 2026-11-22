@@ -76,6 +76,7 @@ def startup_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, Mock, Mock, Mo
     config.section.return_value = None  # no 'printers' section
     monkeypatch.setattr(app, "find_config_file", Mock(return_value=Path("/settings/config.yaml")))
     monkeypatch.setattr(app, "confirm", Mock(return_value=False))
+    monkeypatch.setattr(app, "ask_number", Mock(return_value=1))  # one copy
     profile_store = Mock()
     profile_store.return_value.load.return_value = {}
     monkeypatch.setattr(app, "ProfileStore", profile_store)
@@ -1532,3 +1533,107 @@ def test_summary_counts_models_on_plates(
     out = capsys.readouterr().out
     assert "Sliced 4 of 4 model files" in out
     assert "3 of them together on 2 plates." in out
+
+
+def test_single_model_run_asks_for_copies(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """An interactive single-model run asks how many copies, uses the answer and reports it."""
+    monkeypatch.setattr(app, "prompt_for_slicer", Mock(return_value=_REAL_SLICERS[0]))
+    monkeypatch.setattr(app, "PresetLibrary", Mock())
+    monkeypatch.setattr(app, "select_presets", Mock(return_value=_selection()))
+    ask = Mock(return_value=5)
+    monkeypatch.setattr(app, "ask_number", ask)
+    job = Path("/out/cube-1")
+    app.SlicingService.return_value.slice.return_value = SliceOutcome(
+        True, Path("/models/cube.stl"), job, (job / "cube.gcode",), "", 2.0, copies=5
+    )
+
+    assert app.main([]) == 0
+
+    assert ask.call_args.args[0] == "How many copies of cube.stl?"
+    assert app.SlicingService.call_args.kwargs["options"].copies == 5
+    assert "Sliced cube.stl (5 copies on 1 plate)" in capsys.readouterr().out
+
+
+def test_copies_are_not_asked_for_folders_or_projects(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Folders and 3MF projects are never copied, so nothing is asked."""
+    monkeypatch.setattr(app, "prompt_for_slicer", Mock(return_value=_REAL_SLICERS[0]))
+    monkeypatch.setattr(app, "PresetLibrary", Mock())
+    monkeypatch.setattr(app, "select_presets", Mock(return_value=_selection()))
+    ask = Mock(side_effect=AssertionError("asked"))
+    monkeypatch.setattr(app, "ask_number", ask)
+    project = SliceInput(root=Path("/models"), models=(Path("/models/kit.3mf"),), is_folder=False)
+    monkeypatch.setattr(app, "prompt_for_input", Mock(return_value=project))
+
+    assert app.main([]) == 0
+    _kit_batch(monkeypatch)
+    assert app.main(["--no-plates"]) == 0
+
+
+@pytest.mark.parametrize(
+    ("models", "is_folder", "message"),
+    [
+        (("/models/kit/a.stl",), True, "not a folder"),
+        (("/models/kit.3mf",), False, "keeps its own plates"),
+    ],
+)
+def test_copies_on_the_command_line_are_refused_where_they_cannot_apply(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    models: tuple[str, ...],
+    is_folder: bool,
+    message: str,
+) -> None:
+    """--copies with a folder or a 3MF project stops before slicing."""
+    monkeypatch.setattr(app, "prompt_for_slicer", Mock(return_value=_REAL_SLICERS[0]))
+    monkeypatch.setattr(app, "PresetLibrary", Mock())
+    monkeypatch.setattr(app, "select_presets", Mock(return_value=_selection()))
+    chosen = SliceInput(root=Path("/models"), models=tuple(Path(m) for m in models), is_folder=is_folder)
+    monkeypatch.setattr(app, "prompt_for_input", Mock(return_value=chosen))
+
+    assert app.main(["--copies", "3", "--no-plates"]) == 1
+
+    assert message in _all_output(capsys)
+    app.SlicingService.return_value.slice.assert_not_called()
+
+
+def test_a_profiles_copies_are_left_out_for_a_folder(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Copies saved with a single model do not stop a later folder run from the same profile."""
+    from batchslicer.domain.profiles import Profile, Target
+
+    _store_with(monkeypatch, tmp_path, Profile("six", targets=(Target(slicer="orca"),), copies=6))
+    monkeypatch.setattr(app, "PresetLibrary", Mock())
+    monkeypatch.setattr(app, "select_presets", Mock(return_value=_selection()))
+    _kit_batch(monkeypatch)
+
+    assert app.main(["--profile", "six", "--no-plates"]) == 0
+
+    assert "Not making 6 copies" in capsys.readouterr().out
+    assert app.SlicingService.call_args.kwargs["options"].copies == 1
+
+
+def test_copies_are_refused_for_creality_print(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Creality Print cannot clone from its command line."""
+    monkeypatch.setattr(app, "prompt_for_slicer", Mock(return_value=CREALITY_PRINT))
+    monkeypatch.setattr(app, "PresetLibrary", Mock())
+    monkeypatch.setattr(app, "select_presets", Mock(return_value=_selection()))
+
+    assert app.main(["--copies", "2"]) == 1
+
+    assert "cannot make copies" in _all_output(capsys)

@@ -193,3 +193,13 @@ def test_plates_option() -> None:
     assert parse_arguments([]).plates is None
     assert parse_arguments(["--plates"]).plates is True
     assert parse_arguments(["--no-plates"]).plates is False
+
+
+def test_copies_option(capsys: pytest.CaptureFixture[str]) -> None:
+    """--copies takes a whole number from 1 to 500."""
+    assert parse_arguments([]).copies is None
+    assert parse_arguments(["--copies", "6"]).copies == 6
+    for bad in ("0", "abc", "501"):
+        with pytest.raises(SystemExit):
+            parse_arguments(["--copies", bad])
+    assert "whole number from 1 to 500" in capsys.readouterr().err

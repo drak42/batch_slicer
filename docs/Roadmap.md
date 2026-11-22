@@ -62,8 +62,9 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 ## Next
 
-- [ ] **Copies** of a part on plates (`--copies N`), and putting the parts
-  that slice back together when one part of a folder fails.
+- [x] **Copies** of a single model (`--copies N`, asked in interactive runs).
+- [ ] Putting the parts that slice back together on plates when one part of a
+  folder fails.
 
 ## Then: decisions on reach
 

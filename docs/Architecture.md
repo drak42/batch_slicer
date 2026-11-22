@@ -383,7 +383,7 @@ Examples include:
 - Multiple printers (built: several printers per run)
 - Multiple slicers (built: OrcaSlicer, Creality Print, Bambu Studio)
 - Sending to printers (built: Klipper/Moonraker; planned: Bambu LAN, OctoPrint)
-- Arranging parts onto plates (built: `--plates`, by the slicer's own arrange)
+- Arranging parts onto plates (built: `--plates` and `--copies`, by the slicer's own arrange)
 - Distributed workers
 - Remote dashboard
 - REST API

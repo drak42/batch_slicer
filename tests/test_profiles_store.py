@@ -305,3 +305,15 @@ def test_plates_setting_is_saved(tmp_path: Path) -> None:
 
     assert store.get("kits").plates is True
     assert "models together on plates" in store.get("kits").summary()
+
+
+def test_copies_setting_is_saved_and_checked(tmp_path: Path) -> None:
+    """copies is stored as a number and anything else is refused."""
+    store = ProfileStore(tmp_path / "profiles.yaml")
+    store.save(Profile("six", copies=6))
+
+    assert store.get("six").copies == 6
+    assert "6 copies" in store.get("six").summary()
+    (tmp_path / "profiles.yaml").write_text("bad:\n  copies: lots\n")
+    with pytest.raises(ProfileError, match="copies must be a whole number"):
+        store.load()

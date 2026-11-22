@@ -4,8 +4,9 @@ Slice one 3D model or whole folders of them with **OrcaSlicer**, **Creality
 Print** or **Bambu Studio**, using the printer, filament and process presets
 you already have in those slicers. Run it interactively and answer a few
 questions, or pass everything on the command line for unattended, scripted runs.
-It can put a kit's parts together on plates, adds preview pictures for printer
-screens, and can send the G-code straight to a Klipper printer.
+It can put a kit's parts together on plates, make several copies of a part,
+adds preview pictures for printer screens, and can send the G-code straight to
+a Klipper printer.
 
 BatchSlicer exists to remove friction from the 3D printing workflow through
 reliable, maintainable automation. Batch slicing is the first step towards a
@@ -61,6 +62,8 @@ repeats the same run.
 - **Puts small parts together on plates.** When slicing a folder, the parts in
   each folder (a kit, say) can be arranged on as few plates as fit, giving one
   G-code file per plate instead of one print per part.
+- **Makes copies.** Slicing a single part, ask for any number of copies; the
+  slicer arranges them, adding plates when they don't fit on one.
 - **Keeps your file names.** `bracket.stl` becomes `bracket.gcode`, and a batch
   mirrors your folder structure.
 - **Never overwrites earlier results.** Every run gets its own time-stamped
@@ -92,10 +95,10 @@ repeats the same run.
 - **Leaves your slicers alone.** BatchSlicer only reads the slicers' settings
   folders; it never changes them.
 
-| Slicer | Slicing | Preset selection | Several models per plate |
+| Slicer | Slicing | Preset selection | Several models per plate, copies |
 |---|---|---|---|
 | OrcaSlicer (tested with 2.4 and 2.5) | Yes | Yes | Yes |
-| Creality Print (tested with 7.3) | Yes | Yes | No (no command-line arrange) |
+| Creality Print (tested with 7.3) | Yes | Yes | No (no command-line arrange or copies) |
 | Bambu Studio (tested with 2.8 and 2.9) | Yes | Yes | Yes |
 
 ## How it works
@@ -120,7 +123,8 @@ profile if you gave it there, and is asked for otherwise.
    printer to slice for.
 6. **Choose what to slice:** one model file, or every model in a folder and its
    subfolders. For a folder whose subfolders hold several loose models,
-   BatchSlicer asks whether to put each folder's models together on plates.
+   BatchSlicer asks whether to put each folder's models together on plates;
+   for a single model, it asks how many copies to make.
 7. **Choose the output folder.**
 8. **Send to a printer (optional).** If a printer is configured or the last
    run sent to one, BatchSlicer asks whether to send the G-code there. It
@@ -382,6 +386,16 @@ Enter keeps what the last run did. The question is skipped with `--plates` or
 `--no-plates`, for runs from a profile, and for Creality Print (which cannot
 arrange from its command line).
 
+When you slice a single STL, OBJ or STEP model, BatchSlicer asks how many
+copies to make (see [Copies](#copies)):
+
+```
+How many copies of bracket.stl? (Enter for 1):
+```
+
+It is skipped with `--copies`, for runs from a profile, for 3MF projects, and
+for Creality Print.
+
 Last, if you have a printer to send to (one in the configuration's `printers`
 section, or the one the last run sent to), BatchSlicer asks whether to send
 the G-code there (see [Sending G-code to a printer](#sending-g-code-to-a-printer)):
@@ -418,6 +432,7 @@ asking; anything you leave out is still asked for, unless you add
 | `--allow-newer-files` | let the slicer open `.3mf` projects saved by a newer slicer version (`--no-allow-newer-files` turns off a profile's setting) |
 | `--jobs N` | slice N models at the same time (default 1); see [Speed](#speed) |
 | `--plates` | when slicing a folder, put the loose models of each folder together on as few plates as fit (see [Several models per plate](#several-models-per-plate)); `--no-plates` slices each model on its own |
+| `--copies N` | slice N copies of a single STL, OBJ or STEP model, arranged on as many plates as needed (see [Copies](#copies)); not for folders or 3MF projects |
 | `--no-thumbnails` | don't add preview pictures to the G-code (see [Output](#output)); `--thumbnails` turns them back on over a profile |
 | `--exclude PATTERN` | leave out folders or files matching PATTERN when slicing a folder; repeat for several (see [Leaving models out](#leaving-models-out)) |
 | `--send PRINTER` | after slicing, upload the G-code to PRINTER: its address (`192.168.1.50`, `k2.local:4408` or a full URL) or a name from the configuration's `printers` section (see [Sending G-code to a printer](#sending-g-code-to-a-printer)); `--no-send` turns off a profile's printer |
@@ -488,6 +503,12 @@ A folder of kits, each kit's parts together on plates, sent to the printer:
 batchslicer --profile k2-pla --input ~/BatchSlicer/incoming/kits   --plates --send 192.168.1.242 --no-prompt
 ```
 
+Six copies of a bracket:
+
+```bash
+batchslicer --profile k2-pla --input ~/models/bracket.stl --copies 6 --no-prompt
+```
+
 One model, sent to the printer and started:
 
 ```bash
@@ -536,8 +557,8 @@ configuration is not in `~/.config/batchslicer/`:
 
 A profile is a named set of choices (slicer, printer, filament, process, input
 and output, plus `--orient`, `--allow-newer-files`, `--jobs`, `--exclude`,
-`--plates`, `--thumbnails` and `--send` if you gave them; `--start` is never
-saved) that you can reuse instead of typing them again. Options you
+`--plates`, `--copies`, `--thumbnails` and `--send` if you gave them; `--start`
+is never saved) that you can reuse instead of typing them again. Options you
 add override the profile's; for `--exclude`, the patterns you give replace the
 profile's list.
 
@@ -779,6 +800,31 @@ output/
   command line.
 - Profiles can save the choice (`--plates` or `--no-plates`).
 
+### Copies
+
+To print several of the same part, slice it once with a number of copies:
+
+```bash
+batchslicer --profile k2-pla --input ~/models/bracket.stl --copies 6
+```
+
+- The slicer arranges the copies on the bed. Copies that don't fit go onto
+  more plates, one G-code file each (`bracket_plate_1.gcode`,
+  `bracket_plate_2.gcode`, ...); in a test, 40 copies of a bracket on the K2
+  Plus gave three plates of 16, 16 and 8.
+- **Single models only:** STL, OBJ or STEP files. A folder uses
+  [several models per plate](#several-models-per-plate) instead, and a 3MF
+  project keeps its own plates. `--copies` with either stops with an
+  explanation; a profile's copies are left out (with a note) when the profile
+  is used for a folder.
+- The summary says `Sliced bracket.stl (6 copies on 1 plate)`, the print time
+  and filament cover every copy, and the report's `copies` column shows the
+  number.
+- `--orient` works as usual: with `retry`, a part that fails is sliced again,
+  copies and all, with auto-orient.
+- Up to 500 copies; OrcaSlicer and Bambu Studio only.
+- With `--send ... --start`, a print starts only if the copies fit on one plate.
+
 ### Reports
 
 Every run writes `report.csv` (opens in any spreadsheet) and `report.json` (the
@@ -906,8 +952,9 @@ Add this computer's address (or its network, such as `192.168.1.0/24`) to
 `moonraker.conf`, or set `api_key` to Moonraker's API key.
 
 **"... cannot arrange models from its command line, so --plates cannot be
-used with it"**: Creality Print's command line has no arrange. Use OrcaSlicer
-or Bambu Studio for `--plates`, or slice each model on its own.
+used with it"** (or "**cannot make copies**", for `--copies`): Creality
+Print's command line has no arrange or copies. Use OrcaSlicer or Bambu Studio
+for these, or slice each model on its own.
 
 **A folder's line says "could not share plates; sliced one by one"**: one of
 its parts failed when sliced together (its reason is listed under "Failed").
@@ -986,8 +1033,8 @@ the Actions tab ("Latest slicers").
 - **The same presets for every model.** Within a run, each printer uses one
   filament and process for all models; to vary them, use separate runs or
   profiles.
-- **No copies yet.** `--plates` puts each part on a plate once; printing
-  several copies of a part needs them as separate files.
+- **Copies are for single models.** `--copies` does not apply to folders
+  (each part of a `--plates` folder is printed once).
 - **One bad part splits a folder.** If any part fails, the whole folder is
   sliced one model per plate, not just the failed part.
 - **Sending needs Klipper with Moonraker.** Bambu Lab printers (LAN mode),

@@ -18,7 +18,7 @@ from batchslicer.backends.slicers import SLICERS
 from batchslicer.cli.doctor import DoctorOptions
 from batchslicer.cli.setup import SetupOptions
 from batchslicer.core.locations import user_config_file
-from batchslicer.domain.options import MAX_JOBS, ORIENT_MODES, OrientMode, orient_mode
+from batchslicer.domain.options import MAX_COPIES, MAX_JOBS, ORIENT_MODES, OrientMode, orient_mode
 from batchslicer.domain.profiles import LAST_RUN
 from batchslicer.version import get_version_string
 
@@ -67,6 +67,9 @@ class RunOptions:
 
     exclude: tuple[str, ...] | None = None
     """Patterns of folders and files to leave out of a folder run (--exclude)."""
+
+    copies: int | None = None
+    """How many copies of a single model to slice (--copies)."""
 
     plates: bool | None = None
     """Slice each folder's models together on plates (--plates / --no-plates)."""
@@ -136,9 +139,18 @@ def parse_arguments(
         exclude=tuple(namespace.exclude) if namespace.exclude else None,
         thumbnails=namespace.thumbnails,
         plates=namespace.plates,
+        copies=namespace.copies,
         send=namespace.send,
         start=namespace.start,
     )
+
+
+def _copies(value: str) -> int:
+    """Return a --copies value: a whole number from 1 to MAX_COPIES."""
+    copies = int(value) if value.strip().isdigit() else 0
+    if not 1 <= copies <= MAX_COPIES:
+        raise argparse.ArgumentTypeError(f"must be a whole number from 1 to {MAX_COPIES}")
+    return copies
 
 
 def _orient(value: str) -> OrientMode:
@@ -318,6 +330,16 @@ def _parser() -> argparse.ArgumentParser:
             "together: the slicer arranges them on as few plates as fit, giving one G-code "
             "file per plate. 3MF projects keep their own plates. Not for Creality Print "
             "(asked in interactive runs; default: off)"
+        ),
+    )
+    slicing.add_argument(
+        "--copies",
+        type=_copies,
+        metavar="N",
+        help=(
+            "slice N copies of a single model (STL, OBJ or STEP), arranged by the slicer "
+            "on as many plates as needed. Not for folders, 3MF projects or Creality Print "
+            "(asked in interactive runs; default: 1)"
         ),
     )
     slicing.add_argument(

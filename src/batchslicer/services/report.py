@@ -24,6 +24,7 @@ REPORT_JSON = "report.json"
 COLUMNS = (
     "model",
     "models",
+    "copies",
     "status",
     "auto_oriented",
     "gcode",
@@ -47,6 +48,7 @@ def report_rows(outcomes: Sequence[SliceOutcome], directory: Path, root: Path) -
             {
                 "model": _relative(outcome.model, root),
                 "models": [_relative(path, root) for path in outcome.models],
+                "copies": outcome.copies,
                 "status": "ok" if outcome.success else "failed",
                 "auto_oriented": outcome.auto_oriented,
                 "gcode": [_relative(path, directory) for path in outcome.gcode_files],
