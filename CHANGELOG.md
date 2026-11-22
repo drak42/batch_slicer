@@ -6,6 +6,10 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-23
+
+Multi-colour projects, with filaments matched to the Creality CFS.
+
 ### Added
 
 - Multi-colour 3MF projects: the slicer is given a filament for every slot
@@ -369,7 +373,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/drak42/batch_slicer/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/drak42/batch_slicer/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/drak42/batch_slicer/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/drak42/batch_slicer/compare/v0.9.2...v0.9.3

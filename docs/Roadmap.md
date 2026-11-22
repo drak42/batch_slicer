@@ -89,11 +89,15 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 - `batchslicer service install` runs `--watch` as a systemd user service.
 
+### 0.12.0 (2026-11-23): multi-colour projects
+
+- A filament for every slot of a 3MF project: the chosen one, one per slot,
+  or matched to the filaments loaded in the Creality CFS; colour preview
+  pictures; grams per filament and filament changes in the report.
+
 ## Next
 
-- **Multi-colour projects** (built, unreleased): a filament per slot, chosen
-  per slot or matched to the loaded CFS filaments, with colour preview
-  pictures. Still to come: colours for whole STL files, and the Bambu AMS.
+- Multi-colour: colours for whole STL files, and the Bambu AMS.
 - Windows and macOS work continues on the `feat/windows` and `feat/macos`
   branches (draft pull requests), outside `main`.
 
