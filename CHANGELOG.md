@@ -6,6 +6,12 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The README notes how sending works with the Creality K2 Plus (tested: ports
+  7125 and 4408, no API key, folders shown on the touchscreen) and that
+  G-code from the command line has no preview pictures.
+
 ## [0.7.0] - 2026-11-22
 
 Leave unwanted files out of a batch, and send the results to the printer.

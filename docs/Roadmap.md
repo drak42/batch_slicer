@@ -51,8 +51,8 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 ## Next
 
-- [ ] **Try sending with a real printer** (the K2 Plus) and note in the README
-  which port Creality's Moonraker answers on.
+- [x] **Try sending with a real printer**: the K2 Plus takes uploads on port
+  7125 or 4408, shows the batch folders, and needs no API key.
 
 ## Then: decisions on reach
 

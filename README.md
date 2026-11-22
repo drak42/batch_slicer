@@ -615,6 +615,12 @@ batchslicer --profile k2-pla --input bracket.stl --send k2plus --start
   profile cannot start prints by itself. `--no-send` skips sending for one run.
 - With several printers, each profile sends to its own printer.
 - `batchslicer doctor` checks that every configured printer answers.
+- **Creality K2 Plus** (tested): Moonraker answers on port 7125 and on 4408,
+  with no API key needed, and the touchscreen shows the batch folders. Creality
+  Print's device list shows the printer's address.
+- The G-code has no preview pictures, because the slicers draw those only in
+  their windows, not from the command line, so printer screens show the files
+  without a picture.
 
 ## Output
 
@@ -853,6 +859,8 @@ the Actions tab ("Latest slicers").
   filament and process for all models; to vary them, use separate runs or
   profiles.
 - **One model per plate.** Several models are not arranged onto one plate.
+- **No preview pictures** in the G-code (slicers draw them only in their
+  windows), so printer screens show sliced files without a picture.
 - **Sending needs Klipper with Moonraker.** Bambu Lab printers (LAN mode),
   OctoPrint and Creality printers without Moonraker are not supported yet.
 - **Flatpak installs are not detected** by `batchslicer setup`; configure them
