@@ -1,5 +1,6 @@
 """Tests for locating a slicer's built-in presets."""
 
+import os
 import subprocess
 from pathlib import Path
 from unittest.mock import Mock
@@ -8,6 +9,7 @@ import pytest
 
 from batchslicer.backends.presets import PresetError
 from batchslicer.backends.profiles import find_system_profiles, is_appimage
+from test_opc import make_opc
 
 
 def _fake_appimage(path: Path) -> Path:
@@ -150,5 +152,103 @@ def test_no_presets_anywhere_is_reported(tmp_path: Path) -> None:
 
     plain = tmp_path / "orca-slicer"
     plain.write_text("")
-    with pytest.raises(PresetError, match="Cannot find the built-in presets"):
+    with pytest.raises(PresetError, match="Creality.opc is not an OrcaSlicer preset file"):
         find_system_profiles(plain, _data_directory(tmp_path, "Creality"), tmp_path / "cache")
+
+
+def _bundling_opc_run(calls: list[tuple[str, ...]], *, bundled: set[str]) -> Mock:
+    """Return a subprocess.run stand-in for an AppImage that ships .opc files (OrcaSlicer 2.5)."""
+
+    def run(command: tuple[str, ...], *, cwd: str, **kwargs: object) -> Mock:
+        calls.append(command)
+        vendor = command[2].split("/")[-1].rstrip("*")
+        profiles = Path(cwd) / "squashfs-root" / "resources" / "profiles"
+        if vendor in bundled:
+            (profiles / vendor).mkdir(parents=True)
+            (profiles / vendor / "cover.png").write_bytes(b"png")  # images only, no JSON
+            make_opc(profiles / f"{vendor}.opc", vendor=vendor)
+        return Mock(returncode=0)
+
+    return Mock(side_effect=run)
+
+
+def _real_opc_data_directory(tmp_path: Path, *vendors: str) -> Path:
+    """Create a data directory whose system folder has real (small) .opc files."""
+    data = tmp_path / "data"
+    (data / "system").mkdir(parents=True)
+    for vendor in vendors:
+        make_opc(data / "system" / f"{vendor}.opc", vendor=vendor)
+    return data
+
+
+def test_opc_files_shipped_in_the_appimage_are_unpacked(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """OrcaSlicer 2.5 ships .opc files; they are unpacked to JSON in the cache."""
+    executable = _fake_appimage(tmp_path / "OrcaSlicer.AppImage")
+    data = _data_directory(tmp_path, "Acme")
+    monkeypatch.setattr(
+        "batchslicer.backends.profiles.subprocess.run", _bundling_opc_run([], bundled={"Acme"})
+    )
+
+    found = find_system_profiles(executable, data, tmp_path / "cache", logger=Mock())
+
+    assert (found / "Acme" / "machine" / "Acme One 0.4 nozzle.json").is_file()
+    assert not (found / "Acme" / "cover.png").exists()
+
+
+def test_vendors_the_program_lacks_come_from_the_settings_folder(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A vendor not shipped with the program is unpacked from the settings folder's .opc."""
+    executable = _fake_appimage(tmp_path / "OrcaSlicer.AppImage")
+    data = _real_opc_data_directory(tmp_path, "Acme", "Custom")
+    monkeypatch.setattr(
+        "batchslicer.backends.profiles.subprocess.run", _bundling_opc_run([], bundled={"Acme"})
+    )
+
+    found = find_system_profiles(executable, data, tmp_path / "cache", logger=Mock())
+
+    assert (found / "Custom" / "process" / "0.20mm Standard @Acme.json").is_file()
+
+
+def test_installs_without_bundled_presets_use_the_settings_folder(tmp_path: Path) -> None:
+    """A program that is not an AppImage and ships no JSON uses the settings folder's .opc files."""
+    executable = tmp_path / "orca-slicer"
+    executable.write_text("")
+    data = _real_opc_data_directory(tmp_path, "Acme")
+
+    found = find_system_profiles(executable, data, tmp_path / "cache", logger=Mock())
+
+    assert (found / "Acme" / "filament" / "Acme PLA.json").is_file()
+
+
+def test_changed_opc_files_rebuild_the_cache(tmp_path: Path) -> None:
+    """When the slicer updates its .opc files, the presets are unpacked again."""
+    executable = tmp_path / "orca-slicer"
+    executable.write_text("")
+    data = _real_opc_data_directory(tmp_path, "Acme")
+    first = find_system_profiles(executable, data, tmp_path / "cache", logger=Mock())
+
+    make_opc(data / "system" / "Acme.opc", vendor="Acme")
+    opc = data / "system" / "Acme.opc"
+    stat = opc.stat()
+    os.utime(opc, (stat.st_atime, stat.st_mtime + 60))
+    second = find_system_profiles(executable, data, tmp_path / "cache", logger=Mock())
+
+    assert first != second
+    assert first.exists() and second.exists()
+
+
+def test_opc_holding_another_vendor_is_refused(tmp_path: Path) -> None:
+    """A settings-folder .opc file named for one vendor but holding another is refused."""
+    executable = tmp_path / "orca-slicer"
+    executable.write_text("")
+    data = tmp_path / "data"
+    (data / "system").mkdir(parents=True)
+    make_opc(data / "system" / "Acme.opc", vendor="Other")
+
+    with pytest.raises(PresetError, match="holds presets for 'Other'"):
+        find_system_profiles(executable, data, tmp_path / "cache", logger=Mock())

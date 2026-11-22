@@ -225,3 +225,4 @@ __marimo__/
 
 # Local configuration (copy config/config.example.yaml)
 /config/config.yaml
+/config/config.yaml.bak

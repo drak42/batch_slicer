@@ -16,6 +16,7 @@ the caller's working directory.
 """
 
 import logging
+import re
 import subprocess
 import tempfile
 import threading
@@ -38,6 +39,7 @@ DEFAULT_TIMEOUT_SECONDS = 1800.0
 """Maximum time one OrcaSlicer command may run before it is stopped."""
 
 _FILE_LIST_SEPARATOR = ";"
+_VERSION_PATTERN = re.compile(r"^\s*[A-Za-z][\w ]*?-(\d+(?:\.\d+)+)\s*:", re.MULTILINE)
 _MAX_LOGGED_STDERR_CHARACTERS = 2000
 
 
@@ -73,6 +75,8 @@ class OrcaBackend:
         self._timeout_seconds = timeout_seconds
         self._lock = threading.Lock()
         self._running: set[subprocess.Popen[str]] = set()
+        self._version: tuple[int, ...] | None = None
+        self._version_known = False
 
     @property
     def slicer(self) -> SlicerDefinition:
@@ -177,7 +181,29 @@ class OrcaBackend:
 
     def help(self) -> OrcaResult:
         """Run OrcaSlicer with its general help option."""
-        return self._run_in_scratch_directory(self.build_help_command())
+        result = self._run_in_scratch_directory(self.build_help_command())
+        if not self._version_known and result.success:
+            self._version = parse_version(result.stdout + "\n" + result.stderr)
+            self._version_known = True
+        return result
+
+    def version(self) -> tuple[int, ...] | None:
+        """Return the slicer's version from its help text (run once), or None if unknown."""
+        if not self._version_known:
+            self.help()
+            self._version_known = True
+        return self._version
+
+    def resolves_inherits(self) -> bool:
+        """Return whether this slicer's CLI looks up a settings file's ``inherits`` itself.
+
+        Such a slicer refuses a file whose parent it cannot find, so complete
+        settings files are written without that link. An unknown version is
+        treated as the older behaviour.
+        """
+        since = self._slicer.resolves_inherits_from
+        version = self.version() if since is not None else None
+        return since is not None and version is not None and version >= since
 
     def export_settings(self, output_path: PathLike) -> OrcaResult:
         """Export OrcaSlicer settings to ``output_path``."""
@@ -325,6 +351,14 @@ class OrcaBackend:
             str(datadir),
         )
 
+
+
+def parse_version(help_text: str) -> tuple[int, ...] | None:
+    """Return the version in a slicer's help text, such as ``OrcaSlicer-2.5.2:``."""
+    match = _VERSION_PATTERN.search(help_text)
+    if match is None:
+        return None
+    return tuple(int(part) for part in match.group(1).split("."))
 
 
 def _join_file_list(paths: Sequence[PathLike]) -> str:

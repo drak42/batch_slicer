@@ -33,6 +33,10 @@ class SlicerDefinition:
     """Settings file in the data directory used to list presets; None if preset
     selection is not yet supported for this slicer."""
 
+    resolves_inherits_from: tuple[int, ...] | None = None
+    """Version from which the slicer's CLI looks up a settings file's ``inherits``
+    itself (and fails if it cannot find it); None if it never does."""
+
     @property
     def supports_preset_selection(self) -> bool:
         """Return whether BatchSlicer can list and resolve this slicer's presets."""
@@ -47,6 +51,8 @@ ORCASLICER = SlicerDefinition(
     key="orca",
     display_name="OrcaSlicer",
     app_config_name="OrcaSlicer.conf",
+    # OrcaSlicer 2.5 resolves "inherits" against its own loaded presets.
+    resolves_inherits_from=(2, 5),
 )
 
 BAMBU_STUDIO = SlicerDefinition(key="bambu_studio", display_name="Bambu Studio")

@@ -20,6 +20,7 @@ NOW = datetime(2026, 11, 20, 14, 45, 30)
 def _backend(*, exit_code: int = 0, gcode: bool = True, error_string: str = "Success.") -> Mock:
     """Return a backend whose slice writes what a real slicer would."""
     backend = Mock()
+    backend.resolves_inherits.return_value = False
 
     def slice_(model: Path, job: Path, **kwargs: object) -> OrcaResult:
         if gcode:
@@ -80,7 +81,9 @@ def test_presets_are_written_into_the_job_and_passed_to_the_slicer(tmp_path: Pat
 
     outcome = service.slice(tmp_path / "cube.stl", tmp_path / "output", selection)
 
-    library.write_resolved.assert_called_once_with(selection, outcome.job_directory / "presets")
+    library.write_resolved.assert_called_once_with(
+        selection, outcome.job_directory / "presets", link_user_printer=True
+    )
     assert backend.slice.call_args.kwargs == {
         "orient": False,
         "allow_newer_file": False,
@@ -158,7 +161,7 @@ def test_batch_mirrors_source_folders_and_writes_presets_once(tmp_path: Path) ->
         root / "sub" / "deep" / "b",
     ]
     assert (root / "sub" / "deep" / "b" / "b.gcode").is_file()
-    library.write_resolved.assert_called_once_with(_selection(), root / "presets")
+    library.write_resolved.assert_called_once_with(_selection(), root / "presets", link_user_printer=True)
     assert started == [(1, 2, "a.stl"), (2, 2, "b.stl")]
     assert finished == [True, True]
     assert batch.elapsed == 5.0
@@ -513,3 +516,16 @@ def test_interrupted_models_leave_no_partial_output(tmp_path: Path) -> None:
 
     assert batch.interrupted_models == (source / "a.stl",)
     assert list(batch.batch_directory.iterdir()) == []
+
+
+def test_user_printers_are_not_linked_for_slicers_that_resolve_inherits(tmp_path: Path) -> None:
+    """For OrcaSlicer 2.5+, which looks up "inherits" itself, the link is left out."""
+    backend = _backend()
+    backend.resolves_inherits.return_value = True
+    library = Mock()
+    library.write_resolved.return_value = ([tmp_path / "m.json"], [tmp_path / "f.json"])
+    service = SlicingService(backend, presets=library, logger=Mock(), clock=lambda: NOW)
+
+    service.slice(tmp_path / "cube.stl", tmp_path / "output", _selection())
+
+    assert library.write_resolved.call_args.kwargs == {"link_user_printer": False}

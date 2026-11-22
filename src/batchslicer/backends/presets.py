@@ -127,14 +127,17 @@ class PresetLibrary:
         self,
         selection: PresetSelection,
         directory: Path,
+        *,
+        link_user_printer: bool = True,
     ) -> tuple[list[Path], list[Path]]:
         """Write complete copies of ``selection`` into ``directory`` for the slicer CLI.
 
         Returns ``(settings_files, filament_files)`` for ``--load-settings`` and
-        ``--load-filaments``.
+        ``--load-filaments``. ``link_user_printer`` keeps a user's printer linked
+        to the shipped printer it is based on (see :meth:`_printer_for_cli`).
         """
         directory.mkdir(parents=True, exist_ok=True)
-        printer = self._printer_for_cli(selection.printer)
+        printer = self._printer_for_cli(selection.printer, link_user_printer=link_user_printer)
         process = self.resolve(selection.process)
         process["from"] = "User"
         process["print_settings_id"] = selection.process.name
@@ -153,17 +156,21 @@ class PresetLibrary:
             paths.append(path)
         return [paths[0], paths[1]], [paths[2]]
 
-    def _printer_for_cli(self, printer: Preset) -> dict[str, Any]:
+    def _printer_for_cli(self, printer: Preset, *, link_user_printer: bool = True) -> dict[str, Any]:
         """Return a resolved printer the CLI accepts and matches compatibility against.
 
-        The CLI matches a shipped printer by its own name, but a user's printer
-        by the shipped printer it inherits from, so that link is kept.
+        The CLI matches a shipped printer by its own name. Before OrcaSlicer 2.5
+        it matches a user's printer by the shipped printer it inherits from, so
+        that link is kept; from 2.5 the CLI looks that printer up itself and
+        refuses the file if it cannot, so the (already complete) file goes
+        without it.
         """
         data = self.resolve(printer)
         data["printer_settings_id"] = printer.name
         if printer.is_user:
             data["from"] = "User"
-            data["inherits"] = self._compatibility_name(printer)
+            if link_user_printer:
+                data["inherits"] = self._compatibility_name(printer)
         else:
             data["from"] = "system"
         return data

@@ -81,7 +81,7 @@ repeats the same run.
 
 | Slicer | Slicing | Preset selection |
 |---|---|---|
-| OrcaSlicer (tested with 2.4) | Yes | Yes |
+| OrcaSlicer (tested with 2.4 and 2.5) | Yes | Yes |
 | Creality Print (tested with 7.3) | Yes | Yes |
 | Bambu Studio (tested with 2.8) | Yes | Not yet (see [limitations](#current-limitations)) |
 
@@ -118,11 +118,14 @@ slicers' command-line mode cannot use them in that form. BatchSlicer combines
 each chosen preset with everything it inherits from into a complete file, saves
 those files with the job, and passes them to the slicer.
 
-**OrcaSlicer's built-in presets.** OrcaSlicer 2.4 keeps its built-in presets in
-a packed internal format. The same presets ship as plain files inside the
-OrcaSlicer AppImage, so BatchSlicer extracts the vendors you use (for example
-Creality) once, caches them in `~/.cache/batchslicer/slicer-profiles/`, and extracts again
-automatically when OrcaSlicer is updated. This takes well under a second.
+**OrcaSlicer's built-in presets.** OrcaSlicer 2.4 and later keep their
+built-in presets in packed `.opc` files. BatchSlicer takes the vendors you use
+(for example Creality) from the OrcaSlicer program itself (2.4 ships them as
+plain files, 2.5 as `.opc` files, which BatchSlicer reads), or from the `.opc`
+files in OrcaSlicer's settings folder for vendors the program does not ship.
+They are unpacked once into `~/.cache/batchslicer/slicer-profiles/` and again
+automatically when OrcaSlicer or those files change. This takes about a
+second.
 
 ## Requirements
 
@@ -657,7 +660,7 @@ auto-orient, and check the result in the slicer before printing.
 larger than the printer's bed, or a project plate has nothing on it.
 
 **"Unsupported 3MF version ..."**: the project was saved by a newer version of
-the slicer (for example Bambu Studio 2.5 projects in OrcaSlicer 2.4). Add
+the slicer (for example Bambu Studio 2.5 or 2.6 projects in OrcaSlicer 2.4 or 2.5). Add
 `--allow-newer-files`, or update the slicer.
 
 **"The input model file to the slicer can not be parsed."**: the model file is

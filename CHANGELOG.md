@@ -6,6 +6,24 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **OrcaSlicer 2.5 support.** OrcaSlicer 2.5 ships its built-in presets only as
+  packed `.opc` files; BatchSlicer now reads that format (following
+  OrcaSlicer's own source) and unpacks the presets it needs. Vendors that
+  OrcaSlicer 2.5 does not ship (it downloads them) are read from the `.opc`
+  files in its settings folder. Checked against 2.4.0 and 2.5.2: the presets
+  decode completely, and slicing the same model gives the same settings apart
+  from those 2.5 itself changed.
+
+### Fixed
+
+- With OrcaSlicer 2.5, slicing for a printer you created yourself failed
+  ("can not resolve preset"), because 2.5 looks up the printer it is based on
+  itself. BatchSlicer now leaves that link out for 2.5 and later.
+- `config/config.yaml.bak` (written by `batchslicer setup`) is no longer offered
+  for committing.
+
 ## [0.5.0] - 2026-11-22
 
 Large batches: found by slicing 1,719 real downloaded models.

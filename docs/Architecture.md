@@ -225,10 +225,15 @@ which it reports success but writes no G-code.
 Preset selection is supported for Creality Print and OrcaSlicer. Shipped
 filaments are limited to those the user made visible in the slicer, as in its
 own menus. Creality Print keeps shipped presets as JSON in its data directory.
-OrcaSlicer 2.4 packs them into `.opc` files (an internal format that is not
-parsed); the same presets ship as JSON inside the program, so the vendors in use
-are extracted once from the AppImage into `data/slicer-profiles/` and reused
-until the slicer is updated (`backends/profiles.py`). Bambu Studio is planned.
+OrcaSlicer 2.4 and later pack them into `.opc` files. The vendors in use are
+taken from the program (JSON in 2.4; `.opc` files in 2.5, read by
+`backends/opc.py` following OrcaSlicer's `PresetCacheFormat.cpp`) or, for
+vendors the program does not ship, from the settings folder's `.opc` files,
+and unpacked once as JSON into `data/slicer-profiles/` until the slicer or
+those files change (`backends/profiles.py`). From OrcaSlicer 2.5 the CLI looks
+up a settings file's `inherits` itself, so a user's printer is written without
+that link for 2.5 and later (the version comes from `--help`). Bambu Studio is
+planned.
 
 Future:
 

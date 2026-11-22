@@ -302,8 +302,9 @@ class SlicingService:
             return [], []
         if self._presets is None:
             raise ValueError("A preset library is required to slice with presets.")
+        link = not self._backend.resolves_inherits()
         settings, filaments = self._presets.write_resolved(
-            selection, job_directory / _PRESETS_FOLDER_NAME
+            selection, job_directory / _PRESETS_FOLDER_NAME, link_user_printer=link
         )
         return list(settings), list(filaments)
 

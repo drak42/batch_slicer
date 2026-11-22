@@ -202,6 +202,21 @@ def test_written_user_printer_keeps_link_to_its_shipped_printer(datadir: Path, t
     assert printer["bed_x"] == "300"
 
 
+def test_user_printer_link_can_be_left_out(datadir: Path, tmp_path: Path) -> None:
+    """For slicers that look the parent up themselves, the complete printer goes without it."""
+    _write(datadir / "user" / USER_ID / "machine" / "k2_mine.json", {"name": "My K2", "inherits": K2, "bed_x": "300"})
+    library = _library(datadir)
+    mine = library.printers()[0]
+    selection = PresetSelection(mine, library.filaments_for(mine)[0], library.processes_for(mine)[0])
+
+    settings, _ = library.write_resolved(selection, tmp_path / "resolved", link_user_printer=False)
+
+    printer = json.loads(settings[0].read_text())
+    assert "inherits" not in printer
+    assert printer["from"] == "User"
+    assert printer["bed_x"] == "300"
+
+
 def test_shipped_presets_can_come_from_a_separate_folder(datadir: Path, tmp_path: Path) -> None:
     """OrcaSlicer's shipped presets live outside the data directory."""
     elsewhere = tmp_path / "profiles"
@@ -298,9 +313,6 @@ def test_real_slicer_slices_with_selected_presets(
         logger=Mock(),
     )
     printer, filament, process = _first_usable_selection(library, prefer_user=user_presets)
-    settings, filaments = library.write_resolved(
-        PresetSelection(printer, filament, process), tmp_path / "resolved"
-    )
     model = tmp_path / "cube.stl"
     _write_cube(model)
     config = write_config(
@@ -308,6 +320,11 @@ def test_real_slicer_slices_with_selected_presets(
         {slicer.key: {"executable": executable, "datadir": data_directory}},
     )
     backend = OrcaBackend(slicer=slicer, config=config, logger=Mock(), timeout_seconds=300)
+    settings, filaments = library.write_resolved(
+        PresetSelection(printer, filament, process),
+        tmp_path / "resolved",
+        link_user_printer=not backend.resolves_inherits(),
+    )
 
     result = backend.slice(
         model,

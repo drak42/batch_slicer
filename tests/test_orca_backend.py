@@ -8,7 +8,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from batchslicer.backends.orca import DEFAULT_TIMEOUT_SECONDS, OrcaBackend, OrcaResult
+from batchslicer.backends.orca import (
+    DEFAULT_TIMEOUT_SECONDS,
+    OrcaBackend,
+    OrcaResult,
+    parse_version,
+)
 from batchslicer.backends.slicers import (
     BAMBU_STUDIO,
     CREALITY_PRINT,
@@ -601,3 +606,43 @@ def test_allow_newer_file_is_a_flag_without_a_value(backend: OrcaBackend, tmp_pa
     )
 
     assert command[-2:] == ("--allow-newer-file", str(tmp_path / "model.3mf"))
+
+
+@pytest.mark.parametrize(
+    ("text", "version"),
+    [
+        ("OrcaSlicer-2.4.0:\nUsage: orca-slicer", (2, 4, 0)),
+        ("OrcaSlicer-2.5.2:\n", (2, 5, 2)),
+        ("BambuStudio-02.08.04.57:\n", (2, 8, 4, 57)),
+        ("[trace] Initializing StaticPrintConfigs\nUsage:", None),
+    ],
+)
+def test_version_is_read_from_the_help_text(text: str, version: tuple[int, ...] | None) -> None:
+    """The first line of a slicer's help names its version."""
+    assert parse_version(text) == version
+
+
+@pytest.mark.parametrize(
+    ("slicer", "help_text", "expected"),
+    [
+        (ORCASLICER, "OrcaSlicer-2.4.0:\n", False),
+        (ORCASLICER, "OrcaSlicer-2.5.2:\n", True),
+        (ORCASLICER, "no version here", False),
+        (CREALITY_PRINT, "Creality-7.3.0:\n", False),
+    ],
+)
+def test_slicers_that_resolve_inherits_are_recognised(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    slicer: SlicerDefinition,
+    help_text: str,
+    expected: bool,
+) -> None:
+    """OrcaSlicer from 2.5 looks up "inherits" itself; the version is asked for once."""
+    backend = _backend_for(slicer, tmp_path)
+    popen = _popen(stdout=help_text)
+    monkeypatch.setattr("batchslicer.backends.orca.subprocess.Popen", popen)
+
+    assert backend.resolves_inherits() is expected
+    assert backend.resolves_inherits() is expected
+    assert popen.call_count == (1 if slicer is ORCASLICER else 0)
