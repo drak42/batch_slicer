@@ -85,10 +85,12 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - `--send` uploads to OctoPrint as well as Klipper/Moonraker (tested against a
   stand-in OctoPrint; still to be tried with a real server).
 
+### 0.11.0 (2026-11-23): watch folder in the background
+
+- `batchslicer service install` runs `--watch` as a systemd user service.
+
 ## Next
 
-- **Watch folder in the background** (built, unreleased): `batchslicer
-  service install` runs `--watch` as a systemd user service.
 - Windows and macOS work continues on the `feat/windows` and `feat/macos`
   branches (draft pull requests), outside `main`.
 

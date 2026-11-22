@@ -1,6 +1,6 @@
 # BatchSlicer Architecture
 
-**Version:** 0.10.0  
+**Version:** 0.11.0  
 **Status:** Current; parts marked *planned* are not built yet  
 **Last Updated:** November 2026
 

@@ -6,12 +6,21 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-23
+
+The watch folder runs in the background.
+
 ### Added
 
 - `batchslicer service install` runs the watch folder in the background as a
   systemd user service, with the same options as a watch run; `status` shows
   what each service is doing and `uninstall` removes one. Stopping a service
   works like Ctrl+C. `--name` runs several.
+
+### Changed
+
+- GitHub Actions updated (checkout, setup-python, upload/download-artifact and
+  the PyPI upload action); no change to the program.
 
 ## [0.10.0] - 2026-11-23
 
@@ -340,7 +349,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/drak42/batch_slicer/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/drak42/batch_slicer/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/drak42/batch_slicer/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/drak42/batch_slicer/compare/v0.9.1...v0.9.2
