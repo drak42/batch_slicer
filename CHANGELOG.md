@@ -6,6 +6,10 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-22
+
+Every supported slicer has preset selection, and the newest OrcaSlicer works.
+
 ### Added
 
 - **Bambu Studio preset selection.** Choose a printer, then a compatible
@@ -14,7 +18,6 @@ All notable changes to BatchSlicer are recorded here. The format follows
   shipped printers for those, plus printers you created yourself. Tested with
   Bambu Studio 2.9.1.
 - The weekly "Latest slicers" job now also slices with Bambu Studio's presets.
-
 - **OrcaSlicer 2.5 support.** OrcaSlicer 2.5 ships its built-in presets only as
   packed `.opc` files; BatchSlicer now reads that format (following
   OrcaSlicer's own source) and unpacks the presets it needs. Vendors that
@@ -190,7 +193,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/drak42/batch_slicer/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/drak42/batch_slicer/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/drak42/batch_slicer/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/drak42/batch_slicer/compare/v0.2.0...v0.3.0

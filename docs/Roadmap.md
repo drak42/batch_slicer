@@ -37,10 +37,13 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - Result folders hold only G-code: slicer status files, folders of failed
   models and partial output of interrupted models are removed.
 
+### 0.6.0 (2026-11-22): every slicer, newest versions
+
+- OrcaSlicer 2.5: reading its packed `.opc` preset files.
+- Bambu Studio preset selection; the weekly test now covers its presets.
+
 ## Next
 
-- [x] **OrcaSlicer 2.5**: read its packed `.opc` preset files.
-- [x] **Bambu Studio preset selection.**
 - [ ] **Skip folders** (for example `--exclude PATTERN`): the soak test's
   largest group of failures came from non-model meshes bundled with other
   software.
