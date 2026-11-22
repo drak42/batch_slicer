@@ -14,6 +14,7 @@ All notable changes to BatchSlicer are recorded here. The format follows
   part as it will print, shaded, in the filament's colour, at the sizes the
   printer preset asks for (usually 300x300 and 96x96 PNG). About a second per
   typical model; `--no-thumbnails` turns it off, and profiles can save it.
+  Checked on the Creality K2 Plus touchscreen.
 
 ### Changed
 

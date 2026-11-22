@@ -620,8 +620,11 @@ batchslicer --profile k2-pla --input bracket.stl --send k2plus --start
 - With several printers, each profile sends to its own printer.
 - `batchslicer doctor` checks that every configured printer answers.
 - **Creality K2 Plus** (tested): Moonraker answers on port 7125 and on 4408,
-  with no API key needed, and the touchscreen shows the batch folders. Creality
-  Print's device list shows the printer's address.
+  with no API key needed, and the touchscreen shows the batch folders and
+  BatchSlicer's preview pictures. Creality Print's device list shows the
+  printer's address. When a file is replaced under the same name, the screen
+  may keep showing the old picture (or none); in testing, sending the file
+  again fixed it.
 
 ## Output
 
