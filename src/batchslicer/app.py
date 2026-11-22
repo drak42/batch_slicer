@@ -58,6 +58,7 @@ from batchslicer.services.gcode_stats import GcodeStats, format_duration
 from batchslicer.services.report import write_report
 from batchslicer.services.sending import SendingService, SendOutcome, SentFile, plan_uploads
 from batchslicer.services.slicing import BatchOutcome, SliceOutcome, SlicingService
+from batchslicer.services.watching import DEFAULT_INTERVAL_SECONDS, WatchFolder, watch
 
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
@@ -131,6 +132,7 @@ def _run(options: RunOptions) -> int:
             deleted = profiles.delete(options.delete_profile)
             print(f"Deleted profile '{deleted.name}'.")
             return EXIT_SUCCESS
+        watch_input = options.input  # only --input itself, never a profile's input, is watched
         options, specs, offered_more, from_profile = _plan_targets(options, profiles, logger)
 
         if options.list_presets:
@@ -154,6 +156,17 @@ def _run(options: RunOptions) -> int:
         jobs = options.jobs or 1
         _check_options(targets, slice_options)
         _show_ready(targets, slice_options, jobs, start=options.start)
+        if options.watch:
+            return _watch(
+                replace(options, input=watch_input),
+                targets,
+                config,
+                logger,
+                profiles,
+                slice_options,
+                jobs,
+                from_profile,
+            )
         slice_input = _apply_exclude(_select_input(options, config), options.exclude or ())
         if options.plates is None and not from_profile and not options.no_prompt:
             options = replace(options, plates=_ask_plates(targets, slice_input, profiles))
@@ -177,7 +190,8 @@ def _run(options: RunOptions) -> int:
             slice_input.root,
             output_directory,
         )
-        _remember_choices(profiles, options, targets, slice_input, output_directory, logger)
+        chosen = slice_input.root if slice_input.is_folder else slice_input.models[0]
+        _remember_choices(profiles, options, targets, chosen, output_directory, logger)
         return _slice_targets(
             targets,
             slice_input,
@@ -546,15 +560,17 @@ def _remember_choices(
     profiles: ProfileStore,
     options: RunOptions,
     targets: list[_ResolvedTarget],
-    slice_input: SliceInput,
+    chosen_input: Path | None,
     output_directory: Path,
     logger: logging.Logger,
+    *,
+    remember_last: bool = True,
 ) -> None:
-    """Save this run's choices as the last run, and as --save-profile if given."""
+    """Save this run's choices as the last run (unless told not to), and as --save-profile if given."""
     choices = Profile(
         name=LAST_RUN,
         targets=tuple(target.as_target() for target in targets),
-        input=slice_input.root if slice_input.is_folder else slice_input.models[0],
+        input=chosen_input,
         output=output_directory,
         orient=options.orient,
         allow_newer_files=options.allow_newer_files,
@@ -564,14 +580,121 @@ def _remember_choices(
         plates=options.plates,
         copies=options.copies,
     )
-    try:
-        profiles.save(choices)
-    except ProfileError as error:
-        logger.warning("Could not remember this run: %s", error)
+    if remember_last:
+        try:
+            profiles.save(choices)
+        except ProfileError as error:
+            logger.warning("Could not remember this run: %s", error)
     if options.save_profile is not None:
         profiles.save(replace(choices, name=options.save_profile))
         print(f"Saved these choices as profile '{options.save_profile}'.")
         logger.info("Saved profile %s", options.save_profile)
+
+
+def _watch(
+    options: RunOptions,
+    targets: list[_ResolvedTarget],
+    config: Config,
+    logger: logging.Logger,
+    profiles: ProfileStore,
+    slice_options: SliceOptions,
+    jobs: int,
+    from_profile: bool,
+) -> int:
+    """Slice every model or folder put in the watched folder until Ctrl+C.
+
+    The watched folder is ``--input`` as given on the command line, or the
+    configured incoming folder; a profile's input is never watched, because
+    watching moves what it slices. The questions an interactive run asks about the input (plates, sending,
+    output) are asked once, before watching starts. Each drop is sliced like
+    a run of its own, then moved into the folder's ``sliced`` or ``failed``
+    subfolder. Watch runs are not remembered as the last run.
+    """
+    folder = (options.input or config.get_path("paths", "incoming")).expanduser().absolute()
+    if folder.exists() and not folder.is_dir():
+        raise SlicerSelectionError(f"--watch needs a folder to watch; {folder} is a file.")
+    can_arrange = all(target.slicer.supports("--arrange") for target in targets)
+    if options.plates is None and not from_profile and not options.no_prompt and can_arrange:
+        options = replace(options, plates=_ask_watch_plates(profiles))
+    copies = options.copies or 1
+    slice_options = replace(slice_options, plates=bool(options.plates), copies=copies)
+    _check_options(targets, slice_options)
+    if not from_profile and options.send is None and not options.no_prompt:
+        targets = _ask_to_send(targets, profiles, config)
+    output_directory = _select_output(options, config)
+    resolved_output = output_directory.expanduser().absolute()
+    if resolved_output.is_relative_to(folder) or folder.is_relative_to(resolved_output):
+        raise SlicerSelectionError(
+            f"The output folder {output_directory} and the watched folder {folder} must be "
+            "separate, not one inside the other."
+        )
+    _check_printers(targets, logger)
+    if options.save_profile is not None:
+        _remember_choices(profiles, options, targets, None, output_directory, logger, remember_last=False)
+
+    watched = WatchFolder(folder, logger=logger)
+    print("")
+    print(f"Watching {folder} for models; output to {output_directory}.")
+    print(
+        f"Put a model file or a folder of models in it. When it has finished copying it is "
+        f"sliced, then moved to {watched.sliced.name}/ (or {watched.failed.name}/ if any "
+        "model failed). Press Ctrl+C to stop.",
+        flush=True,
+    )
+    logger.info("Watching %s; output to %s", folder, output_directory)
+    if copies > 1:
+        print(f"Single STL, OBJ or STEP models get {copies} copies; folders and 3MF projects get one.")
+
+    def handle(drop: Path) -> bool:
+        print("")
+        print(f"=== {drop.name} ===", flush=True)
+        logger.info("Slicing %s from the watched folder", drop)
+        try:
+            slice_input = _apply_exclude(input_from_path(drop), options.exclude or ())
+            single = not slice_input.is_folder
+            copyable = single and slice_input.models[0].suffix.casefold() in COPYABLE_SUFFIXES
+            drop_options = replace(
+                slice_options,
+                plates=slice_options.plates and slice_input.is_folder,
+                copies=copies if copyable else 1,
+            )
+            status = _slice_targets(
+                targets, slice_input, output_directory, config, logger, drop_options, jobs
+            )
+        except (SlicerSelectionError, PresetError, PrinterError, OSError, ValueError) as error:
+            _error(f"Could not slice {drop.name}: {error}")
+            logger.error("Could not slice %s: %s", drop, error)
+            return False
+        if status == EXIT_INTERRUPTED:
+            raise KeyboardInterrupt
+        return status == EXIT_SUCCESS
+
+    def on_moved(drop: Path, moved: Path | None, success: bool) -> None:
+        if moved is None:
+            _error(f"Could not move {drop.name} out of the watched folder; it will not be sliced again.")
+        else:
+            print(f"Moved {drop.name} to {moved.relative_to(folder).as_posix()}")
+        print("Watching for more models...", flush=True)
+
+    summary = watch(watched, handle, interval=DEFAULT_INTERVAL_SECONDS, sleep=time.sleep, on_moved=on_moved)
+    print("")
+    print(f"Stopped watching. Sliced {summary.sliced}, failed {summary.failed}.")
+    logger.info("Stopped watching %s: %d sliced, %d failed", folder, summary.sliced, summary.failed)
+    return EXIT_SUCCESS
+
+
+def _ask_watch_plates(profiles: ProfileStore) -> bool:
+    """Ask whether folders dropped in should have their models put together on plates."""
+    try:
+        previous = profiles.load().get(LAST_RUN)
+    except ProfileError:
+        previous = None
+    return confirm(
+        "When a folder is put in, put the models in each of its folders together on plates?",
+        read_line=input,
+        write=print,
+        default=bool(previous is not None and previous.plates),
+    )
 
 
 def _list_profiles(profiles: ProfileStore) -> None:

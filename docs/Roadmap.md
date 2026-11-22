@@ -83,6 +83,8 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - **Sending to OctoPrint** (built, unreleased): `type: octoprint` printers in
   the configuration; tested against a stand-in OctoPrint, still to be tried
   with a real server.
+- **Watch folder** (built, unreleased): `--watch` slices each model or
+  folder dropped into a folder and moves it to `sliced` or `failed`.
 - Windows and macOS work continues on the `feat/windows` and `feat/macos`
   branches (draft pull requests), outside `main`.
 
@@ -101,7 +103,6 @@ These need a decision from the project owner before work starts.
 
 | Feature | Why |
 |---|---|
-| Watch folder | drop models in, get G-code out, unattended |
 | Multi-material (several filaments per printer) | Creality CFS, Bambu AMS |
 | Flat output option | all G-code in one folder |
 

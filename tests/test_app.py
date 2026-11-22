@@ -1661,3 +1661,126 @@ def test_copies_are_refused_for_creality_print(
     assert app.main(["--copies", "2"]) == 1
 
     assert "cannot make copies" in _all_output(capsys)
+
+
+# --- watch folder ----------------------------------------------------------
+
+
+def _watching(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, looks: int = 2) -> list[tuple[SliceInput, object]]:
+    """Record each drop _slice_targets gets, failing models named broken*, and stop after ``looks``."""
+    calls: list[tuple[SliceInput, object]] = []
+
+    def slice_targets(targets: object, slice_input: SliceInput, output: Path, config: object,
+                      logger: object, options: object, jobs: int) -> int:
+        calls.append((slice_input, options))
+        return app.EXIT_FAILURE if slice_input.models[0].name.startswith("broken") else app.EXIT_SUCCESS
+
+    sleeps = 0
+
+    def sleep(seconds: float) -> None:
+        nonlocal sleeps
+        sleeps += 1
+        if sleeps == looks:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(app, "_slice_targets", slice_targets)
+    monkeypatch.setattr(app.time, "sleep", sleep)
+    monkeypatch.setattr(app, "output_from_path", lambda path: path)
+    return calls
+
+
+def test_watch_slices_each_drop_and_moves_it(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Files and folders put in the watched folder are sliced once, then moved by outcome."""
+    _no_prompts(monkeypatch)
+    calls = _watching(monkeypatch, tmp_path)
+    watched = tmp_path / "in"
+    for relative in ("cube.stl", "broken.stl", "kit/a.stl", "kit/b.stl", "readme.txt"):
+        (watched / relative).parent.mkdir(parents=True, exist_ok=True)
+        (watched / relative).write_text("solid\n")
+
+    result = app.main([
+        "--slicer", "bambu", "--input", str(watched), "--output", str(tmp_path / "out"),
+        "--watch", "--plates", "--copies", "3", "--no-prompt",
+    ])
+
+    assert result == 0
+    assert [(i.root.name if i.is_folder else i.models[0].name) for i, _ in calls] == ["broken.stl", "cube.stl", "kit"]
+    assert [(o.copies, o.plates) for _, o in calls] == [(3, False), (3, False), (1, True)]  # type: ignore[attr-defined]
+    assert sorted(p.name for p in (watched / "sliced").iterdir()) == ["cube.stl", "kit"]
+    assert [p.name for p in (watched / "failed").iterdir()] == ["broken.stl"]
+    assert (watched / "readme.txt").is_file()
+    out = capsys.readouterr().out
+    assert f"Watching {watched} for models" in out
+    assert "Moved kit to sliced/kit" in out
+    assert "Stopped watching. Sliced 2, failed 1." in out
+    app.ProfileStore.return_value.save.assert_not_called()  # type: ignore[attr-defined]
+
+
+def test_watch_never_watches_a_profiles_input(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """With a profile, the configured incoming folder is watched, not the profile's input."""
+    from batchslicer.domain.profiles import Profile, Target
+
+    library = tmp_path / "library"
+    (library / "keep.stl").parent.mkdir(parents=True)
+    (library / "keep.stl").write_text("solid\n")
+    _store_with(monkeypatch, tmp_path, Profile(
+        name="k2", targets=(Target(slicer="bambu_studio"),), input=library, output=tmp_path / "out",
+    ))
+    incoming = tmp_path / "incoming"
+    original = app.get_config.return_value.get_path.side_effect
+    app.get_config.return_value.get_path.side_effect = (
+        lambda section, key: incoming if (section, key) == ("paths", "incoming") else original(section, key)
+    )
+    calls = _watching(monkeypatch, tmp_path)
+
+    assert app.main(["--profile", "k2", "--watch"]) == 0
+
+    assert calls == []
+    assert (library / "keep.stl").is_file()
+    assert incoming.is_dir()
+    assert f"Watching {incoming} for models" in capsys.readouterr().out
+
+
+def test_watch_refuses_an_output_folder_inside_the_watched_one(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The results would otherwise be picked up as new drops."""
+    _no_prompts(monkeypatch)
+    _watching(monkeypatch, tmp_path)
+
+    result = app.main([
+        "--slicer", "bambu", "--input", str(tmp_path), "--output", str(tmp_path / "out"),
+        "--watch", "--no-prompt",
+    ])
+
+    assert result == 1
+    assert "must be separate" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("arguments", "message"),
+    [
+        (["--watch", "--start"], "--start cannot be used with --watch"),
+        (["--watch", "--last"], "--profile NAME --watch"),
+        (["--watch", "--list-profiles"], "--watch cannot be combined"),
+    ],
+)
+def test_watch_option_conflicts(arguments: list[str], message: str, capsys: pytest.CaptureFixture[str]) -> None:
+    """Options that make no sense while watching are refused before anything runs."""
+    with pytest.raises(SystemExit) as stopped:
+        app.main(arguments)
+    assert stopped.value.code == 2
+    assert message in capsys.readouterr().err

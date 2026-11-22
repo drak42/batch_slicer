@@ -54,6 +54,7 @@ docstring says more, including what it intentionally does not do.
 | `services/gcode_stats.py` | read print time and filament use from G-code |
 | `services/thumbnails.py` | draw preview pictures from G-code toolpaths and insert them as PNG blocks |
 | `services/sending.py` | plan where each G-code file goes on the printer and send them (`--send`, `--start`) |
+| `services/watching.py` | watch a folder (`--watch`): find drops that have finished copying and move them to `sliced` or `failed` once handled |
 
 ## backends
 
@@ -72,11 +73,11 @@ docstring says more, including what it intentionally does not do.
 | Module | Purpose |
 |---|---|
 | `infrastructure/profiles.py` | read and write `profiles.yaml` atomically |
-| `infrastructure/moonraker.py` | talk to a Klipper printer's Moonraker: check it answers, upload (and start) G-code |
 | `infrastructure/printer_api.py` | what every printer connection offers (`PrinterClient`, `PrinterStatus`, `UploadResult`, `PrinterError`) and the streamed multipart upload they share |
-
+| `infrastructure/moonraker.py` | talk to a Klipper printer's Moonraker: check it answers, upload (and start) G-code |
 | `infrastructure/octoprint.py` | talk to OctoPrint: check it answers and the printer's state, create folders, upload (and start) G-code |
 | `infrastructure/printer_clients.py` | choose the Moonraker or OctoPrint client for a printer by its `type` |
+
 ## Reserved
 
 `application/`, `plugins/`, `web/` and `cli/commands/` are empty packages kept

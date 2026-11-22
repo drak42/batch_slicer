@@ -44,6 +44,7 @@ repeats the same run.
 - [Profiles](#profiles)
 - [Slicing for several printers](#slicing-for-several-printers)
 - [Sending G-code to a printer](#sending-g-code-to-a-printer)
+- [Watch folder](#watch-folder)
 - [Output](#output) (including [several models per plate](#several-models-per-plate), [reports](#reports) and [speed](#speed))
 - [Exit status and logs](#exit-status-and-logs)
 - [Troubleshooting](#troubleshooting)
@@ -96,7 +97,8 @@ repeats the same run.
 - **Remembers your choices.** Save a run as a named profile, or repeat the last
   run with `--last`.
 - **Runs unattended.** Every choice can be given as a command-line option or a
-  profile, so it can be scripted or scheduled.
+  profile, so it can be scripted or scheduled. With `--watch` it keeps running
+  and slices every model or folder you drop into a folder.
 - **Leaves your slicers alone.** BatchSlicer only reads the slicers' settings
   folders; it never changes them.
 
@@ -758,6 +760,54 @@ Everything above applies, with these differences:
   from the G-code, such as "Slicer Thumbnails".
 - Tested against a stand-in OctoPrint that follows its documented API; not
   yet with a real OctoPrint server.
+
+## Watch folder
+
+With `--watch`, BatchSlicer keeps running and slices whatever you put in a
+folder: drop models in, get G-code out (and onto the printer, with `--send`).
+
+```bash
+# watch the incoming folder (~/BatchSlicer/incoming), slice for the k2-pla profile
+batchslicer --profile k2-pla --watch
+
+# watch another folder, put each kit on plates and send the results to the printer
+batchslicer --profile k2-pla --input ~/drop --plates --send k2plus --watch
+```
+
+- **What counts as a drop:** each model file (STL, 3MF, OBJ) or folder put
+  directly in the watched folder. A folder is sliced like `--input FOLDER`,
+  subfolders and all, so `--plates` and `--exclude` work as usual. Other
+  files are left alone.
+- **When it is sliced:** once it has stopped changing. BatchSlicer looks every
+  5 seconds, and slices a drop when two looks in a row find it unchanged, so
+  a large file or folder still being copied is not sliced half-way. Folders
+  holding unfinished downloads (`.part`, `.crdownload`) wait until they are
+  done.
+- **Afterwards:** the drop is moved into the watched folder's `sliced`
+  subfolder, or `failed` if any model in it failed (the G-code of the models
+  that worked is still written, and sent). Nothing is sliced twice, and the
+  watched folder shows what is still waiting. A name already taken there gets
+  a number: `cube (2).stl`.
+- **Results** go to the output folder as usual, one folder per drop
+  (`kit-20261123-073000`), each with its report.
+- **Questions:** an interactive run asks its questions (presets, plates,
+  sending, output folder) once, before watching starts. With `--profile` or
+  `--no-prompt` nothing is asked, so it can run unattended.
+- **The watched folder** is `--input` as given on the command line, or the
+  configured incoming folder; it is created if missing. A profile's own input
+  is never watched, because watching moves what it slices. The output folder
+  must not be inside the watched folder.
+- **Copies:** `--copies N` applies to single STL, OBJ or STEP files dropped in;
+  folders and 3MF projects are sliced once.
+- **Not with `--start`:** prints are never started unattended. `--last` is
+  not used with `--watch` either; save the choices with `--save-profile` and
+  watch with `--profile NAME --watch`. Watch runs are not remembered as the
+  last run.
+- **Stop** with Ctrl+C. A drop being sliced at that moment stays in the
+  watched folder and is sliced next time.
+
+To keep it running in the background on Linux, start it in a `tmux` or
+`screen` session, or as a systemd user service.
 
 ## Output
 

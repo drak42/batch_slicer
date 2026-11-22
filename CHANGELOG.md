@@ -8,6 +8,12 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ### Added
 
+- Watch folder: `--watch` keeps running and slices each model file or folder
+  put in the input folder (or the incoming folder) once it has finished
+  copying, then moves it to the folder's `sliced` or `failed` subfolder.
+  Works with profiles, `--plates`, `--copies` (single models) and `--send`;
+  never with `--start`. Stop with Ctrl+C.
+
 - `--send` can upload to OctoPrint: name the printer in the configuration
   with `type: octoprint`, its address and an API key. Folders are created as
   needed, `--start` selects and prints a single file when the printer is

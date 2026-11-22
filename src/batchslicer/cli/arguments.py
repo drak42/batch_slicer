@@ -83,6 +83,9 @@ class RunOptions:
     start: bool = False
     """Start printing the sent G-code (--start); never remembered."""
 
+    watch: bool = False
+    """Keep running and slice each model or folder put in the input folder (--watch)."""
+
     def has_choices(self) -> bool:
         """Return whether any run choice was given on the command line."""
         return any(
@@ -118,7 +121,18 @@ def parse_arguments(
         return _parse_setup(arguments[1:])
     if arguments[:1] == ["doctor"]:
         return _parse_doctor(arguments[1:])
-    namespace = _parser().parse_args(arguments)
+    parser = _parser()
+    namespace = parser.parse_args(arguments)
+    if namespace.watch:
+        if namespace.start:
+            parser.error("--start cannot be used with --watch: prints are never started unattended.")
+        if namespace.list_presets or namespace.list_profiles or namespace.delete_profile:
+            parser.error("--watch cannot be combined with --list-presets, --list-profiles or --delete-profile.")
+        if namespace.last:
+            parser.error(
+                "--last repeats a single run; save the choices with --save-profile and use "
+                "--profile NAME --watch instead."
+            )
     return RunOptions(
         slicer=namespace.slicer,
         printer=namespace.printer,
@@ -142,6 +156,7 @@ def parse_arguments(
         copies=namespace.copies,
         send=namespace.send,
         start=namespace.start,
+        watch=namespace.watch,
     )
 
 
@@ -377,6 +392,17 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "start printing once the G-code is on the printer; only for a single model "
             "that gives one G-code file. Never saved in profiles"
+        ),
+    )
+    watching = parser.add_argument_group("watch folder")
+    watching.add_argument(
+        "--watch",
+        action="store_true",
+        help=(
+            "keep running and slice each model file or folder put in the input folder "
+            "(--input, or the configured incoming folder) once it has finished copying, "
+            "then move it into that folder's 'sliced' or 'failed' subfolder. Works with "
+            "--send (never --start). Stop with Ctrl+C"
         ),
     )
     profiles = parser.add_argument_group("profiles (saved choices)")

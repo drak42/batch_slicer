@@ -82,3 +82,21 @@ Failures before slicing stop the run with a message naming the problem.
 Ctrl+C at any point stops cleanly: running slicers are stopped and a batch
 keeps its finished models. Unexpected
 errors are reported in one line with details in the log.
+
+## Watch runs (`--watch`)
+
+Steps 1 to 7 and 10 are the same. Then, instead of steps 8 to 13 once:
+
+- The watched folder is `--input` as typed on the command line (never a
+  profile's input) or the configured incoming folder, created if missing.
+- An interactive run without a profile asks once whether dropped folders go
+  on plates, whether to send (`cli/send_prompt.py`) and where the output goes.
+  The output folder must not be inside the watched folder. Printers to send
+  to must answer.
+- The run is not remembered as `last`; `--save-profile` saves the choices
+  without an input.
+- `services/watching.py` looks at the folder every 5 seconds. Each model file
+  or folder that two looks in a row find unchanged runs steps 8 (input and
+  `--exclude` only) and 11 to 13 as a run of its own, then is moved to the
+  folder's `sliced` or `failed` subfolder. Ctrl+C stops watching with exit
+  status 0; a drop being sliced at that moment is left where it is.
