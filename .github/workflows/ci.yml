@@ -11,12 +11,18 @@ permissions:
 
 jobs:
   checks:
-    name: Python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
+    # Linux jobs keep the names "Python 3.12" / "Python 3.13", which branch
+    # protection on main requires; Windows jobs are named separately.
+    name: ${{ matrix.os == 'windows-latest' && format('Windows, Python {0}', matrix.python-version) || format('Python {0}', matrix.python-version) }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.12", "3.13"]
+    defaults:
+      run:
+        shell: bash  # the same commands on Linux and Windows (Git Bash)
     steps:
       - uses: actions/checkout@v7
 
