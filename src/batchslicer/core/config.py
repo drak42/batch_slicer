@@ -63,6 +63,10 @@ class Config:
             raise KeyError(section)
         return section_data[key]
 
+    def section(self, section: str) -> Any:
+        """Return a whole configuration section as written, or ``None`` if it is missing."""
+        return self._get_data().get(section)
+
     def has(self, section: str, key: str) -> bool:
         """Return whether a configuration section contains the requested key."""
         data = self._get_data()
@@ -168,12 +172,15 @@ def render_config(
     slicers: Mapping[str, tuple[Path, Path]],
     *,
     home: Path | None = None,
+    printers: Mapping[str, Any] | None = None,
 ) -> str:
     """Return the text of a new configuration file.
 
     ``slicers`` maps slicer sections to ``(executable, datadir)``; slicers not
     included are written with empty paths. Paths inside ``home`` are written
     with ``~``. The ``paths`` settings are left empty so the defaults apply.
+    ``printers`` (kept from an earlier file) is written as given; without it
+    the section is shown as a commented example.
     """
     home = home or Path.home()
 
@@ -210,5 +217,24 @@ def render_config(
         '  profiles: ""       # saved profiles file          '
         "(default ~/.local/share/batchslicer/profiles.yaml)",
         "",
+        *PRINTERS_COMMENT,
     ]
+    if printers:
+        lines += [yaml.safe_dump({"printers": dict(printers)}, sort_keys=False, allow_unicode=True)]
+    else:
+        lines += [
+            "# printers:",
+            "#   k2plus:",
+            '#     url: "http://192.168.1.50:7125"',
+            '#     api_key: ""',
+            "",
+        ]
     return "\n".join(lines)
+
+
+PRINTERS_COMMENT = (
+    "# Printers to send G-code to with --send NAME (--send also takes an address",
+    "# such as 192.168.1.50 directly): Klipper printers running Moonraker. url is",
+    "# Moonraker's address (usually port 7125); api_key is only needed if",
+    "# Moonraker asks for one.",
+)

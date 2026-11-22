@@ -1,6 +1,7 @@
 """Describe targets and profiles: reusable choices for a slicing run.
 
-A *target* is one slicer with its printer, filament and process presets. A run
+A *target* is one slicer with its printer, filament and process presets, and
+optionally the networked printer its G-code is sent to. A run
 slices its input for one or more targets. A *profile* names a set of targets
 together with the shared input and output, so a run can be repeated. Any
 choice may be left unset; unset choices are asked for, or given on the command
@@ -17,7 +18,7 @@ from batchslicer.domain.options import OrientMode
 LAST_RUN = "last"
 """Name of the profile that remembers the most recent run."""
 
-TARGET_FIELDS = ("slicer", "printer", "filament", "process")
+TARGET_FIELDS = ("slicer", "printer", "filament", "process", "send")
 """The choices a target holds, in display order."""
 
 RUN_FIELDS = ("input", "output")
@@ -39,10 +40,14 @@ class Target:
     printer: str | None = None
     filament: str | None = None
     process: str | None = None
+    send: str | None = None
+    """Name of the configured printer the G-code is sent to (--send)."""
 
     def summary(self) -> str:
         """Return the target's choices as one line."""
-        parts = [getattr(self, key) for key in TARGET_FIELDS if getattr(self, key)]
+        parts = [getattr(self, key) for key in TARGET_FIELDS[:-1] if getattr(self, key)]
+        if self.send:
+            parts.append(f"send to {self.send}")
         return ", ".join(parts) if parts else "no choices saved"
 
     def is_empty(self) -> bool:

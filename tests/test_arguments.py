@@ -164,3 +164,18 @@ def test_exclude_can_be_repeated() -> None:
     unset = parse_arguments([])
     assert isinstance(unset, RunOptions)
     assert unset.exclude is None
+
+
+def test_send_options() -> None:
+    """--send names a printer, --no-send turns a profile's off, --start is a flag."""
+    assert parse_arguments(["--send", "k2", "--start"]) == RunOptions(send="k2", start=True)
+    assert parse_arguments(["--no-send"]) == RunOptions(send="")
+    assert parse_arguments([]).send is None
+
+
+def test_send_and_no_send_cannot_be_combined(capsys: pytest.CaptureFixture[str]) -> None:
+    """Asking for both is a usage error."""
+    with pytest.raises(SystemExit) as stopped:
+        parse_arguments(["--send", "k2", "--no-send"])
+    assert stopped.value.code == 2
+    assert "not allowed with" in capsys.readouterr().err

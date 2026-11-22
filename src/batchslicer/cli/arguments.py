@@ -68,6 +68,12 @@ class RunOptions:
     exclude: tuple[str, ...] | None = None
     """Patterns of folders and files to leave out of a folder run (--exclude)."""
 
+    send: str | None = None
+    """Printer to send the G-code to (--send): a configured name or an address; ``""`` for --no-send."""
+
+    start: bool = False
+    """Start printing the sent G-code (--start); never remembered."""
+
     def has_choices(self) -> bool:
         """Return whether any run choice was given on the command line."""
         return any(
@@ -83,11 +89,11 @@ class RunOptions:
         ) or bool(self.profiles)
 
     def has_target_choices(self) -> bool:
-        """Return whether a slicer or preset was given on the command line."""
+        """Return whether a slicer, preset or printer to send to was given on the command line."""
         return any(
             value is not None
             for value in (self.slicer, self.printer, self.filament, self.process)
-        )
+        ) or bool(self.send)
 
 
 def parse_arguments(
@@ -122,6 +128,8 @@ def parse_arguments(
         allow_newer_files=namespace.allow_newer_files,
         jobs=namespace.jobs,
         exclude=tuple(namespace.exclude) if namespace.exclude else None,
+        send=namespace.send,
+        start=namespace.start,
     )
 
 
@@ -291,6 +299,33 @@ def _parser() -> argparse.ArgumentParser:
             "for several. Without '/' it matches any folder or file name ('Cura-*', "
             "'*_old.stl'), with '/' a path inside the folder ('kits/old'). Wildcards "
             "*, ? and [...] work; case is ignored"
+        ),
+    )
+    sending = parser.add_argument_group("sending to a printer (Klipper/Moonraker)")
+    choosing = sending.add_mutually_exclusive_group()
+    choosing.add_argument(
+        "--send",
+        metavar="PRINTER",
+        help=(
+            "after slicing, upload the G-code to PRINTER: its address (192.168.1.50, "
+            "k2.local:4408 or a full URL; port 7125 if none is given) or a name from "
+            "the configuration's 'printers' section. A folder keeps its structure on "
+            "the printer"
+        ),
+    )
+    choosing.add_argument(
+        "--no-send",
+        dest="send",
+        action="store_const",
+        const="",
+        help="don't send this run's G-code, even if the profile sends it",
+    )
+    sending.add_argument(
+        "--start",
+        action="store_true",
+        help=(
+            "start printing once the G-code is on the printer; only for a single model "
+            "that gives one G-code file. Never saved in profiles"
         ),
     )
     profiles = parser.add_argument_group("profiles (saved choices)")

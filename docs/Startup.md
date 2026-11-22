@@ -37,10 +37,15 @@ not slice. Everything below describes a normal run.
       (`cli/preset_prompt.py`).
 
    In an interactive run, "Slice for another printer as well?" adds targets.
-   `--list-presets` stops here after printing names.
+   `--list-presets` stops here after printing names. A target with `--send`
+   (or a profile's `send`) is given its printer from the configuration's
+   `printers` section, or from the address given (`domain/printers.py`).
 8. **Choose what to slice** (`cli/file_prompt.py`), leave out models matching
    `--exclude` (`exclude_models`), and **choose the output folder**
-   (`cli/output_prompt.py`).
+   (`cli/output_prompt.py`). `--start` is refused here unless every target
+   sends and a single model was chosen, and each printer to send to must
+   answer (`infrastructure/moonraker.py`), so nothing is sliced for a
+   printer that is off.
 9. **Remember the run** as the profile `last`, and as `--save-profile` if given.
 10. **Check the slicing options** (`--orient`, `--allow-newer-files`,
     `--jobs`, possibly from a profile) against each chosen slicer, and show
@@ -54,7 +59,11 @@ not slice. Everything below describes a normal run.
 12. **Report** (`services/report.py`, `services/gcode_stats.py`): write
     `report.csv` and `report.json` (kept up to date during a batch), show the
     summary with print time and filament totals and hints for failures an
-    option may fix, and exit: 0 success, 1 failure, 130 interrupted.
+    option may fix.
+13. **Send** (`services/sending.py`): for a target with a printer, the G-code
+    of every model that sliced is uploaded, keeping the batch's folders, and
+    with `--start` a single file is started. Exit: 0 success, 1 failure
+    (slicing or sending), 130 interrupted.
 
 Failures before slicing stop the run with a message naming the problem.
 Ctrl+C at any point stops cleanly: running slicers are stopped and a batch

@@ -98,8 +98,9 @@ BatchSlicer follows a layered architecture. As built today:
         ┌─────────────────┼──────────────────┐
         │                 │                  │
   Core (core/)      Services (services/)   Infrastructure (infrastructure/)
-  configuration,    slicing, reports,      saved profiles
-  logging,          G-code statistics
+  configuration,    slicing, reports,      saved profiles,
+  logging,          G-code statistics,     Moonraker (printers)
+                    sending
   environment checks      │
                           │
                   Backends (backends/)
@@ -143,9 +144,9 @@ src/
     ├── core/              # configuration, locations, logging, environment checks
     ├── cli/               # arguments, prompts, setup and doctor commands
     ├── domain/            # plain value objects: presets, profiles, slicing options
-    ├── services/          # slicing jobs and batches, reports, G-code statistics
+    ├── services/          # slicing jobs and batches, reports, G-code statistics, sending
     ├── backends/          # slicer CLI, presets, .opc reader, detection
-    ├── infrastructure/    # saved profiles (YAML)
+    ├── infrastructure/    # saved profiles (YAML), Moonraker client
     ├── application/       # reserved (planned)
     ├── plugins/           # reserved (planned)
     └── web/               # reserved (planned dashboard)
@@ -172,7 +173,8 @@ startup grows (for example a service registry).
 Implements reusable application services.
 
 Built: slicing one model or a batch (`services/slicing.py`), the run report
-(`services/report.py`) and G-code statistics (`services/gcode_stats.py`).
+(`services/report.py`), G-code statistics (`services/gcode_stats.py`) and
+sending G-code to printers (`services/sending.py`).
 Configuration and logging live in `core/`.
 
 Planned: queue, database, history.
@@ -263,8 +265,10 @@ Responsible only for presentation.
 
 External integrations.
 
-Built: the saved-profiles store (`infrastructure/profiles.py`). Planned:
-SQLite and other external storage. (Slicer processes are run by the backends.)
+Built: the saved-profiles store (`infrastructure/profiles.py`) and the
+Moonraker client that sends G-code to Klipper printers
+(`infrastructure/moonraker.py`, standard library only). Planned: SQLite,
+other external storage, and other printer connections (Bambu LAN, OctoPrint). (Slicer processes are run by the backends.)
 
 ---
 
@@ -307,6 +311,8 @@ Backend: slicer CLI (OrcaSlicer, Creality Print or Bambu Studio)
 G-code, named after each model
   ↓
 Report (report.csv / report.json) and summary
+  ↓
+Sending service (--send): G-code to the printer through Moonraker
 ```
 
 Planned: a queue before slicing, and a database and history after it.

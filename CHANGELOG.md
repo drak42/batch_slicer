@@ -13,6 +13,16 @@ All notable changes to BatchSlicer are recorded here. The format follows
   ignored). BatchSlicer says how many it skipped, and profiles save the
   patterns. In the soak test, `--exclude "Cura-*"` would have left out the 241
   printer-bed meshes behind 99 of the 216 failures.
+- **Sending G-code to a printer.** `--send PRINTER` uploads the G-code of every
+  model that sliced to a Klipper printer through Moonraker (Creality K1/K2,
+  Voron and others), keeping a batch's folder structure on the printer.
+  `--start` starts printing a single model. The printer is given by its
+  address (`--send 192.168.1.50`, port 7125 unless another is given) or by a
+  name from the new `printers` section of the configuration. Printers are
+  checked before slicing starts,
+  and are checked by `batchslicer doctor`. Profiles remember the printer
+  (`--no-send` skips it for one run) but never `--start`. `batchslicer setup`
+  keeps the `printers` section when it rewrites the configuration.
 
 ### Changed
 

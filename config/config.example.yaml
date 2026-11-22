@@ -32,3 +32,13 @@ paths:
   logs: ""           # log files                    (default ~/.local/state/batchslicer)
   data: ""           # BatchSlicer's working cache  (default ~/.cache/batchslicer)
   profiles: ""       # saved profiles file          (default ~/.local/share/batchslicer/profiles.yaml)
+
+# Printers to send G-code to with --send NAME (--send also takes an address
+# such as 192.168.1.50 directly, without any of this): Klipper printers running
+# Moonraker (Creality K1/K2 series, Voron, Prusa with Klipper, ...). url is
+# Moonraker's address, usually port 7125; api_key is only needed if Moonraker
+# asks for one. Remove the # to use it.
+# printers:
+#   k2plus:
+#     url: "http://192.168.1.50:7125"
+#     api_key: ""

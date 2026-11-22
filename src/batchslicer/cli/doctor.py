@@ -3,7 +3,8 @@
 Shows the BatchSlicer and Python versions, which configuration file is used,
 where BatchSlicer keeps its files, and for each configured slicer whether its
 program runs and accepts BatchSlicer's commands, whether its settings folder
-exists, and how many printers it offers. Problems are listed with what to do
+exists, and how many printers it offers, then whether each networked printer
+(the ``printers`` section, for --send) answers. Problems are listed with what to do
 about them. The report is meant for both fixing a setup and reporting bugs.
 This module only checks and reports; it does not change anything except that
 OrcaSlicer's built-in presets may be extracted into the cache, as for a run.
@@ -22,6 +23,8 @@ from batchslicer.backends.profiles import find_system_profiles
 from batchslicer.backends.slicers import SLICERS, SlicerDefinition, is_configured
 from batchslicer.core.config import Config, find_config_file
 from batchslicer.core.locations import CONFIG_ENVIRONMENT_VARIABLE, default_paths
+from batchslicer.domain.printers import PrinterHostError, printer_hosts
+from batchslicer.infrastructure.moonraker import MoonrakerClient, MoonrakerError
 from batchslicer.infrastructure.profiles import ProfileError, ProfileStore
 from batchslicer.version import get_version_string
 
@@ -67,6 +70,7 @@ def run_doctor(
     _check_folders(config, report)
     if config is not None:
         _check_slicers(config, report)
+        _check_printers(config, report)
         _check_profiles(config, report)
 
     if report.problems:
@@ -221,6 +225,33 @@ def _check_slicer(
         f"    presets:  {len(printers)} printer{'s' if len(printers) != 1 else ''}"
         + (f" ({mine} of your own)" if mine else "")
     )
+
+
+def _check_printers(config: Config, report: _Report) -> None:
+    """Check that every printer G-code can be sent to answers."""
+    report.line("Printers (for --send):")
+    try:
+        hosts = printer_hosts(config.section("printers"))
+    except PrinterHostError as error:
+        report.problem(str(error))
+        report.line("")
+        return
+    if not hosts:
+        report.line("  none configured")
+    for host in hosts.values():
+        try:
+            info = MoonrakerClient(host, timeout_seconds=5.0).server_info()
+        except MoonrakerError as error:
+            report.line(f"  {host.describe()}")
+            report.problem(f"{error} (Is the printer on and on this network?)")
+            continue
+        state = info.get("klippy_state", "unknown")
+        version = info.get("moonraker_version", "")
+        report.line(
+            f"  {host.describe()}: answers, Klipper {state}"
+            + (f", Moonraker {version}" if version else "")
+        )
+    report.line("")
 
 
 def _check_profiles(config: Config, report: _Report) -> None:

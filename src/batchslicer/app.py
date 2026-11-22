@@ -4,7 +4,8 @@ Startup configures logging, loads configuration, selects the slicer, verifies
 the environment for it, and selects the printer, filament and process presets
 where the slicer supports it. The models to slice (one file, or a folder and
 its subfolders) and the output folder are then selected, and the models are
-sliced into job folders. Each choice comes from the command line when given
+sliced into job folders. With --send the G-code is then uploaded to a
+networked printer (checked before slicing starts), and with --start printed. Each choice comes from the command line when given
 there, and is otherwise asked for (unless ``--no-prompt`` is used).
 
 Errors are reported on stderr. Ctrl+C stops cleanly with exit status 130 (a
@@ -47,10 +48,13 @@ from batchslicer.core.environment import EnvironmentService
 from batchslicer.core.logging import configure_logging, current_log_file
 from batchslicer.domain.options import SliceOptions
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
+from batchslicer.domain.printers import PrinterHost, host_from_address, printer_hosts
 from batchslicer.domain.profiles import LAST_RUN, Profile, Target, combine, is_valid_name
+from batchslicer.infrastructure.moonraker import MoonrakerClient, MoonrakerError
 from batchslicer.infrastructure.profiles import ProfileError, ProfileStore
 from batchslicer.services.gcode_stats import GcodeStats, format_duration
 from batchslicer.services.report import write_report
+from batchslicer.services.sending import SendingService, SendOutcome, SentFile, plan_uploads
 from batchslicer.services.slicing import BatchOutcome, SliceOutcome, SlicingService
 
 EXIT_SUCCESS = 0
@@ -137,15 +141,18 @@ def _run(options: RunOptions) -> int:
             return EXIT_SUCCESS
 
         targets = _resolve_targets(specs, offered_more, options.no_prompt, config, logger)
+        targets = _attach_printers(targets, specs, config)
         slice_options = SliceOptions(
             orient=options.orient or "off",
             allow_newer_files=bool(options.allow_newer_files),
         )
         jobs = options.jobs or 1
         _check_options(targets, slice_options)
-        _show_ready(targets, slice_options, jobs)
+        _show_ready(targets, slice_options, jobs, start=options.start)
         slice_input = _apply_exclude(_select_input(options, config), options.exclude or ())
+        _check_start(options.start, targets, slice_input)
         output_directory = _select_output(options, config)
+        _check_printers(targets, logger)
         logger.info(
             "Selected %d model(s) from %s; output to %s",
             len(slice_input.models),
@@ -154,7 +161,14 @@ def _run(options: RunOptions) -> int:
         )
         _remember_choices(profiles, options, targets, slice_input, output_directory, logger)
         return _slice_targets(
-            targets, slice_input, output_directory, config, logger, slice_options, jobs
+            targets,
+            slice_input,
+            output_directory,
+            config,
+            logger,
+            slice_options,
+            jobs,
+            start=options.start,
         )
     except _StartupFailed:
         return EXIT_FAILURE
@@ -162,6 +176,7 @@ def _run(options: RunOptions) -> int:
         SlicerSelectionError,
         PresetError,
         ProfileError,
+        MoonrakerError,
         FileNotFoundError,
         KeyError,
         OSError,
@@ -210,6 +225,8 @@ class _ResolvedTarget:
     slicer: SlicerDefinition
     library: PresetLibrary | None
     selection: PresetSelection | None
+    host: PrinterHost | None = None
+    """The printer the G-code is sent to, if any."""
 
     def describe(self) -> str:
         """Return the slicer and presets as one line."""
@@ -232,6 +249,7 @@ class _ResolvedTarget:
             printer=self.selection.printer.name if self.selection else None,
             filament=self.selection.filament.name if self.selection else None,
             process=self.selection.process.name if self.selection else None,
+            send=self.host.name if self.host else None,
         )
 
 
@@ -280,9 +298,9 @@ def _plan_targets(
     if len(targets) > 1:
         if options.has_target_choices():
             raise SlicerSelectionError(
-                "--slicer, --printer, --filament and --process describe one printer, so "
-                "they cannot be combined with several printers. Save each printer as "
-                "its own profile and list them with --profile."
+                "--slicer, --printer, --filament, --process and --send describe one "
+                "printer, so they cannot be combined with several printers. Save each "
+                "printer as its own profile and list them with --profile."
             )
     else:
         base = targets[0]
@@ -292,8 +310,11 @@ def _plan_targets(
                 printer=options.printer or base.printer,
                 filament=options.filament or base.filament,
                 process=options.process or base.process,
+                send=options.send or base.send,
             )
         ]
+    if options.send == "":
+        targets = [replace(target, send=None) for target in targets]
     offer_more = interactive and not options.profiles and not options.has_target_choices()
     return options, targets, offer_more
 
@@ -330,6 +351,63 @@ def _resolve_targets(
         ):
             pending.append(Target())
     return resolved
+
+
+def _attach_printers(
+    targets: list[_ResolvedTarget],
+    specs: list[Target],
+    config: Config,
+) -> list[_ResolvedTarget]:
+    """Return the targets with the printer each one sends to.
+
+    ``--send`` names a printer in the configuration, or gives its address
+    directly. Printers added interactively after the planned ones do not send.
+    """
+    names = [spec.send for spec in specs] + [None] * (len(targets) - len(specs))
+    if not any(names):
+        return targets
+    hosts = printer_hosts(config.section("printers"))
+    attached = []
+    for target, name in zip(targets, names, strict=True):
+        if name is None:
+            attached.append(target)
+            continue
+        host = next((host for key, host in hosts.items() if key.casefold() == name.casefold()), None)
+        if host is None:
+            host = host_from_address(name)
+        if host is None:
+            known = ", ".join(sorted(hosts)) if hosts else "none are set up"
+            raise SlicerSelectionError(
+                f"No printer named '{name}' in the 'printers' section of {config.path} "
+                f"(configured: {known}). Give the printer's address instead, for "
+                "example --send 192.168.1.50"
+            )
+        attached.append(replace(target, host=host))
+    return attached
+
+
+def _check_start(start: bool, targets: list[_ResolvedTarget], slice_input: SliceInput) -> None:
+    """Stop before slicing if --start cannot be done for this run."""
+    if not start:
+        return
+    if any(target.host is None for target in targets):
+        raise SlicerSelectionError("--start needs --send PRINTER to know which printer to start.")
+    if slice_input.is_folder:
+        raise SlicerSelectionError(
+            "--start prints one model, so it works with a single model file, not a folder."
+        )
+
+
+def _check_printers(targets: list[_ResolvedTarget], logger: logging.Logger) -> None:
+    """Make sure every printer the G-code is sent to answers, before slicing starts."""
+    checked: set[str] = set()
+    for target in targets:
+        if target.host is None or target.host.name in checked:
+            continue
+        checked.add(target.host.name)
+        state = SendingService(MoonrakerClient(target.host), logger=logger).check()
+        note = "" if state == "ready" else f" (Klipper is {state}; it can still take files)"
+        print(f"Printer {target.host.describe()} answers{note}.")
 
 
 def _remember_choices(
@@ -508,12 +586,15 @@ def _show_ready(
     targets: list[_ResolvedTarget],
     options: SliceOptions | None = None,
     jobs: int = 1,
+    *,
+    start: bool = False,
 ) -> None:
     """Show the slicer(s), presets and slicing options that will be used."""
     if len(targets) > 1:
         print(f"BatchSlicer ready. Slicing for {len(targets)} printers:")
         for number, target in enumerate(targets, start=1):
-            print(f"  {number}) {target.describe()}")
+            sends = f" -> send to {target.host.name}" if target.host else ""
+            print(f"  {number}) {target.describe()}{sends}")
     else:
         target = targets[0]
         print(f"BatchSlicer ready. Slicer: {target.slicer.display_name}.")
@@ -521,6 +602,9 @@ def _show_ready(
             print(f"  Printer:  {target.selection.printer.name}")
             print(f"  Filament: {target.selection.filament.name}")
             print(f"  Process:  {target.selection.process.name}")
+        if target.host is not None:
+            then = ", then start printing" if start else ""
+            print(f"  Send to:  {target.host.describe()}{then}")
     extras = [options.describe()] if options is not None and options.describe() else []
     if jobs > 1:
         extras.append(f"{jobs} models at a time")
@@ -539,11 +623,14 @@ def _slice_targets(
     logger: logging.Logger,
     options: SliceOptions | None = None,
     jobs: int = 1,
+    *,
+    start: bool = False,
 ) -> int:
     """Slice the input for every target and return the run's exit status.
 
     With several targets, each one's results go into its own subfolder of the
-    output folder, named after the printer.
+    output folder, named after the printer. A target with a printer to send to
+    has its G-code sent once it is sliced.
     """
     multi = len(targets) > 1
     folders = _unique_folder_names(targets) if multi else [""]
@@ -565,13 +652,15 @@ def _slice_targets(
                 if skipped:
                     _error(f"{skipped} more printer(s) were not started.")
                 return EXIT_INTERRUPTED
-            results.append((target, not batch.failed))
+            sent = _send(target, batch.outcomes, destination, logger)
+            results.append((target, not batch.failed and sent))
         else:
             model = slice_input.models[0]
             print(f"Slicing {model.name} with {target.slicer.display_name}...")
             outcome = service.slice(model, destination, target.selection)
             _report(outcome, options or SliceOptions())
-            results.append((target, outcome.success))
+            sent = _send(target, [outcome], destination, logger, start=start)
+            results.append((target, outcome.success and sent))
 
     if multi:
         succeeded = sum(1 for _, ok in results if ok)
@@ -580,6 +669,55 @@ def _slice_targets(
         for target, ok in results:
             print(f"  {'ok    ' if ok else 'FAILED'} {target.describe()}")
     return EXIT_SUCCESS if all(ok for _, ok in results) else EXIT_FAILURE
+
+
+def _send(
+    target: _ResolvedTarget,
+    outcomes: Sequence[SliceOutcome],
+    destination: Path,
+    logger: logging.Logger,
+    *,
+    start: bool = False,
+) -> bool:
+    """Send the target's G-code to its printer, if it has one; return whether all arrived."""
+    if target.host is None:
+        return True
+    uploads = plan_uploads(outcomes, destination)
+    if not uploads:
+        print(f"Nothing to send to {target.host.name}: no model sliced.")
+        return True
+    total = len(uploads)
+    print(f"Sending {total} G-code file{'s' if total != 1 else ''} to {target.host.describe()}...")
+
+    def on_result(number: int, count: int, result: SentFile) -> None:
+        state = "sent" if result.success else f"FAILED: {result.error}"
+        print(f"  [{number}/{count}] {result.upload.remote_path} ... {state}", flush=True)
+
+    service = SendingService(MoonrakerClient(target.host), logger=logger)
+    outcome = service.send(uploads, start=start, on_result=on_result)
+    _report_sending(outcome, start)
+    return not outcome.failed
+
+
+def _report_sending(outcome: SendOutcome, start: bool) -> None:
+    """Summarise sending: how many files arrived and whether printing started."""
+    total = len(outcome.files)
+    print(f"Sent {len(outcome.sent)} of {total} file{'s' if total != 1 else ''} to {outcome.host.name}.")
+    if outcome.failed:
+        _error(f"  {len(outcome.failed)} file(s) did not reach {outcome.host.name}; see above.")
+    if not start or not outcome.sent:
+        return
+    if total > 1:
+        print(f"  Not started: the model gave {total} G-code files (plates); start one on the printer.")
+    elif outcome.sent[0].print_started:
+        print(f"  Printing {outcome.sent[0].remote_path} on {outcome.host.name}.")
+    elif outcome.sent[0].print_queued:
+        print(f"  {outcome.host.name} is busy; the print was added to its job queue.")
+    else:
+        print(
+            f"  Not started: {outcome.host.name} did not start the print (it may be busy "
+            "or not ready). The file is on the printer."
+        )
 
 
 def _unique_folder_names(targets: list[_ResolvedTarget]) -> list[str]:

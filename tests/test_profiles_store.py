@@ -270,3 +270,17 @@ def test_exclude_patterns_round_trip(tmp_path: Path) -> None:
         ProfileStore(path).load()
     path.write_text("one:\n  exclude: Cura-*\n", encoding="utf-8")
     assert ProfileStore(path).get("one").exclude == ("Cura-*",)
+
+
+def test_printer_to_send_to_is_saved_per_target(tmp_path: Path) -> None:
+    """Each target keeps the printer its G-code is sent to, and the summary says so."""
+    from batchslicer.domain.profiles import Target
+
+    store = ProfileStore(tmp_path / "profiles.yaml")
+    store.save(Profile("two", targets=(Target(slicer="orca", send="k2"), Target(slicer="bambu_studio"))))
+
+    loaded = store.get("two")
+    assert [target.send for target in loaded.targets] == ["k2", None]
+    assert Profile("one", targets=(Target(printer="K2 Plus", send="k2"),)).summary() == (
+        "K2 Plus, send to k2"
+    )

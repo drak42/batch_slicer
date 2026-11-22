@@ -131,3 +131,25 @@ def test_rendered_config_round_trips(tmp_path: Path) -> None:
     assert config.get("orca", "datadir") == '/opt/odd "name"/data'
     assert config.get("creality_print", "executable") == ""
     assert config.get("paths", "output") == ""
+
+
+def test_printers_are_kept_when_the_configuration_is_replaced(home: Path) -> None:
+    """Setup rewrites the slicers but keeps the printers set up for --send."""
+    target = home / "config.yaml"
+    target.write_text('printers:\n  k2:\n    url: "http://192.168.1.50:7125"\n')
+    lines: list[str] = []
+
+    run_setup(SetupOptions(config=target, no_prompt=True, force=True), write=lines.append, home=home, environ=_environ(home))
+
+    config = Config(target)
+    config.load()
+    assert config.section("printers") == {"k2": {"url": "http://192.168.1.50:7125"}}
+    assert any("Kept the printers" in line for line in lines)
+
+
+def test_new_configuration_shows_a_printers_example(tmp_path: Path) -> None:
+    """Without printers the section is a commented example."""
+    text = render_config({}, home=tmp_path)
+
+    assert '#     url: "http://192.168.1.50:7125"' in text
+    assert "\nprinters:" not in text

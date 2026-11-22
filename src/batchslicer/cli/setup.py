@@ -4,14 +4,15 @@ For each supported slicer, the installed copies are found, the recommended one
 is offered first (the user may pick another version or skip the slicer), and
 the slicer's settings folder is located. The chosen slicers are written to the
 configuration file, an existing file is only replaced after confirmation (or
-with ``--force``) and is kept as a ``.bak`` copy, and the default model and
-output folders are created. This module handles the conversation; detection
+with ``--force``) and is kept as a ``.bak`` copy (its ``printers`` section is
+carried over), and the default model and output folders are created. This module handles the conversation; detection
 and the file's contents come from other modules.
 """
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from batchslicer.backends.detection import (
     Installation,
@@ -21,7 +22,7 @@ from batchslicer.backends.detection import (
 from batchslicer.backends.slicers import SLICERS, SlicerDefinition
 from batchslicer.cli.menu import confirm
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
-from batchslicer.core.config import render_config
+from batchslicer.core.config import Config, render_config
 from batchslicer.core.locations import default_paths
 
 
@@ -97,7 +98,10 @@ def run_setup(
             "Studio (an AppImage in ~/Apps works), open it once, then run setup again."
         )
 
-    _write_config(target, render_config(chosen, home=home))
+    printers = _existing_printers(target)
+    _write_config(target, render_config(chosen, home=home, printers=printers))
+    if printers:
+        write(f"Kept the printers from the earlier configuration: {', '.join(map(str, printers))}.")
     folders = default_paths(environ)
     for key in ("incoming", "output"):
         folders[key].mkdir(parents=True, exist_ok=True)
@@ -163,6 +167,19 @@ def _choose_installation(
             number = int(answer)
             return None if number == skip else installations[number - 1]
         write(f"Please enter a number from 1 to {skip}.")
+
+
+def _existing_printers(target: Path) -> dict[str, Any] | None:
+    """Return the ``printers`` section of the configuration being replaced, if any."""
+    if not target.is_file():
+        return None
+    try:
+        config = Config(target)
+        config.load()
+        section = config.section("printers")
+    except (OSError, ValueError):
+        return None
+    return dict(section) if isinstance(section, dict) and section else None
 
 
 def _write_config(target: Path, text: str) -> None:

@@ -1,6 +1,7 @@
 """Tests for the BatchSlicer application bootstrap."""
 
 import logging
+import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 from unittest.mock import Mock
@@ -15,6 +16,7 @@ from batchslicer.cli.file_prompt import SliceInput
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.services.slicing import BatchOutcome, SliceOutcome
+from conftest import FakeMoonraker
 
 
 def _all_output(capsys: pytest.CaptureFixture[str]) -> str:
@@ -1196,3 +1198,175 @@ def test_excluding_everything_stops_with_a_reason(
 
     assert "Every model file in /models matches --exclude *.stl" in capsys.readouterr().err
     app.SlicingService.return_value.slice_batch.assert_not_called()
+
+
+def _printer(monkeypatch: pytest.MonkeyPatch, fake: FakeMoonraker, tmp_path: Path) -> Path:
+    """Configure printer 'k2' at ``fake`` and make slicing give real G-code in ``tmp_path``."""
+    config = app.get_config.return_value
+    config.section.side_effect = lambda name: {"k2": {"url": fake.url}} if name == "printers" else None
+    output = tmp_path / "out"
+    monkeypatch.setattr(app, "prompt_for_output", Mock(return_value=output))
+    job = output / "cube-20261122-073000"
+    job.mkdir(parents=True)
+    (job / "cube.gcode").write_text("G28\n")
+    app.SlicingService.return_value.slice.return_value = SliceOutcome(
+        success=True, model=Path("/models/cube.stl"), job_directory=job,
+        gcode_files=(job / "cube.gcode",), message="", elapsed=1.0,
+    )
+    return output
+
+
+def test_send_uploads_and_starts_a_single_model(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_moonraker: FakeMoonraker,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--send uploads the G-code and --start prints it; the printer is remembered, start is not."""
+    from batchslicer.infrastructure.profiles import ProfileStore
+
+    store = _store_with(monkeypatch, tmp_path)
+    _printer(monkeypatch, fake_moonraker, tmp_path)
+
+    assert app.main(["--send", "K2", "--start"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"Send to:  k2 ({fake_moonraker.url}), then start printing" in out
+    assert "answers." in out
+    assert "[1/1] cube.gcode ... sent" in out
+    assert "Printing cube.gcode on k2." in out
+    assert fake_moonraker.files == {"cube.gcode": b"G28\n"}
+    assert fake_moonraker.forms[0]["print"] == "true"
+    last = ProfileStore(store).get("last")
+    assert last.targets[0].send == "k2"
+    assert "start:" not in store.read_text(encoding="utf-8")
+
+
+def test_send_keeps_a_batchs_folders(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_moonraker: FakeMoonraker,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A folder's G-code goes into the batch folder on the printer; failed models are skipped."""
+    output = _printer(monkeypatch, fake_moonraker, tmp_path)
+    batch = output / "models-20261122-073000"
+    job = batch / "kits" / "arm"
+    job.mkdir(parents=True)
+    (job / "arm.gcode").write_text("G1\n")
+    good = SliceOutcome(True, Path("/models/kits/arm.stl"), job, (job / "arm.gcode",), "", 1.0)
+    bad = SliceOutcome(False, Path("/models/x.stl"), batch / "x", (), "Failed", 1.0)
+    _folder_batch(monkeypatch, good, bad)
+    app.SlicingService.return_value.slice_batch.return_value = BatchOutcome(batch, (good, bad), planned=2)
+
+    assert app.main(["--send", "k2"]) == 1  # the failed model fails the run
+
+    assert fake_moonraker.files == {"models-20261122-073000/kits/arm.gcode": b"G1\n"}
+    assert "Sent 1 of 1 file to k2." in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("arguments", "folder", "message"),
+    [
+        (["--send", "voron"], False, "No printer named 'voron'.*configured: k2"),
+        (["--start"], False, "--start needs --send"),
+        (["--send", "k2", "--start"], True, "single model file, not a folder"),
+    ],
+)
+def test_send_problems_stop_before_slicing(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_moonraker: FakeMoonraker,
+    capsys: pytest.CaptureFixture[str],
+    arguments: list[str],
+    folder: bool,
+    message: str,
+) -> None:
+    """An unknown printer or an impossible --start is refused before anything is sliced."""
+    _printer(monkeypatch, fake_moonraker, tmp_path)
+    if folder:
+        _folder_batch(monkeypatch, _outcome(success=True))
+
+    assert app.main(arguments) == 1
+
+    assert re.search(message, _all_output(capsys))
+    app.SlicingService.return_value.slice.assert_not_called()
+    app.SlicingService.return_value.slice_batch.assert_not_called()
+
+
+def test_unreachable_printer_stops_before_slicing(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_moonraker: FakeMoonraker,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A printer that does not answer stops the run before a long batch is sliced."""
+    _printer(monkeypatch, fake_moonraker, tmp_path)
+    fake_moonraker.api_key = "secret"
+
+    assert app.main(["--send", "k2"]) == 1
+
+    assert "refused access (HTTP 401)" in _all_output(capsys)
+    app.SlicingService.return_value.slice.assert_not_called()
+
+
+def test_no_send_overrides_a_profile_that_sends(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_moonraker: FakeMoonraker,
+) -> None:
+    """A profile's printer is used unless --no-send is given."""
+    from batchslicer.domain.profiles import Profile, Target
+
+    _store_with(monkeypatch, tmp_path, Profile("k2", targets=(Target(slicer="bambu_studio", send="k2"),)))
+    _printer(monkeypatch, fake_moonraker, tmp_path)
+
+    assert app.main(["--profile", "k2", "--no-send"]) == 0
+    assert fake_moonraker.files == {}
+    assert app.main(["--profile", "k2"]) == 0
+    assert list(fake_moonraker.files) == ["cube.gcode"]
+
+
+def test_a_file_the_printer_refuses_fails_the_run(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_moonraker: FakeMoonraker,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Sliced but not sent is reported as a failure."""
+    _printer(monkeypatch, fake_moonraker, tmp_path)
+    fake_moonraker.fail_names = {"cube.gcode"}
+
+    assert app.main(["--send", "k2"]) == 1
+
+    output = _all_output(capsys)
+    assert "FAILED:" in output and "Bad file cube.gcode" in output
+    assert "1 file(s) did not reach k2" in output
+
+
+def test_printer_address_can_be_given_without_configuration(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_moonraker: FakeMoonraker,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--send with an address works with no 'printers' section, and is remembered as given."""
+    from batchslicer.infrastructure.profiles import ProfileStore
+
+    store = _store_with(monkeypatch, tmp_path)
+    _printer(monkeypatch, fake_moonraker, tmp_path)
+    app.get_config.return_value.section.side_effect = lambda name: None
+    address = fake_moonraker.url.removeprefix("http://")
+
+    assert app.main(["--send", address]) == 0
+
+    assert list(fake_moonraker.files) == ["cube.gcode"]
+    assert f"Send to:  {address} ({fake_moonraker.url})" in capsys.readouterr().out
+    assert ProfileStore(store).get("last").targets[0].send == address

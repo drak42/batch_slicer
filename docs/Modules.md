@@ -42,6 +42,7 @@ docstring says more, including what it intentionally does not do.
 | `domain/presets.py` | `Preset`, `PresetKind`, `PresetSelection` |
 | `domain/profiles.py` | `Target`, `Profile`, combining profiles, valid names |
 | `domain/options.py` | `SliceOptions`, orient modes, the `--jobs` limit |
+| `domain/printers.py` | `PrinterHost`: printers for `--send`, read and checked from the `printers` section |
 
 ## services
 
@@ -50,6 +51,7 @@ docstring says more, including what it intentionally does not do.
 | `services/slicing.py` | slice one model or a batch into job folders (parallel jobs, auto-orient retry, clean-up) |
 | `services/report.py` | write `report.csv` and `report.json` |
 | `services/gcode_stats.py` | read print time and filament use from G-code |
+| `services/sending.py` | plan where each G-code file goes on the printer and send them (`--send`, `--start`) |
 
 ## backends
 
@@ -68,6 +70,7 @@ docstring says more, including what it intentionally does not do.
 | Module | Purpose |
 |---|---|
 | `infrastructure/profiles.py` | read and write `profiles.yaml` atomically |
+| `infrastructure/moonraker.py` | talk to a Klipper printer's Moonraker: check it answers, upload (and start) G-code |
 
 ## Reserved
 

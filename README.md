@@ -35,6 +35,7 @@ repeats the same run.
 - [Using the command line](#using-the-command-line)
 - [Profiles](#profiles)
 - [Slicing for several printers](#slicing-for-several-printers)
+- [Sending G-code to a printer](#sending-g-code-to-a-printer)
 - [Output](#output) (including [reports](#reports) and [speed](#speed))
 - [Exit status and logs](#exit-status-and-logs)
 - [Troubleshooting](#troubleshooting)
@@ -73,6 +74,9 @@ repeats the same run.
 - **Slices for several printers at once.** One run can slice the same models
   for different printers, each with its own slicer and presets, into separate
   folders.
+- **Sends the G-code to your printer.** With `--send`, the G-code goes straight
+  to a Klipper printer over the network (Moonraker), keeping the folder
+  structure; `--start` starts printing a single model.
 - **Remembers your choices.** Save a run as a named profile, or repeat the last
   run with `--last`.
 - **Runs unattended.** Every choice can be given as a command-line option or a
@@ -249,6 +253,11 @@ paths:              # all optional; empty means the default
   logs: ""          # log files                    (default ~/.local/state/batchslicer)
   data: ""          # BatchSlicer's working cache  (default ~/.cache/batchslicer)
   profiles: ""      # saved profiles file          (default ~/.local/share/batchslicer/profiles.yaml)
+
+printers:           # optional: printers for --send (see "Sending G-code to a printer")
+  k2plus:
+    url: "http://192.168.1.50:7125"
+    api_key: ""     # only if Moonraker asks for one
 ```
 
 Paths may start with `~` for your home folder. Relative paths are relative to
@@ -363,6 +372,8 @@ asking; anything you leave out is still asked for, unless you add
 | `--allow-newer-files` | let the slicer open `.3mf` projects saved by a newer slicer version (`--no-allow-newer-files` turns off a profile's setting) |
 | `--jobs N` | slice N models at the same time (default 1); see [Speed](#speed) |
 | `--exclude PATTERN` | leave out folders or files matching PATTERN when slicing a folder; repeat for several (see [Leaving models out](#leaving-models-out)) |
+| `--send PRINTER` | after slicing, upload the G-code to PRINTER: its address (`192.168.1.50`, `k2.local:4408` or a full URL) or a name from the configuration's `printers` section (see [Sending G-code to a printer](#sending-g-code-to-a-printer)); `--no-send` turns off a profile's printer |
+| `--start` | start printing once the G-code is on the printer; only for a single model that gives one G-code file |
 | `--list-presets` | list preset names, then exit (see below) |
 | `--profile NAME` | start from a saved profile (see [Profiles](#profiles)); repeat it to slice for several printers |
 | `--last` | repeat the last run |
@@ -464,8 +475,8 @@ configuration is not in `~/.config/batchslicer/`:
 ## Profiles
 
 A profile is a named set of choices (slicer, printer, filament, process, input
-and output, plus `--orient`, `--allow-newer-files`, `--jobs` and `--exclude`
-if you gave them) that you can reuse instead of typing them again. Options you
+and output, plus `--orient`, `--allow-newer-files`, `--jobs`, `--exclude` and
+`--send` if you gave them; `--start` is never saved) that you can reuse instead of typing them again. Options you
 add override the profile's; for `--exclude`, the patterns you give replace the
 profile's list.
 
@@ -552,6 +563,58 @@ k2-and-ender:
     process: 0.20mm Standard @Creality Ender3V3SE 0.4
   input: ~/BatchSlicer/incoming/brackets
 ```
+
+## Sending G-code to a printer
+
+BatchSlicer can upload the G-code to a printer running Klipper with
+Moonraker, its web interface: the Creality K1 and K2 series, Voron and many
+others. Give the printer's address directly:
+
+```bash
+batchslicer --profile k2-pla --input ~/BatchSlicer/incoming/kit --send 192.168.1.50
+batchslicer --profile k2-pla --input ~/BatchSlicer/incoming/kit --send 192.168.1.50:4408
+```
+
+An address without a port uses Moonraker's usual port 7125; `k2.local` and
+full URLs such as `http://192.168.1.50:7125` work too. Nothing needs to be set
+up first.
+
+Or name each printer once in the configuration, which also lets you set an
+API key, and use the name:
+
+```yaml
+printers:
+  k2plus:
+    url: "http://192.168.1.50:7125"   # the printer's address and Moonraker's port
+    api_key: ""                       # only if Moonraker asks for one
+```
+
+The address is the one you open in a browser for Fluidd or Mainsail, or the
+one in your slicer's "physical printer" or "send to printer" settings. Then:
+
+```bash
+# slice a folder and put the results on the printer
+batchslicer --profile k2-pla --input ~/BatchSlicer/incoming/kit --send k2plus
+
+# slice one model and start printing it
+batchslicer --profile k2-pla --input bracket.stl --send k2plus --start
+```
+
+- Before slicing, BatchSlicer checks that the printer answers, so a long
+  batch doesn't run only to find the printer switched off.
+- The files go into the printer's G-code folder. A batch keeps its folder
+  structure inside a folder named like the batch
+  (`kit-20261122-073000/arms/left.gcode`), and a single model goes to the top
+  folder. A file already on the printer with the same name is replaced.
+- Only models that sliced are sent. A file the printer refuses is listed,
+  and makes the run end with status 1.
+- `--start` works for one model that gives one G-code file. If the printer is
+  busy or not ready, the file stays on it without starting (or joins
+  Moonraker's job queue, if that is on).
+- A profile remembers the printer (`--send`), but never `--start`, so a saved
+  profile cannot start prints by itself. `--no-send` skips sending for one run.
+- With several printers, each profile sends to its own printer.
+- `batchslicer doctor` checks that every configured printer answers.
 
 ## Output
 
@@ -710,6 +773,19 @@ spelling with `batchslicer --list-profiles`.
 `--filament` and `--process` describe one printer. To change a printer in a
 multi-printer run, save it as its own profile and pass each with `--profile`.
 
+**"Cannot reach k2plus ..."**: the printer is off, on another network, or the
+address or port is wrong. Open the address in a browser: it should show
+Fluidd or Mainsail. Moonraker's own port is usually 7125.
+
+**"... refused access (HTTP 401)"**: Moonraker only accepts known clients.
+Add this computer's address (or its network, such as `192.168.1.0/24`) to
+`trusted_clients` in the `[authorization]` section of the printer's
+`moonraker.conf`, or set `api_key` to Moonraker's API key.
+
+**"No printer named ..."**: the name after `--send` must match one in the
+configuration's `printers` section (the message lists them), or be the
+printer's address, such as `192.168.1.50`.
+
 **Bambu Studio lists no printers, or not the one you expect**: Bambu Studio
 records the printer *models* you added (with their nozzle sizes), and
 BatchSlicer lists the shipped printers for those, plus printers you created
@@ -726,7 +802,7 @@ Shows the BatchSlicer and Python versions, which configuration file is used and
 how it was found, where BatchSlicer keeps its files, and for each configured
 slicer whether its program runs and accepts BatchSlicer's commands, whether its
 settings folder exists, and how many printers it offers. It also checks that
-saved profiles can be read. It ends with "No problems found." or a list of
+each printer for `--send` answers, and that saved profiles can be read. It ends with "No problems found." or a list of
 problems and what to do about them, and exits with status 0 or 1.
 
 When reporting a problem, please include the output of `batchslicer doctor`.
@@ -777,6 +853,8 @@ the Actions tab ("Latest slicers").
   filament and process for all models; to vary them, use separate runs or
   profiles.
 - **One model per plate.** Several models are not arranged onto one plate.
+- **Sending needs Klipper with Moonraker.** Bambu Lab printers (LAN mode),
+  OctoPrint and Creality printers without Moonraker are not supported yet.
 - **Flatpak installs are not detected** by `batchslicer setup`; configure them
   by hand.
 

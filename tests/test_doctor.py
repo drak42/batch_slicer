@@ -4,9 +4,10 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 
 from batchslicer.cli.doctor import DoctorOptions, run_doctor
-from conftest import write_config
+from conftest import FakeMoonraker, write_config
 
 HELP_TEXT = "Usage: slicer [ OPTIONS ]\n --slice option   Slice the plates\n"
 
@@ -139,3 +140,27 @@ def test_unreadable_profiles_are_a_problem(tmp_path: Path) -> None:
 
     assert problems == 1
     assert any("unknown settings: printr" in line for line in lines)
+
+
+def test_printers_are_checked(tmp_path: Path, fake_moonraker: FakeMoonraker) -> None:
+    """A printer that answers is shown with its state; one that refuses is a problem."""
+    fake_moonraker.api_key = "secret"
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        yaml.safe_dump({
+            "creality_print": {
+                "executable": str(_program(tmp_path / "bin" / "creality")),
+                "datadir": str(_creality_data(tmp_path / "creality", printers=["K2 Plus"])),
+            },
+            "printers": {
+                "k2": {"url": fake_moonraker.url, "api_key": "secret"},
+                "spare": {"url": fake_moonraker.url},
+            },
+        })
+    )
+
+    problems, lines = _report(DoctorOptions(config=path))
+
+    assert problems == 1
+    assert any(f"k2 ({fake_moonraker.url}): answers, Klipper ready, Moonraker v0.9.3" in line for line in lines)
+    assert any("PROBLEM: spare" in line and "refused access" in line for line in lines)

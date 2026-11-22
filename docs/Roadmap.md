@@ -46,6 +46,8 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 - [x] **Skip folders** (`--exclude PATTERN`): the soak test's largest group of
   failures came from non-model meshes bundled with other software.
+- [x] **Send G-code to the printer** (`--send PRINTER`, `--start`) for Klipper
+  printers with Moonraker, such as the K2 Plus.
 
 ## Then: decisions on reach
 
@@ -73,4 +75,5 @@ These need a decision from the project owner before work starts.
   presets without AppImages).
 - A standalone download that does not need Python.
 - A graphical or web interface (the architecture reserves a `web` layer).
-- Sending G-code to printers (Klipper/Moonraker, Bambu LAN, OctoPrint).
+- Sending G-code to other printers (Bambu LAN, OctoPrint); Klipper/Moonraker
+  is done.
