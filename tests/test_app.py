@@ -1,7 +1,7 @@
 """Tests for the BatchSlicer application bootstrap."""
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -79,6 +79,7 @@ def startup_mocks(monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, Mock, Mock, Mo
     monkeypatch.setattr(app, "prompt_for_input", Mock(return_value=_single_input()))
     monkeypatch.setattr(app, "prompt_for_output", Mock(return_value=Path("/out")))
     monkeypatch.setattr(app, "OrcaBackend", Mock())
+    monkeypatch.setattr(app, "write_report", Mock(return_value=(Path("/out/report.csv"), Path("/out/report.json"))))
     monkeypatch.setattr(app, "find_system_profiles", Mock(return_value=Path("/profiles")))
     slicing_service = Mock()
     slicing_service.return_value.slice.return_value = _outcome(success=True)
@@ -373,7 +374,7 @@ def test_folder_is_sliced_as_a_batch_with_progress_and_summary(
     good = _outcome(success=True, model="/models/a.stl")
     bad = _outcome(success=False, message="can not be parsed", model="/models/sub/b.stl")
 
-    def slice_batch(models_arg, root, output, selection, *, on_start, on_result):
+    def slice_batch(models_arg, root, output, selection, *, jobs, on_start, on_result):
         for number, outcome in enumerate((good, bad), start=1):
             on_start(number, 2, outcome.model)
             on_result(number, 2, outcome)
@@ -637,13 +638,14 @@ def test_interrupted_batch_reports_what_was_done(
         batch_directory=Path("/out/models-1"),
         outcomes=(_outcome(success=True, model="/models/a.stl"),),
         planned=3,
-        interrupted_model=Path("/models/b.stl"),
+        interrupted=True,
+        interrupted_models=(Path("/models/b.stl"),),
     )
 
     assert app.main([]) == 130
 
     captured = capsys.readouterr()
-    assert "Interrupted while slicing /models/b.stl; 1 model file(s) were not started." in captured.err
+    assert "Interrupted while slicing /models/b.stl; 2 model file(s) were not sliced." in captured.err
     assert "Sliced 1 of 3 model files" in captured.out
     assert "Output: /out/models-1" in captured.out
 
@@ -905,7 +907,11 @@ def test_interrupting_one_printer_stops_the_rest(
     folder = SliceInput(root=Path("/models"), models=(Path("/models/a.stl"),), is_folder=True)
     monkeypatch.setattr(app, "input_from_path", Mock(return_value=folder))
     app.SlicingService.return_value.slice_batch.return_value = BatchOutcome(
-        Path("/out/K2 Plus/models-1"), (), planned=1, interrupted_model=Path("/models/a.stl")
+        Path("/out/K2 Plus/models-1"),
+        (),
+        planned=1,
+        interrupted=True,
+        interrupted_models=(Path("/models/a.stl"),),
     )
 
     assert app.main(["--profile", "k2", "--profile", "bambu", "--no-prompt"]) == 130
@@ -1021,3 +1027,118 @@ def test_doctor_command_reports_and_sets_the_exit_status(
 
     run_doctor.return_value = 2
     assert app.main(["doctor"]) == 1
+
+
+def _folder_batch(monkeypatch: pytest.MonkeyPatch, *outcomes: SliceOutcome) -> None:
+    """Make the run slice a folder whose batch ends with ``outcomes``."""
+    models = tuple(outcome.model for outcome in outcomes)
+    monkeypatch.setattr(
+        app,
+        "prompt_for_input",
+        Mock(return_value=SliceInput(root=Path("/models"), models=models, is_folder=True)),
+    )
+    app.SlicingService.return_value.slice_batch.return_value = BatchOutcome(
+        Path("/out/models-1"), outcomes, planned=len(outcomes)
+    )
+
+
+def test_options_reach_the_slicing_service_and_are_shown(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--orient, --allow-newer-files and --jobs are used for slicing and shown before it."""
+    _folder_batch(monkeypatch, _outcome(success=True, model="/models/a.stl"))
+
+    assert app.main(["--orient", "retry", "--allow-newer-files", "--jobs", "2"]) == 0
+
+    service_options = app.SlicingService.call_args.kwargs["options"]
+    assert service_options == app.SliceOptions(orient="retry", allow_newer_files=True)
+    assert app.SlicingService.return_value.slice_batch.call_args.kwargs["jobs"] == 2
+    output = capsys.readouterr().out
+    assert (
+        "Options:  auto-orient models that fail, allow newer 3MF files, 2 models at a time"
+        in output
+    )
+    assert "Report: /out/report.csv" in output
+
+
+def test_orient_is_refused_for_creality_print(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Creality Print's CLI has no auto-orient, so --orient stops before slicing."""
+    monkeypatch.setattr(app, "prompt_for_slicer", Mock(return_value=CREALITY_PRINT))
+    monkeypatch.setattr(app, "PresetLibrary", Mock())
+    monkeypatch.setattr(app, "select_presets", Mock(return_value=_selection()))
+
+    assert app.main(["--orient", "always"]) == 1
+
+    assert "Creality Print has no command-line auto-orient" in capsys.readouterr().err
+    app.SlicingService.return_value.slice.assert_not_called()
+
+
+def test_failures_an_option_may_fix_get_a_hint(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Failures that --orient retry or --allow-newer-files may fix say so."""
+    _folder_batch(
+        monkeypatch,
+        _outcome(success=False, message="Failed slicing the model. (x)", model="/models/a.stl"),
+        _outcome(success=False, message="Unsupported 3MF version.", model="/models/b.3mf"),
+    )
+
+    assert app.main([]) == 1
+
+    err = capsys.readouterr().err
+    assert "Hint: 1 model(s) failed with 'Failed slicing the model'" in err
+    assert "--orient retry" in err
+    assert "--allow-newer-files" in err
+
+
+def test_batch_summary_shows_auto_oriented_models_and_totals(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The summary counts auto-oriented models and totals print time and filament."""
+    oriented = replace(
+        _outcome(success=True, model="/models/a.stl"),
+        auto_oriented=True,
+        stats=app.GcodeStats(7200.0, 1500.0, None, None),
+    )
+    _folder_batch(monkeypatch, oriented)
+
+    assert app.main(["--orient", "retry"]) == 0
+
+    output = capsys.readouterr().out
+    assert "1 of them with auto-orient." in output
+    assert "To print: 2h 0m, 1.50 kg filament" in output
+
+
+def test_profile_slicing_settings_apply_unless_overridden(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A profile's orient and jobs are used; command-line options override them."""
+    saved = app.Profile(name="farm", orient="always", jobs=3)
+    app.ProfileStore.return_value.get.return_value = saved
+    _folder_batch(monkeypatch, _outcome(success=True, model="/models/a.stl"))
+
+    app.main(["--profile", "farm", "--jobs", "1"])
+
+    assert app.SlicingService.call_args.kwargs["options"].orient == "always"
+    assert app.SlicingService.return_value.slice_batch.call_args.kwargs["jobs"] == 1
+    remembered = app.ProfileStore.return_value.save.call_args.args[0]
+    assert (remembered.orient, remembered.jobs) == ("always", 1)
+
+
+@pytest.mark.parametrize(
+    ("seconds", "text"), [(2.54, "2.5s"), (113.8, "1m 54s"), (4554, "1h 15m 54s")]
+)
+def test_run_times_are_shown_briefly(seconds: float, text: str) -> None:
+    """Batch times are shown in seconds, or minutes and hours when long."""
+    assert app._short_time(seconds) == text

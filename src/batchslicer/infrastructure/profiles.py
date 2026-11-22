@@ -13,8 +13,10 @@ from typing import Any
 
 import yaml
 
+from batchslicer.domain.options import MAX_JOBS, orient_mode
 from batchslicer.domain.profiles import (
     RUN_FIELDS,
+    SETTING_FIELDS,
     TARGET_FIELDS,
     Profile,
     Target,
@@ -98,7 +100,7 @@ class ProfileStore:
         """
         if not isinstance(values, dict):
             raise ProfileError(f"Profile '{name}' in {self._path} is not a mapping.")
-        allowed = {*TARGET_FIELDS, *RUN_FIELDS, "targets"}
+        allowed = {*TARGET_FIELDS, *RUN_FIELDS, *SETTING_FIELDS, "targets"}
         unknown = set(values) - allowed
         if unknown:
             raise ProfileError(
@@ -119,18 +121,38 @@ class ProfileStore:
         else:
             targets = (self._target(name, values),)
 
-        paths = {
+        paths: dict[str, Any] = {
             key: Path(str(values[key])).expanduser()
             for key in RUN_FIELDS
             if values.get(key) not in (None, "")
         }
-        return Profile(name=name, targets=targets, **paths)
+        return Profile(name=name, targets=targets, **paths, **self._settings(name, values))
+
+    def _settings(self, name: str, values: dict[Any, Any]) -> dict[str, Any]:
+        """Return the slicing settings stored for profile ``name``, checked."""
+        settings: dict[str, Any] = {}
+        where = f"Profile '{name}' in {self._path}"
+        if values.get("orient") is not None:
+            try:
+                settings["orient"] = orient_mode(str(values["orient"]))
+            except ValueError as error:
+                raise ProfileError(f"{where}: {error}.") from error
+        if values.get("allow_newer_files") is not None:
+            if not isinstance(values["allow_newer_files"], bool):
+                raise ProfileError(f"{where}: allow_newer_files must be true or false.")
+            settings["allow_newer_files"] = values["allow_newer_files"]
+        if values.get("jobs") is not None:
+            jobs = values["jobs"]
+            if isinstance(jobs, bool) or not isinstance(jobs, int) or not 1 <= jobs <= MAX_JOBS:
+                raise ProfileError(f"{where}: jobs must be a whole number from 1 to {MAX_JOBS}.")
+            settings["jobs"] = jobs
+        return settings
 
     def _target(self, name: str, values: Any) -> Target:
         """Return one target from its stored settings."""
         if not isinstance(values, dict):
             raise ProfileError(f"Profile '{name}' in {self._path} has a target that is not a mapping.")
-        unknown = set(values) - set(TARGET_FIELDS) - set(RUN_FIELDS)
+        unknown = set(values) - set(TARGET_FIELDS) - set(RUN_FIELDS) - set(SETTING_FIELDS)
         if unknown:
             raise ProfileError(
                 f"Profile '{name}' in {self._path} has unknown target settings: "
@@ -161,6 +183,10 @@ class ProfileStore:
             value = getattr(profile, key)
             if value is not None:
                 stored[key] = str(value)
+        for key in SETTING_FIELDS:
+            value = getattr(profile, key)
+            if value is not None:
+                stored[key] = value
         return stored
 
     def _write(self, profiles: dict[str, Profile]) -> None:
@@ -172,7 +198,8 @@ class ProfileStore:
         text = (
             "# BatchSlicer profiles: saved choices for runs. Edit freely. A profile sets\n"
             "# slicer, printer, filament and process (or a 'targets' list of them, to\n"
-            "# slice for several printers), plus input and output.\n"
+            "# slice for several printers), plus input and output, and optionally\n"
+            "# orient (off/retry/always), allow_newer_files (true/false) and jobs.\n"
             + yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
         )
         try:

@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -16,6 +17,39 @@ from batchslicer.backends.slicers import (
 )
 from batchslicer.core.config import Config
 from conftest import write_config
+
+
+def _popen(
+    returncode: int = 0,
+    stdout: str = "",
+    stderr: str = "",
+    *,
+    timeout: bool = False,
+    on_start: Callable[..., None] | None = None,
+) -> Mock:
+    """Return a stand-in for ``subprocess.Popen`` whose process ends as described.
+
+    With ``timeout``, the first wait raises ``TimeoutExpired`` and the output is
+    what the killed process left behind.
+    """
+    process = Mock(returncode=returncode, pid=4242)
+    process.poll.return_value = returncode
+    if timeout:
+        process.communicate.side_effect = [
+            subprocess.TimeoutExpired(cmd=("orca",), timeout=5),
+            (stdout, stderr),
+        ]
+    else:
+        process.communicate.return_value = (stdout, stderr)
+
+    def start(command: tuple[str, ...], **kwargs: object) -> Mock:
+        if on_start is not None:
+            on_start(command, **kwargs)
+        return process
+
+    popen = Mock(side_effect=start)
+    popen.process = process
+    return popen
 
 
 @pytest.fixture
@@ -42,8 +76,8 @@ def test_run_captures_success_and_exact_command(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Successful subprocess output and command details are preserved."""
-    run = Mock(return_value=Mock(returncode=0, stdout="help", stderr=""))
-    monkeypatch.setattr("batchslicer.backends.orca.subprocess.run", run)
+    popen = _popen(stdout="help")
+    monkeypatch.setattr("batchslicer.backends.orca.subprocess.Popen", popen)
 
     result = backend.run(("orca", "--help"))
 
@@ -53,14 +87,15 @@ def test_run_captures_success_and_exact_command(
     assert result.stderr == ""
     assert result.elapsed >= 0
     assert result.command == ("orca", "--help")
-    run.assert_called_once_with(
+    popen.assert_called_once_with(
         ("orca", "--help"),
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
-        check=False,
-        timeout=DEFAULT_TIMEOUT_SECONDS,
+        errors="replace",
         cwd=None,
     )
+    popen.process.communicate.assert_called_once_with(timeout=DEFAULT_TIMEOUT_SECONDS)
 
 
 def test_run_captures_nonzero_exit_and_stderr(
@@ -69,8 +104,8 @@ def test_run_captures_nonzero_exit_and_stderr(
 ) -> None:
     """Non-zero Orca exits produce unsuccessful results without raising."""
     monkeypatch.setattr(
-        "batchslicer.backends.orca.subprocess.run",
-        Mock(return_value=Mock(returncode=2, stdout="partial", stderr="bad input")),
+        "batchslicer.backends.orca.subprocess.Popen",
+        _popen(2, "partial", "bad input"),
     )
 
     result = backend.run(("orca", "--slice", "0", "part.stl"))
@@ -87,8 +122,8 @@ def test_run_logs_stderr_when_command_fails(
 ) -> None:
     """Failed commands log Orca's error output so failures can be diagnosed."""
     monkeypatch.setattr(
-        "batchslicer.backends.orca.subprocess.run",
-        Mock(return_value=Mock(returncode=2, stdout="", stderr="no printer preset")),
+        "batchslicer.backends.orca.subprocess.Popen",
+        _popen(2, "", "no printer preset"),
     )
 
     backend.run(("orca", "--slice", "0", "part.stl"))
@@ -105,16 +140,13 @@ def test_run_stops_commands_that_exceed_the_timeout(
     config = Mock(spec=Config)
     logger = Mock()
     backend = OrcaBackend(config=config, logger=logger, timeout_seconds=5)
-    run = Mock(
-        side_effect=subprocess.TimeoutExpired(
-            cmd=("orca",), timeout=5, output=b"partial", stderr=b"still slicing"
-        )
-    )
-    monkeypatch.setattr("batchslicer.backends.orca.subprocess.run", run)
+    popen = _popen(-9, "partial", "still slicing", timeout=True)
+    monkeypatch.setattr("batchslicer.backends.orca.subprocess.Popen", popen)
 
     result = backend.run(("orca", "--slice", "0", "part.stl"))
 
-    assert run.call_args.kwargs["timeout"] == 5
+    assert popen.process.communicate.call_args_list[0].kwargs["timeout"] == 5
+    popen.process.kill.assert_called_once()
     assert not result.success
     assert result.exit_code == -1
     assert result.stdout == "partial"
@@ -135,7 +167,7 @@ def test_run_handles_process_start_failure(
 ) -> None:
     """Expected process start failures become unsuccessful results."""
     monkeypatch.setattr(
-        "batchslicer.backends.orca.subprocess.run",
+        "batchslicer.backends.orca.subprocess.Popen",
         Mock(side_effect=FileNotFoundError("orca missing")),
     )
 
@@ -172,13 +204,12 @@ def test_help_and_export_run_outside_the_working_directory(
     monkeypatch.chdir(tmp_path)
     used_directories: list[Path] = []
 
-    def fake_run(command: tuple[str, ...], **kwargs: object) -> Mock:
+    def started(command: tuple[str, ...], **kwargs: object) -> None:
         directory = Path(str(kwargs["cwd"]))
         used_directories.append(directory)
         (directory / "result.json").write_text("{}", encoding="utf-8")
-        return Mock(returncode=0, stdout="", stderr="")
 
-    monkeypatch.setattr("batchslicer.backends.orca.subprocess.run", fake_run)
+    monkeypatch.setattr("batchslicer.backends.orca.subprocess.Popen", _popen(on_start=started))
 
     backend.help()
     backend.export_settings("settings.json")
@@ -196,12 +227,12 @@ def test_slice_runs_inside_the_output_folder(
     tmp_path: Path,
 ) -> None:
     """Extra files a slicer writes (such as OrcaSlicer's NNNNN.log) stay with the results."""
-    run = Mock(return_value=Mock(returncode=0, stdout="", stderr=""))
-    monkeypatch.setattr("batchslicer.backends.orca.subprocess.run", run)
+    popen = _popen()
+    monkeypatch.setattr("batchslicer.backends.orca.subprocess.Popen", popen)
 
     backend.slice(tmp_path / "model.stl", tmp_path / "out")
 
-    assert run.call_args.kwargs["cwd"] == tmp_path / "out"
+    assert popen.call_args.kwargs["cwd"] == tmp_path / "out"
     assert (tmp_path / "out").is_dir()
 
 
@@ -458,8 +489,8 @@ def test_log_messages_name_the_selected_slicer(
     """Failures are logged under the selected slicer's name."""
     backend = _backend_for(BAMBU_STUDIO, tmp_path)
     monkeypatch.setattr(
-        "batchslicer.backends.orca.subprocess.run",
-        Mock(return_value=Mock(returncode=1, stdout="", stderr="boom")),
+        "batchslicer.backends.orca.subprocess.Popen",
+        _popen(1, "", "boom"),
     )
 
     backend.run(("bambu", "--help"))
@@ -510,6 +541,7 @@ def test_every_option_used_is_accepted_by_real_slicer(
         enable_timelapse=True,
         skip_modified_gcodes=slicer.supports("--skip-modified-gcodes"),
         no_check=True,
+        allow_newer_file=True,
         load_settings=[tmp_path / "machine.json"],
         load_filaments=[tmp_path / "filament.json"],
     )
@@ -525,3 +557,47 @@ def test_every_option_used_is_accepted_by_real_slicer(
     }
     for option in options:
         assert f" {option} " in help_text or f" {option}\n" in help_text, option
+
+
+def test_ctrl_c_while_waiting_stops_the_slicer(
+    backend: OrcaBackend,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Interrupting a run kills its slicer instead of leaving it running."""
+    popen = _popen()
+    popen.process.communicate.side_effect = KeyboardInterrupt
+    monkeypatch.setattr("batchslicer.backends.orca.subprocess.Popen", popen)
+
+    with pytest.raises(KeyboardInterrupt):
+        backend.run(("orca", "--slice", "0", "part.stl"))
+
+    popen.process.kill.assert_called_once()
+
+
+def test_stop_all_kills_running_slicers(
+    backend: OrcaBackend,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """stop_all stops commands still running in other threads."""
+    popen = _popen()
+    popen.process.poll.return_value = None
+
+    def communicate(timeout: float) -> tuple[str, str]:
+        backend.stop_all()
+        return "", ""
+
+    popen.process.communicate.side_effect = communicate
+    monkeypatch.setattr("batchslicer.backends.orca.subprocess.Popen", popen)
+
+    backend.run(("orca", "--slice", "0", "part.stl"))
+
+    popen.process.kill.assert_called_once()
+
+
+def test_allow_newer_file_is_a_flag_without_a_value(backend: OrcaBackend, tmp_path: Path) -> None:
+    """--allow-newer-file takes no value; a value would be read as a model file."""
+    command = backend.build_slice_command(
+        tmp_path / "model.3mf", tmp_path / "out", allow_newer_file=True
+    )
+
+    assert command[-2:] == ("--allow-newer-file", str(tmp_path / "model.3mf"))

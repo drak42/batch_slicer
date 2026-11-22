@@ -1,6 +1,8 @@
 """Tests for slicing one model into a job folder."""
 
 import json
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock
@@ -8,6 +10,7 @@ from unittest.mock import Mock
 import pytest
 
 from batchslicer.backends.orca import OrcaResult
+from batchslicer.domain.options import SliceOptions
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.services.slicing import SlicingService
 
@@ -79,6 +82,8 @@ def test_presets_are_written_into_the_job_and_passed_to_the_slicer(tmp_path: Pat
 
     library.write_resolved.assert_called_once_with(selection, outcome.job_directory / "presets")
     assert backend.slice.call_args.kwargs == {
+        "orient": False,
+        "allow_newer_file": False,
         "load_settings": settings,
         "load_filaments": filaments,
     }
@@ -265,7 +270,7 @@ def test_ctrl_c_stops_a_batch_and_keeps_finished_models(tmp_path: Path) -> None:
     batch = service.slice_batch(models, source, tmp_path / "out")
 
     assert batch.interrupted
-    assert batch.interrupted_model == source / "b.stl"
+    assert batch.interrupted_models == (source / "b.stl",)
     assert batch.planned == 3
     assert [outcome.model.name for outcome in batch.succeeded] == ["a.stl"]
     assert (batch.batch_directory / "a" / "a.gcode").is_file()
@@ -290,3 +295,221 @@ def test_failure_includes_the_slicers_validation_log(tmp_path: Path) -> None:
     assert outcome.message == (
         "There are some incorrect slicing parameters. (Too small line width)"
     )
+
+
+_STATS = (
+    "; filament used [mm] = 2485.84\n; filament used [g] = 7.41\n; total filament used [g] = 7.41\n"
+    "; total filament cost = 0.15\n; estimated printing time (normal mode) = 1h 2m 10s\n"
+)
+
+
+def _orient_backend(*, fails_unless_oriented: bool = True) -> Mock:
+    """Return a backend that only slices when auto-orient is on, as for a badly saved part."""
+    backend = Mock()
+
+    def slice_(model: Path, job: Path, **kwargs: object) -> OrcaResult:
+        ok = bool(kwargs["orient"]) or not fails_unless_oriented
+        if ok:
+            (job / "plate_1.gcode").write_text(_STATS)
+            message = "Success."
+        else:
+            message = "Failed slicing the model."
+            (job / "00000.log").write_text("found slicing or export error for partplate 1\n")
+        (job / "result.json").write_text(json.dumps({"error_string": message}))
+        return OrcaResult(ok, 0 if ok else 156, "", "", 2.0, ())
+
+    backend.slice.side_effect = slice_
+    return backend
+
+
+def test_orient_retry_slices_a_failed_model_again_with_auto_orient(tmp_path: Path) -> None:
+    """With orient "retry", a failure is retried with auto-orient and marked as such."""
+    backend = _orient_backend()
+    service = SlicingService(
+        backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(orient="retry")
+    )
+
+    outcome = service.slice(tmp_path / "part.stl", tmp_path / "out")
+
+    assert outcome.success
+    assert outcome.auto_oriented
+    assert outcome.elapsed == 4.0
+    assert [call.kwargs["orient"] for call in backend.slice.call_args_list] == [False, True]
+    assert sorted(path.name for path in outcome.job_directory.iterdir()) == ["part.gcode"]
+
+
+def test_orient_off_does_not_retry(tmp_path: Path) -> None:
+    """By default a failed model is not sliced again."""
+    backend = _orient_backend()
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW)
+
+    outcome = service.slice(tmp_path / "part.stl", tmp_path / "out")
+
+    assert not outcome.success
+    assert backend.slice.call_count == 1
+    assert "partplate 1" in outcome.message
+
+
+def test_orient_always_orients_every_model(tmp_path: Path) -> None:
+    """With orient "always", the first and only attempt uses auto-orient."""
+    backend = _orient_backend(fails_unless_oriented=False)
+    service = SlicingService(
+        backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(orient="always")
+    )
+
+    outcome = service.slice(tmp_path / "part.stl", tmp_path / "out")
+
+    assert outcome.auto_oriented
+    assert backend.slice.call_count == 1
+    assert backend.slice.call_args.kwargs["orient"] is True
+
+
+def test_allow_newer_files_is_passed_to_the_slicer(tmp_path: Path) -> None:
+    """The newer-file option reaches the slicer command."""
+    backend = _backend()
+    service = SlicingService(
+        backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(allow_newer_files=True)
+    )
+
+    service.slice(tmp_path / "part.3mf", tmp_path / "out")
+
+    assert backend.slice.call_args.kwargs["allow_newer_file"] is True
+
+
+def test_slicer_status_files_are_removed_and_failed_batch_folders_too(tmp_path: Path) -> None:
+    """result.json and NNNNN.log are read, then removed; a failed model leaves no folder."""
+    source = tmp_path / "models"
+    service = SlicingService(_orient_backend(), logger=Mock(), clock=lambda: NOW)
+
+    batch = service.slice_batch([source / "bad.stl"], source, tmp_path / "out")
+
+    assert batch.failed[0].message.endswith("(found slicing or export error for partplate 1)")
+    assert not (batch.batch_directory / "bad").exists()
+
+
+def test_outcome_carries_print_time_and_filament(tmp_path: Path) -> None:
+    """Statistics are read from the G-code and totalled for the batch."""
+    source = tmp_path / "models"
+    service = SlicingService(
+        _orient_backend(fails_unless_oriented=False), logger=Mock(), clock=lambda: NOW
+    )
+
+    batch = service.slice_batch([source / "a.stl", source / "b.stl"], source, tmp_path / "out")
+
+    assert batch.outcomes[0].stats.print_seconds == 3730
+    assert batch.stats.filament_grams == pytest.approx(14.82)
+
+
+def test_several_jobs_run_at_the_same_time_and_keep_model_order(tmp_path: Path) -> None:
+    """With jobs=3, three slicers run at once; outcomes stay in model order."""
+    source = tmp_path / "models"
+    backend = Mock()
+    lock = threading.Lock()
+    active = 0
+    most = 0
+
+    def slice_(model: Path, job: Path, **kwargs: object) -> OrcaResult:
+        nonlocal active, most
+        with lock:
+            active += 1
+            most = max(most, active)
+        time.sleep(0.05 if model.stem != "a" else 0.15)
+        (job / "plate_1.gcode").write_text("G1")
+        with lock:
+            active -= 1
+        return OrcaResult(True, 0, "", "", 1.0, ())
+
+    backend.slice.side_effect = slice_
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW)
+    models = [source / f"{name}.stl" for name in "abcdef"]
+    finished: list[str] = []
+
+    batch = service.slice_batch(
+        models,
+        source,
+        tmp_path / "out",
+        jobs=3,
+        on_result=lambda number, total, outcome: finished.append(outcome.model.stem),
+    )
+
+    assert most == 3
+    assert [outcome.model.stem for outcome in batch.outcomes] == list("abcdef")
+    assert finished[0] != "a"
+    assert len(batch.succeeded) == 6
+
+
+def test_ctrl_c_with_several_jobs_stops_running_slicers(tmp_path: Path) -> None:
+    """Interrupting a parallel batch stops the slicers and names the unfinished models."""
+    source = tmp_path / "models"
+    backend = Mock()
+    calls = iter([None, None, KeyboardInterrupt()])
+    lock = threading.Lock()
+
+    def slice_(model: Path, job: Path, **kwargs: object) -> OrcaResult:
+        with lock:
+            step = next(calls, None)
+        if isinstance(step, BaseException):
+            raise step
+        (job / "plate_1.gcode").write_text("G1")
+        return OrcaResult(True, 0, "", "", 1.0, ())
+
+    backend.slice.side_effect = slice_
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW)
+    models = [source / f"{name}.stl" for name in "abcde"]
+
+    batch = service.slice_batch(models, source, tmp_path / "out", jobs=2)
+
+    assert batch.interrupted
+    backend.stop_all.assert_called_once()
+    assert source / "c.stl" in batch.interrupted_models
+    assert len(batch.outcomes) + len(batch.interrupted_models) <= 5
+
+
+def test_jobs_must_be_in_range(tmp_path: Path) -> None:
+    """A batch needs at least one job."""
+    service = SlicingService(_backend(), logger=Mock(), clock=lambda: NOW)
+
+    with pytest.raises(ValueError, match="jobs"):
+        service.slice_batch([], tmp_path, tmp_path / "out", jobs=0)
+
+
+def test_batch_records_its_wall_clock_time(tmp_path: Path) -> None:
+    """The batch's own duration is kept apart from the summed slicer times."""
+    source = tmp_path / "models"
+    service = SlicingService(_backend(), logger=Mock(), clock=lambda: NOW)
+
+    batch = service.slice_batch([source / "a.stl", source / "b.stl"], source, tmp_path / "out", jobs=2)
+
+    assert batch.elapsed == 5.0
+    assert 0 < batch.wall_seconds < 5.0
+
+
+def test_folders_left_empty_by_failures_are_removed(tmp_path: Path) -> None:
+    """A source folder whose models all failed leaves no empty folders in the batch."""
+    source = tmp_path / "models"
+    service = SlicingService(_orient_backend(), logger=Mock(), clock=lambda: NOW)
+
+    batch = service.slice_batch(
+        [source / "kit" / "parts" / "bad.stl"], source, tmp_path / "out"
+    )
+
+    assert not (batch.batch_directory / "kit").exists()
+    assert batch.batch_directory.is_dir()
+
+
+def test_interrupted_models_leave_no_partial_output(tmp_path: Path) -> None:
+    """The folder of a model being sliced when Ctrl+C came is removed with its partial files."""
+    source = tmp_path / "models"
+    backend = Mock()
+
+    def slice_(model: Path, job: Path, **kwargs: object) -> OrcaResult:
+        (job / "plate_1.gcode.tmp").write_text("G1")
+        raise KeyboardInterrupt
+
+    backend.slice.side_effect = slice_
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW)
+
+    batch = service.slice_batch([source / "a.stl"], source, tmp_path / "out")
+
+    assert batch.interrupted_models == (source / "a.stl",)
+    assert list(batch.batch_directory.iterdir()) == []

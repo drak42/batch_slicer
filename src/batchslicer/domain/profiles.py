@@ -12,6 +12,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from batchslicer.domain.options import OrientMode
+
 LAST_RUN = "last"
 """Name of the profile that remembers the most recent run."""
 
@@ -19,7 +21,10 @@ TARGET_FIELDS = ("slicer", "printer", "filament", "process")
 """The choices a target holds, in display order."""
 
 RUN_FIELDS = ("input", "output")
-"""The choices shared by every target in a run."""
+"""The paths shared by every target in a run."""
+
+SETTING_FIELDS = ("orient", "allow_newer_files", "jobs")
+"""How the run slices (see :mod:`batchslicer.domain.options`), shared by every target."""
 
 _NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$")
 
@@ -53,6 +58,9 @@ class Profile:
     targets: tuple[Target, ...] = field(default=(Target(),))
     input: Path | None = None
     output: Path | None = None
+    orient: OrientMode | None = None
+    allow_newer_files: bool | None = None
+    jobs: int | None = None
 
     @classmethod
     def single(
@@ -90,13 +98,20 @@ class Profile:
             parts.append(f"input {self.input}")
         if self.output is not None:
             parts.append(f"output {self.output}")
+        if self.orient is not None:
+            parts.append(f"orient {self.orient}")
+        if self.allow_newer_files is not None:
+            parts.append("newer files allowed" if self.allow_newer_files else "newer files refused")
+        if self.jobs is not None:
+            parts.append(f"{self.jobs} job{'s' if self.jobs != 1 else ''}")
         return ", ".join(parts) if parts else "no choices saved"
 
 
 def combine(name: str, profiles: Iterable[Profile]) -> Profile:
     """Return one profile holding every target of ``profiles``.
 
-    Input and output come from the first profile that sets them.
+    Input, output and the slicing settings come from the first profile that
+    sets them.
     """
     chosen = list(profiles)
     targets = tuple(
@@ -107,6 +122,11 @@ def combine(name: str, profiles: Iterable[Profile]) -> Profile:
         targets=targets or (Target(),),
         input=next((profile.input for profile in chosen if profile.input), None),
         output=next((profile.output for profile in chosen if profile.output), None),
+        orient=next((p.orient for p in chosen if p.orient is not None), None),
+        allow_newer_files=next(
+            (p.allow_newer_files for p in chosen if p.allow_newer_files is not None), None
+        ),
+        jobs=next((p.jobs for p in chosen if p.jobs is not None), None),
     )
 
 

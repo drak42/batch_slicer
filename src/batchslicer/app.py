@@ -14,8 +14,10 @@ one line with the full details written to the log. Exit statuses: 0 success,
 """
 
 import logging
+import os
 import re
 import sys
+import time
 import traceback
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
@@ -38,15 +40,37 @@ from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slice
 from batchslicer.core.config import Config, find_config_file, get_config
 from batchslicer.core.environment import EnvironmentService
 from batchslicer.core.logging import configure_logging, current_log_file
+from batchslicer.domain.options import SliceOptions
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.domain.profiles import LAST_RUN, Profile, Target, combine, is_valid_name
 from batchslicer.infrastructure.profiles import ProfileError, ProfileStore
+from batchslicer.services.gcode_stats import GcodeStats, format_duration
+from batchslicer.services.report import write_report
 from batchslicer.services.slicing import BatchOutcome, SliceOutcome, SlicingService
 
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
 EXIT_INTERRUPTED = 130
 """The conventional status for a program stopped with Ctrl+C."""
+
+_REPORT_INTERVAL_SECONDS = 10.0
+"""How often a running batch's report is rewritten."""
+
+_HINTS = (
+    (
+        "Failed slicing the model",
+        lambda options: options.orient == "off",
+        "{count} model(s) failed with 'Failed slicing the model'. This is often how a "
+        "part was saved; --orient retry slices them again with the slicer's auto-orient.",
+    ),
+    (
+        "Unsupported 3MF version",
+        lambda options: not options.allow_newer_files,
+        "{count} project(s) were saved by a newer slicer version; --allow-newer-files "
+        "lets the slicer try them (or update the slicer).",
+    ),
+)
+"""(text in a failure message, whether the hint applies, hint) for failures an option may fix."""
 
 
 class _StartupFailed(Exception):
@@ -106,7 +130,13 @@ def _run(options: RunOptions) -> int:
             return EXIT_SUCCESS
 
         targets = _resolve_targets(specs, offered_more, options.no_prompt, config, logger)
-        _show_ready(targets)
+        slice_options = SliceOptions(
+            orient=options.orient or "off",
+            allow_newer_files=bool(options.allow_newer_files),
+        )
+        jobs = options.jobs or 1
+        _check_options(targets, slice_options)
+        _show_ready(targets, slice_options, jobs)
         slice_input = _select_input(options, config)
         output_directory = _select_output(options, config)
         logger.info(
@@ -116,7 +146,9 @@ def _run(options: RunOptions) -> int:
             output_directory,
         )
         _remember_choices(profiles, options, targets, slice_input, output_directory, logger)
-        return _slice_targets(targets, slice_input, output_directory, config, logger)
+        return _slice_targets(
+            targets, slice_input, output_directory, config, logger, slice_options, jobs
+        )
     except _StartupFailed:
         return EXIT_FAILURE
     except (
@@ -228,6 +260,13 @@ def _plan_targets(
             options,
             input=options.input if options.input is not None else plan.input,
             output=options.output if options.output is not None else plan.output,
+            orient=options.orient if options.orient is not None else plan.orient,
+            allow_newer_files=(
+                options.allow_newer_files
+                if options.allow_newer_files is not None
+                else plan.allow_newer_files
+            ),
+            jobs=options.jobs if options.jobs is not None else plan.jobs,
         )
 
     if len(targets) > 1:
@@ -299,6 +338,9 @@ def _remember_choices(
         targets=tuple(target.as_target() for target in targets),
         input=slice_input.root if slice_input.is_folder else slice_input.models[0],
         output=output_directory,
+        orient=options.orient,
+        allow_newer_files=options.allow_newer_files,
+        jobs=options.jobs,
     )
     try:
         profiles.save(choices)
@@ -441,19 +483,43 @@ def _print_names(presets: Sequence[Preset]) -> None:
         print(f"  {preset.name}{mine}")
 
 
-def _show_ready(targets: list[_ResolvedTarget]) -> None:
-    """Show the slicer(s) and presets that will be used."""
+def _check_options(targets: list[_ResolvedTarget], options: SliceOptions) -> None:
+    """Stop before slicing if a chosen slicer cannot do what the options ask."""
+    if options.orient == "off":
+        return
+    for target in targets:
+        if not target.slicer.supports("--orient"):
+            raise SlicerSelectionError(
+                f"{target.slicer.display_name} has no command-line auto-orient, so "
+                "--orient cannot be used with it."
+            )
+
+
+def _show_ready(
+    targets: list[_ResolvedTarget],
+    options: SliceOptions | None = None,
+    jobs: int = 1,
+) -> None:
+    """Show the slicer(s), presets and slicing options that will be used."""
     if len(targets) > 1:
         print(f"BatchSlicer ready. Slicing for {len(targets)} printers:")
         for number, target in enumerate(targets, start=1):
             print(f"  {number}) {target.describe()}")
-        return
-    target = targets[0]
-    print(f"BatchSlicer ready. Slicer: {target.slicer.display_name}.")
-    if target.selection is not None:
-        print(f"  Printer:  {target.selection.printer.name}")
-        print(f"  Filament: {target.selection.filament.name}")
-        print(f"  Process:  {target.selection.process.name}")
+    else:
+        target = targets[0]
+        print(f"BatchSlicer ready. Slicer: {target.slicer.display_name}.")
+        if target.selection is not None:
+            print(f"  Printer:  {target.selection.printer.name}")
+            print(f"  Filament: {target.selection.filament.name}")
+            print(f"  Process:  {target.selection.process.name}")
+    extras = [options.describe()] if options is not None and options.describe() else []
+    if jobs > 1:
+        extras.append(f"{jobs} models at a time")
+    if extras:
+        print(f"  Options:  {', '.join(extras)}")
+    cores = os.cpu_count() or 1
+    if jobs > cores:
+        print(f"  Note: --jobs {jobs} is more than this computer's {cores} cores; it may be slower.")
 
 
 def _slice_targets(
@@ -462,6 +528,8 @@ def _slice_targets(
     output_directory: Path,
     config: Config,
     logger: logging.Logger,
+    options: SliceOptions | None = None,
+    jobs: int = 1,
 ) -> int:
     """Slice the input for every target and return the run's exit status.
 
@@ -477,10 +545,12 @@ def _slice_targets(
             print("")
             print(f"=== Printer {number} of {len(targets)}: {target.describe()} ===")
         backend = OrcaBackend(slicer=target.slicer, config=config, logger=logger)
-        service = SlicingService(backend, presets=target.library, logger=logger)
+        service = SlicingService(
+            backend, presets=target.library, logger=logger, options=options
+        )
         if slice_input.is_folder:
-            batch = _slice_folder(service, slice_input, destination, target.selection)
-            _report_batch(batch)
+            batch = _slice_folder(service, slice_input, destination, target.selection, jobs)
+            _report_batch(batch, slice_input.root, options or SliceOptions())
             if batch.interrupted:
                 skipped = len(targets) - number
                 if skipped:
@@ -491,7 +561,7 @@ def _slice_targets(
             model = slice_input.models[0]
             print(f"Slicing {model.name} with {target.slicer.display_name}...")
             outcome = service.slice(model, destination, target.selection)
-            _report(outcome)
+            _report(outcome, options or SliceOptions())
             results.append((target, outcome.success))
 
     if multi:
@@ -550,56 +620,150 @@ def _slice_folder(
     slice_input: SliceInput,
     output_directory: Path,
     selection: PresetSelection | None,
+    jobs: int = 1,
 ) -> BatchOutcome:
-    """Slice every model in the chosen folder, showing progress as it goes."""
+    """Slice every model in the chosen folder, showing progress as it goes.
+
+    One model at a time shows each model as it starts; with several at once,
+    each model is shown as it finishes. The batch report is kept up to date.
+    """
     total = len(slice_input.models)
     print(f"Slicing {total} model file{'s' if total != 1 else ''} from {slice_input.root}...")
+    finished: list[SliceOutcome] = []
+    last_report = time.monotonic()
 
     def on_start(number: int, count: int, model: Path) -> None:
-        print(f"  [{number}/{count}] {model.relative_to(slice_input.root)} ... ", end="", flush=True)
+        if jobs == 1:
+            print(f"  [{number}/{count}] {model.relative_to(slice_input.root)} ... ", end="", flush=True)
 
     def on_result(number: int, count: int, outcome: SliceOutcome) -> None:
-        if outcome.success:
-            print(f"done ({outcome.elapsed:.1f}s)")
-        else:
-            print(f"FAILED: {outcome.message or 'unknown error'}")
+        nonlocal last_report
+        if jobs > 1:
+            print(f"  [{number}/{count}] {outcome.model.relative_to(slice_input.root)} ... ", end="")
+        print(_result_text(outcome), flush=True)
+        finished.append(outcome)
+        if time.monotonic() - last_report >= _REPORT_INTERVAL_SECONDS:
+            last_report = time.monotonic()
+            _write_report(finished, outcome.job_directory, slice_input.root, output_directory)
 
     return service.slice_batch(
         slice_input.models,
         slice_input.root,
         output_directory,
         selection,
+        jobs=jobs,
         on_start=on_start,
         on_result=on_result,
     )
 
 
-def _report_batch(batch: BatchOutcome) -> None:
-    """Summarise a batch: how many sliced, where the results are, and what failed."""
+def _write_report(
+    outcomes: Sequence[SliceOutcome],
+    job_directory: Path,
+    root: Path,
+    output_directory: Path,
+) -> None:
+    """Rewrite a running batch's report in its batch folder (found from a job folder)."""
+    base = output_directory.absolute()
+    batch_directory = base / job_directory.relative_to(base).parts[0]
+    try:
+        write_report(outcomes, batch_directory, root)
+    except (OSError, ValueError) as error:
+        logging.getLogger("batchslicer").warning("Could not update the report: %s", error)
+
+
+def _result_text(outcome: SliceOutcome) -> str:
+    """Return how one model in a batch went, as shown after its name."""
+    if outcome.success:
+        oriented = ", auto-oriented" if outcome.auto_oriented else ""
+        return f"done ({outcome.elapsed:.1f}s{oriented})"
+    return f"FAILED: {outcome.message or 'unknown error'}"
+
+
+def _report_batch(batch: BatchOutcome, root: Path, options: SliceOptions) -> None:
+    """Summarise a batch: how many sliced, what printing them takes, and what failed."""
     total = batch.planned or len(batch.outcomes)
     if batch.interrupted:
         print("")
+        running = ", ".join(str(model) for model in batch.interrupted_models) or "the batch"
         _error(
-            f"Interrupted while slicing {batch.interrupted_model}; "
-            f"{total - len(batch.outcomes) - 1} model file(s) were not started."
+            f"Interrupted while slicing {running}; "
+            f"{total - len(batch.outcomes)} model file(s) were not sliced."
         )
+    took = batch.wall_seconds or batch.elapsed
     print(
         f"Sliced {len(batch.succeeded)} of {total} model file{'s' if total != 1 else ''} "
-        f"in {batch.elapsed:.1f}s."
+        f"in {_short_time(took)}."
     )
+    oriented = sum(1 for outcome in batch.succeeded if outcome.auto_oriented)
+    if oriented:
+        print(f"  {oriented} of them with auto-orient.")
+    totals = _describe_stats(batch.stats)
+    if totals:
+        print(f"  To print: {totals}")
     print(f"  Output: {batch.batch_directory}")
+    try:
+        report, _ = write_report(batch.outcomes, batch.batch_directory, root)
+        print(f"  Report: {report}")
+    except OSError as error:
+        _error(f"  Could not write the report: {error}")
     if batch.failed:
         _error("  Failed:")
         for outcome in batch.failed:
             _error(f"    {outcome.model}: {outcome.message or 'unknown error'}")
+        for hint in _hints(batch.failed, options):
+            _error(f"  Hint: {hint}")
 
 
-def _report(outcome: SliceOutcome) -> None:
+def _short_time(seconds: float) -> str:
+    """Return a run's length: seconds with one decimal under a minute, else ``1h 2m 3s``."""
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    whole = round(seconds)
+    hours, rest = divmod(whole, 3600)
+    minutes, secs = divmod(rest, 60)
+    return f"{hours}h {minutes}m {secs}s" if hours else f"{minutes}m {secs}s"
+
+
+def _hints(failed: Sequence[SliceOutcome], options: SliceOptions) -> list[str]:
+    """Return suggestions for failures that an option may fix."""
+    hints = []
+    for text, applies, hint in _HINTS:
+        count = sum(1 for outcome in failed if text in outcome.message)
+        if count and applies(options):
+            hints.append(hint.format(count=count))
+    return hints
+
+
+def _describe_stats(stats: GcodeStats) -> str:
+    """Return the print time and filament as one line, or "" if unknown."""
+    parts = []
+    if stats.print_seconds is not None:
+        parts.append(format_duration(stats.print_seconds))
+    if stats.filament_grams is not None:
+        grams = stats.filament_grams
+        parts.append(f"{grams / 1000:.2f} kg filament" if grams >= 1000 else f"{grams:.0f} g filament")
+    if stats.filament_cost is not None and stats.filament_cost > 0:
+        parts.append(f"filament cost {stats.filament_cost:.2f}")
+    return ", ".join(parts)
+
+
+def _report(outcome: SliceOutcome, options: SliceOptions) -> None:
     """Tell the user where the G-code is, or why slicing failed."""
+    try:
+        write_report([outcome], outcome.job_directory, outcome.model.parent)
+    except OSError as error:
+        logging.getLogger("batchslicer").warning("Could not write the report: %s", error)
     if outcome.success:
-        print(f"Sliced {outcome.model.name} in {outcome.elapsed:.1f}s:")
+        oriented = " with auto-orient" if outcome.auto_oriented else ""
+        print(f"Sliced {outcome.model.name}{oriented} in {outcome.elapsed:.1f}s:")
         for gcode in outcome.gcode_files:
             print(f"  {gcode}")
+        totals = _describe_stats(outcome.stats)
+        if totals:
+            print(f"  To print: {totals}")
         return
     _error(f"Slicing {outcome.model.name} failed: {outcome.message or 'unknown error'}")
     _error(f"  Details: {outcome.job_directory}")
+    for hint in _hints([outcome], options):
+        _error(f"  Hint: {hint}")

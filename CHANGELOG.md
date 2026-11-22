@@ -6,6 +6,38 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+Large batches: found by slicing 1,719 real downloaded models.
+
+### Added
+
+- **`--orient retry|always`** uses the slicer's auto-orient. `retry` slices a
+  model that fails once more with auto-orient; this fixed 97 of 115 "Failed
+  slicing the model" errors in the test. `always` auto-orients every model.
+  Models sliced this way are marked "auto-oriented". Not available for Creality
+  Print, whose command line has no auto-orient.
+- **`--allow-newer-files`** lets the slicer open `.3mf` projects saved by a
+  newer slicer version (6 of 9 such projects then sliced).
+- **`--jobs N`** slices N models at the same time; progress is shown as each
+  finishes. Ctrl+C stops every running slicer. The slicers are already
+  multi-threaded, so the gain varies: on a 4-core computer two jobs were 12%
+  faster and four were no faster.
+- **Batch report**: every run writes `report.csv` and `report.json` with each
+  model's status, G-code, print time, filament weight, length and cost, and
+  failure reason. A batch's report is updated as it runs. The summary shows
+  total print time and filament.
+- Hints after failures that `--orient retry` or `--allow-newer-files` may fix.
+- The three new options can be saved in profiles.
+
+### Changed
+
+- Result folders hold only G-code and presets: the slicer's `result.json` and
+  `NNNNN.log` are read and then removed, folders of failed models are removed,
+  and a model interrupted by Ctrl+C leaves no partial files.
+- A batch's time is the time it took from start to finish, shown as minutes
+  and hours when long.
+- Slicer processes are started and stopped by BatchSlicer itself, so Ctrl+C
+  always stops them.
+
 ## [0.4.0] - 2026-11-20
 
 Dependable in everyday use: a setup check, tidy logs, and weekly testing

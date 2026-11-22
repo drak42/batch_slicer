@@ -209,3 +209,47 @@ def test_summary_names_the_slicer_when_a_printer_repeats() -> None:
     )
 
     assert both.summary() == "3 printers: K2 (creality_print); K2 (orca); Ender"
+
+
+def test_slicing_settings_round_trip(tmp_path: Path) -> None:
+    """orient, allow_newer_files and jobs are saved, loaded and summarised."""
+    store = ProfileStore(tmp_path / "profiles.yaml")
+    profile = Profile.single("farm", slicer="orca", printer="K2")
+    store.save(Profile(
+        name=profile.name,
+        targets=profile.targets,
+        orient="retry",
+        allow_newer_files=True,
+        jobs=3,
+    ))
+
+    loaded = store.get("farm")
+
+    assert (loaded.orient, loaded.allow_newer_files, loaded.jobs) == ("retry", True, 3)
+    assert "orient retry, newer files allowed, 3 jobs" in loaded.summary()
+    stored = yaml.safe_load((tmp_path / "profiles.yaml").read_text(encoding="utf-8"))
+    assert stored["farm"] == {
+        "slicer": "orca",
+        "printer": "K2",
+        "orient": "retry",
+        "allow_newer_files": True,
+        "jobs": 3,
+    }
+
+
+@pytest.mark.parametrize(
+    ("setting", "message"),
+    [
+        ("orient: upside-down", "unknown orient mode"),
+        ("allow_newer_files: maybe", "true or false"),
+        ("jobs: 0", "whole number"),
+        ("jobs: yes", "whole number"),
+    ],
+)
+def test_bad_slicing_settings_are_reported(tmp_path: Path, setting: str, message: str) -> None:
+    """Hand-edited settings are checked when loaded."""
+    path = tmp_path / "profiles.yaml"
+    path.write_text(f"farm:\n  slicer: orca\n  {setting}\n", encoding="utf-8")
+
+    with pytest.raises(ProfileError, match=message):
+        ProfileStore(path).load()

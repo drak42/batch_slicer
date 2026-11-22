@@ -28,10 +28,22 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - `batchslicer doctor` for checking a setup and reporting problems.
 - Log rotation; single-file mode lists models in subfolders.
 
+### 0.5.0: large batches (from a soak test of 1,719 real models)
+
+- `--orient retry|always`: slice rejected models again with auto-orient.
+- `--allow-newer-files` for projects saved by newer slicers.
+- `--jobs N`: several models at once.
+- Batch report (`report.csv`, `report.json`) with print time and filament.
+- Result folders hold only G-code: slicer status files, folders of failed
+  models and partial output of interrupted models are removed.
+
 ## Next
 
 - [ ] **Bambu Studio preset selection** (needs a Bambu Studio settings folder to
   verify against).
+- [ ] **Skip folders** (for example `--exclude PATTERN`): the soak test's
+  largest group of failures came from non-model meshes bundled with other
+  software.
 
 ## Then: decisions on reach
 
@@ -48,9 +60,7 @@ These need a decision from the project owner before work starts.
 
 | Feature | Why |
 |---|---|
-| Batch report (CSV/JSON: print time, filament, status per model) | costing and planning; the numbers are already in each G-code file |
 | Several models per plate, and copies | slicing many small parts as one plate saves printer time |
-| Parallel slicing (`--jobs N`) | large batches finish faster |
 | Watch folder | drop models in, get G-code out, unattended |
 | Multi-material (several filaments per printer) | Creality CFS, Bambu AMS |
 | Flat output option | all G-code in one folder |

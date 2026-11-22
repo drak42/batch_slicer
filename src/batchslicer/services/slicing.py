@@ -8,26 +8,39 @@ complete copies are written into the job (once per batch) so it records
 exactly what was used. A failed model does not stop a batch, and Ctrl+C stops
 it cleanly, keeping the models already sliced. G-code files are
 named after their model (``bracket.stl`` gives ``bracket.gcode``) instead of the
-slicer's generic ``plate_N.gcode``. This module does not prompt the user or
-choose presets.
+slicer's generic ``plate_N.gcode``.
+
+With ``orient="retry"`` a model that fails is sliced once more with the
+slicer's auto-orient; with ``"always"`` every model is. Several models can be
+sliced at the same time (``jobs``), each by its own slicer process. The
+slicer's own status files (``result.json``, ``NNNNN.log``) are read for the
+outcome and then removed, so a job folder holds only G-code (and presets); a
+failed model in a batch leaves no folder behind. This module does not prompt
+the user or choose presets.
 """
 
 import json
 import logging
 import re
+import shutil
+import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 
 from batchslicer.backends.orca import OrcaBackend, OrcaResult
 from batchslicer.backends.presets import PresetLibrary
 from batchslicer.core.logging import get_logger
+from batchslicer.domain.options import MAX_JOBS, SliceOptions
 from batchslicer.domain.presets import PresetSelection
+from batchslicer.services.gcode_stats import GcodeStats, total_stats
 
 _RESULT_FILE_NAME = "result.json"
 _PRESETS_FOLDER_NAME = "presets"
 _PLATE_GCODE_PATTERN = re.compile(r"plate_(\d+)\.gcode")
+_VALIDATION_LOG_PATTERN = re.compile(r"\d+\.log")
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +55,11 @@ class SliceOutcome:
     """The slicer's own explanation of the result, when it gives one."""
 
     elapsed: float
+    auto_oriented: bool = False
+    """Whether the G-code came from slicing with the slicer's auto-orient."""
+
+    stats: GcodeStats = field(default_factory=GcodeStats)
+    """Print time and filament use, totalled over the G-code files."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,16 +68,20 @@ class BatchOutcome:
 
     batch_directory: Path
     outcomes: tuple[SliceOutcome, ...]
+    """Finished models, in the order the models were given."""
+
     planned: int = 0
     """How many models the batch set out to slice."""
 
-    interrupted_model: Path | None = None
-    """The model being sliced when the batch was interrupted, if it was."""
+    interrupted: bool = False
+    """Whether the batch was stopped (Ctrl+C) before every model was sliced."""
 
-    @property
-    def interrupted(self) -> bool:
-        """Return whether the batch was stopped before every model was sliced."""
-        return self.interrupted_model is not None
+    interrupted_models: tuple[Path, ...] = ()
+    """The models being sliced when the batch was interrupted."""
+
+    wall_seconds: float = 0.0
+    """How long the batch took from start to finish (less than :attr:`elapsed`
+    when several models were sliced at once)."""
 
     @property
     def succeeded(self) -> tuple[SliceOutcome, ...]:
@@ -73,15 +95,24 @@ class BatchOutcome:
 
     @property
     def elapsed(self) -> float:
-        """Return the total slicing time in seconds."""
+        """Return the total slicing time in seconds, summed over models."""
         return sum(outcome.elapsed for outcome in self.outcomes)
+
+    @property
+    def stats(self) -> GcodeStats:
+        """Return the print time and filament of every successful model together."""
+        total = GcodeStats()
+        for outcome in self.succeeded:
+            total = total + outcome.stats
+        return total
 
 
 ProgressCallback = Callable[[int, int, Path], None]
 """Called as ``(number, total, model)`` before each model in a batch is sliced."""
 
 ResultCallback = Callable[[int, int, SliceOutcome], None]
-"""Called as ``(number, total, outcome)`` after each model in a batch is sliced."""
+"""Called as ``(finished, total, outcome)`` after each model in a batch is sliced,
+from the calling thread, in the order models finish."""
 
 
 class SlicingService:
@@ -94,15 +125,18 @@ class SlicingService:
         presets: PresetLibrary | None = None,
         logger: logging.Logger | None = None,
         clock: Callable[[], datetime] = datetime.now,
+        options: SliceOptions | None = None,
     ) -> None:
         """Create a service that slices with ``backend``.
 
-        ``presets`` is needed to slice with a preset selection.
+        ``presets`` is needed to slice with a preset selection; ``options``
+        sets auto-orient and newer-file handling for every model.
         """
         self._backend = backend
         self._presets = presets
         self._logger = logger or get_logger()
         self._clock = clock
+        self._options = options or SliceOptions()
 
     def slice(
         self,
@@ -124,6 +158,7 @@ class SlicingService:
         output_directory: Path,
         selection: PresetSelection | None = None,
         *,
+        jobs: int = 1,
         on_start: ProgressCallback | None = None,
         on_result: ResultCallback | None = None,
     ) -> BatchOutcome:
@@ -131,49 +166,86 @@ class SlicingService:
 
         Results go into one new batch folder inside ``output_directory``, where
         ``source_root/a/b/part.stl`` is sliced into ``<batch>/a/b/part/``.
-        Every model is attempted even if earlier ones fail. If the batch is
-        interrupted (Ctrl+C), it stops and returns the models finished so far.
+        Every model is attempted even if earlier ones fail. Up to ``jobs``
+        models are sliced at the same time. If the batch is interrupted
+        (Ctrl+C), running slicers are stopped and the models finished so far
+        are returned.
         """
+        if not 1 <= jobs <= MAX_JOBS:
+            raise ValueError(f"jobs must be between 1 and {MAX_JOBS}: {jobs}")
         batch_directory = self._create_unique_directory(
             output_directory / f"{source_root.name}-{self._stamp()}"
         )
         settings, filaments = self._write_presets(selection, batch_directory)
         self._logger.info(
-            "Slicing %d model(s) from %s into %s", len(models), source_root, batch_directory
+            "Slicing %d model(s) from %s into %s with %d job(s)",
+            len(models),
+            source_root,
+            batch_directory,
+            jobs,
         )
 
-        outcomes: list[SliceOutcome] = []
+        started_at = time.perf_counter()
         total = len(models)
-        interrupted_model: Path | None = None
-        for number, model in enumerate(models, start=1):
+        finished: dict[int, SliceOutcome] = {}
+        running: dict[Future[SliceOutcome], int] = {}
+        job_directories: dict[int, Path] = {}
+        queue = list(enumerate(models))
+        interrupted = False
+        with ThreadPoolExecutor(max_workers=jobs, thread_name_prefix="slice") as executor:
             try:
-                if on_start is not None:
-                    on_start(number, total, model)
-                relative_folder = model.parent.relative_to(source_root)
-                job_directory = self._create_unique_directory(
-                    batch_directory / relative_folder / model.stem
-                )
-                outcome = self._slice_into(model, job_directory, settings, filaments)
+                while queue or running:
+                    while queue and len(running) < jobs:
+                        index, model = queue.pop(0)
+                        if on_start is not None:
+                            on_start(index + 1, total, model)
+                        job_directory = self._create_unique_directory(
+                            batch_directory / model.parent.relative_to(source_root) / model.stem
+                        )
+                        job_directories[index] = job_directory
+                        future = executor.submit(
+                            self._slice_into, model, job_directory, settings, filaments
+                        )
+                        running[future] = index
+                    done, _ = wait(running, return_when=FIRST_COMPLETED)
+                    for future in sorted(done, key=running.__getitem__):
+                        outcome = future.result()
+                        index = running.pop(future)
+                        finished[index] = outcome
+                        if on_result is not None:
+                            on_result(len(finished), total, outcome)
             except KeyboardInterrupt:
-                interrupted_model = model
-                self._logger.warning("Batch interrupted while slicing %s.", model)
-                break
-            outcomes.append(outcome)
-            if on_result is not None:
-                on_result(number, total, outcome)
+                interrupted = True
+                self._backend.stop_all()
+                for future in running:
+                    future.cancel()
+                self._logger.warning(
+                    "Batch interrupted while slicing %s.",
+                    ", ".join(str(models[index]) for index in sorted(running.values())),
+                )
+
+        if interrupted:
+            for index in running.values():
+                # Only partial output of this run is in an interrupted model's new folder.
+                shutil.rmtree(job_directories[index], ignore_errors=True)
+        _remove_empty_folders(batch_directory)
 
         batch = BatchOutcome(
             batch_directory=batch_directory,
-            outcomes=tuple(outcomes),
+            outcomes=tuple(finished[index] for index in sorted(finished)),
             planned=total,
-            interrupted_model=interrupted_model,
+            interrupted=interrupted,
+            interrupted_models=tuple(models[index] for index in sorted(running.values()))
+            if interrupted
+            else (),
+            wall_seconds=time.perf_counter() - started_at,
         )
         self._logger.info(
             "Batch %s: %d succeeded, %d failed, %d not sliced.",
             "interrupted" if batch.interrupted else "finished",
             len(batch.succeeded),
             len(batch.failed),
-            total - len(outcomes),
+            total - len(batch.outcomes),
         )
         return batch
 
@@ -184,15 +256,41 @@ class SlicingService:
         settings: list[Path],
         filaments: list[Path],
     ) -> SliceOutcome:
-        """Run the slicer for one model into an existing job folder."""
+        """Run the slicer for one model into an existing job folder.
+
+        With orient "retry", a failure is retried once with auto-orient.
+        """
+        orient = self._options.orient
         self._logger.info("Slicing %s into %s", model, job_directory)
-        result = self._backend.slice(
+        result = self._run_slicer(model, job_directory, settings, filaments, orient == "always")
+        outcome = self._outcome(model, job_directory, result, auto_oriented=orient == "always")
+        if not outcome.success and orient == "retry" and result.exit_code != -1:
+            self._logger.info("Retrying %s with auto-orient.", model)
+            retry = self._run_slicer(model, job_directory, settings, filaments, True)
+            retried = self._outcome(model, job_directory, retry, auto_oriented=True)
+            if retried.success:
+                outcome = replace(retried, elapsed=outcome.elapsed + retried.elapsed)
+            else:
+                outcome = replace(outcome, elapsed=outcome.elapsed + retried.elapsed)
+        return outcome
+
+    def _run_slicer(
+        self,
+        model: Path,
+        job_directory: Path,
+        settings: list[Path],
+        filaments: list[Path],
+        orient: bool,
+    ) -> OrcaResult:
+        """Run the slicer once for ``model``."""
+        return self._backend.slice(
             model,
             job_directory,
+            orient=orient,
+            allow_newer_file=self._options.allow_newer_files,
             load_settings=settings,
             load_filaments=filaments,
         )
-        return self._outcome(model, job_directory, result)
 
     def _write_presets(
         self,
@@ -224,8 +322,19 @@ class SlicingService:
         directory.mkdir(parents=True)
         return directory.absolute()
 
-    def _outcome(self, model: Path, job_directory: Path, result: OrcaResult) -> SliceOutcome:
-        """Combine the process result, result.json and the G-code files found."""
+    def _outcome(
+        self,
+        model: Path,
+        job_directory: Path,
+        result: OrcaResult,
+        *,
+        auto_oriented: bool = False,
+    ) -> SliceOutcome:
+        """Combine the process result, the slicer's status files and the G-code found.
+
+        The status files are removed once read, so a retry starts clean and the
+        job folder keeps only results.
+        """
         gcode_files = _name_gcode_after_model(model, job_directory)
         message = _read_result_message(job_directory / _RESULT_FILE_NAME)
         success = result.success and bool(gcode_files)
@@ -237,8 +346,14 @@ class SlicingService:
             detail = _read_validation_log(job_directory)
             if detail and detail not in message:
                 message = f"{message} ({detail})" if message else detail
+        _remove_status_files(job_directory)
         if success:
-            self._logger.info("Sliced %s into %d G-code file(s).", model, len(gcode_files))
+            self._logger.info(
+                "Sliced %s into %d G-code file(s)%s.",
+                model,
+                len(gcode_files),
+                " with auto-orient" if auto_oriented else "",
+            )
         else:
             self._logger.error("Slicing %s failed: %s", model, message or "unknown error")
         return SliceOutcome(
@@ -248,7 +363,31 @@ class SlicingService:
             gcode_files=gcode_files,
             message=message,
             elapsed=result.elapsed,
+            auto_oriented=auto_oriented and success,
+            stats=total_stats(gcode_files) if success else GcodeStats(),
         )
+
+
+def _remove_status_files(job_directory: Path) -> None:
+    """Remove the slicer's result.json and numbered validation logs from a job folder."""
+    candidates = [job_directory / _RESULT_FILE_NAME, *job_directory.glob("[0-9]*.log")]
+    for path in candidates:
+        if path.name == _RESULT_FILE_NAME or _VALIDATION_LOG_PATTERN.fullmatch(path.name):
+            path.unlink(missing_ok=True)
+
+
+def _remove_empty_folders(root: Path) -> None:
+    """Remove empty folders below ``root`` (deepest first), such as those of failed models."""
+    folders = sorted(
+        (path for path in root.rglob("*") if path.is_dir() and not path.is_symlink()),
+        key=lambda path: len(path.parts),
+        reverse=True,
+    )
+    for folder in folders:
+        try:
+            folder.rmdir()
+        except OSError:
+            pass
 
 
 def _read_validation_log(job_directory: Path) -> str:

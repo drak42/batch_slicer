@@ -35,7 +35,7 @@ repeats the same run.
 - [Using the command line](#using-the-command-line)
 - [Profiles](#profiles)
 - [Slicing for several printers](#slicing-for-several-printers)
-- [Output](#output)
+- [Output](#output) (including [reports](#reports) and [speed](#speed))
 - [Exit status and logs](#exit-status-and-logs)
 - [Troubleshooting](#troubleshooting)
 - [Checking your setup: `batchslicer doctor`](#checking-your-setup-batchslicer-doctor)
@@ -59,7 +59,16 @@ repeats the same run.
 - **Never overwrites earlier results.** Every run gets its own time-stamped
   folder, which also records the exact presets that were used.
 - **Explains failures.** A model that fails does not stop the batch; the
-  summary lists each failure with the slicer's own reason.
+  summary lists each failure with the slicer's own reason, and suggests an
+  option when one may fix it.
+- **Rescues awkwardly saved models.** With `--orient retry`, a model the slicer
+  rejects is sliced again with the slicer's auto-orient. In a test on 1,719
+  downloaded models this fixed 97 of 115 "Failed slicing the model" errors.
+- **Reports print time and filament.** Every run writes `report.csv` and
+  `report.json` with each model's status, print time, filament weight, length
+  and cost, and the summary shows the totals.
+- **Can slice several models at once.** `--jobs N` runs N slicers side by
+  side, which helps most on computers with many cores (see [Speed](#speed)).
 - **Slices for several printers at once.** One run can slice the same models
   for different printers, each with its own slicer and presets, into separate
   folders.
@@ -346,6 +355,9 @@ asking; anything you leave out is still asked for, unless you add
 | `--input PATH` | a model file, or a folder: every model in it and its subfolders is sliced, without asking for confirmation |
 | `--output PATH` | output folder; created if missing; defaults to the configured `output` folder |
 | `--no-prompt` | never ask anything; a missing choice is an error that names the option to add |
+| `--orient MODE` | the slicer's auto-orient: `off` (default), `retry` (slice a model that fails once more with auto-orient) or `always` (auto-orient every model; this may rotate parts saved the right way up). Not available for Creality Print |
+| `--allow-newer-files` | let the slicer open `.3mf` projects saved by a newer slicer version (`--no-allow-newer-files` turns off a profile's setting) |
+| `--jobs N` | slice N models at the same time (default 1); see [Speed](#speed) |
 | `--list-presets` | list preset names, then exit (see below) |
 | `--profile NAME` | start from a saved profile (see [Profiles](#profiles)); repeat it to slice for several printers |
 | `--last` | repeat the last run |
@@ -398,6 +410,13 @@ batchslicer --slicer orca \
   --input ~/models/bracket.stl --no-prompt
 ```
 
+A large batch, two models at a time, rescuing models the slicer rejects:
+
+```bash
+batchslicer --profile k2-pla --input ~/Downloads/kits \
+  --orient retry --allow-newer-files --jobs 2 --no-prompt
+```
+
 Set the slicer and printer, and be asked for everything else:
 
 ```bash
@@ -417,7 +436,8 @@ configuration is not in `~/.config/batchslicer/`:
 ## Profiles
 
 A profile is a named set of choices (slicer, printer, filament, process, input
-and output) that you can reuse instead of typing them again.
+and output, plus `--orient`, `--allow-newer-files` and `--jobs` if you gave
+them) that you can reuse instead of typing them again.
 
 ```bash
 # slice as usual and save the choices under a name
@@ -514,8 +534,9 @@ never overwritten.
 output/
   bracket-20261120-144428/
     bracket.gcode
-    result.json        # the slicer's own report
     presets/           # the complete printer, process and filament files used
+    report.csv         # see "Reports" below
+    report.json
 ```
 
 **A folder** (`incoming/brackets/` with `left.stl` and `old/v1.stl`):
@@ -524,23 +545,59 @@ output/
 output/
   brackets-20261120-144808/
     presets/           # shared by the whole batch
+    report.csv
+    report.json
     left/
       left.gcode
-      result.json
     old/
       v1/
         v1.gcode
-        result.json
 ```
 
 - G-code is named after the model. A `.3mf` project with several plates gives
   one file per plate: `kit_plate_1.gcode`, `kit_plate_2.gcode`, and so on.
 - Two models with the same name in one folder (`part.stl` and `part.3mf`) get
   separate folders (`part` and `part-2`).
-- A model that fails still gets its folder, with `result.json` explaining why.
-  The slicer runs inside that folder, so any extra files it writes (such as
-  OrcaSlicer's `00000.log`) stay there, and their reason is added to the
-  failure message.
+- A model that fails leaves no folder; its reason is in the summary, the
+  report and the log. The slicer's own status files (`result.json`,
+  `00000.log`) are read and then removed, so result folders hold only G-code.
+- A model that was stopped by Ctrl+C leaves nothing behind (no partial G-code).
+
+### Reports
+
+Every run writes `report.csv` (opens in any spreadsheet) and `report.json` (the
+same, for scripts) with one row per model:
+
+| Column | Meaning |
+|---|---|
+| `model` | the model, relative to the folder that was sliced |
+| `status` | `ok` or `failed` |
+| `auto_oriented` | `yes` if the G-code came from the slicer's auto-orient (see `--orient`) |
+| `gcode` | the G-code file(s), relative to the run's folder |
+| `print_time`, `print_seconds` | the slicer's estimated print time |
+| `filament_g`, `filament_m`, `filament_cost` | filament weight (g), length (m) and cost, as calculated by the slicer from the filament preset |
+| `slice_seconds` | how long slicing took |
+| `message` | why the model failed |
+
+A batch's report is updated as it runs, so an interrupted batch still has a
+report of what was finished. The summary at the end shows the totals, for
+example `To print: 12h 41m, 255 g filament, filament cost 5.07`.
+
+### Speed
+
+Models are sliced one at a time unless `--jobs N` is given. The slicers are
+already multi-threaded, so the gain depends on the computer and the models,
+and more jobs is not always faster. Each slicer can also use 1-2 GB of memory.
+Measured on a 4-core computer with OrcaSlicer, 40 typical models:
+
+| `--jobs` | Time |
+|---|---|
+| 1 | 2m 42s |
+| 2 | 2m 23s (12% faster) |
+| 4 | 2m 48s (no faster) |
+
+Start with `--jobs 2` and compare the times the summary shows; computers with
+more cores and memory gain more. Progress is shown as each model finishes.
 
 ## Exit status and logs
 
@@ -555,8 +612,8 @@ Progress and results are printed to standard output; error messages go to
 standard error, so a script can capture them separately (`2> errors.txt`).
 
 **Stopping a run.** Press Ctrl+C at any time. During a batch, BatchSlicer stops
-after cancelling the model being sliced, keeps every model already finished,
-and reports what was done and what was not started.
+the slicer(s) still running, keeps every model already finished, and reports
+what was done and what was not sliced.
 
 **Unexpected errors.** If BatchSlicer hits a problem it does not expect (a
 bug), it prints one line describing it and the location of the log; the full
@@ -589,6 +646,19 @@ again. BatchSlicer lists the printers the slicer has recorded.
 **A filament is missing from the list**: make it visible in the slicer's
 filament selection. Only compatible, visible built-in filaments are listed,
 plus all of your own.
+
+**"Failed slicing the model ..."** (often with "found slicing or export error
+for partplate 1"): usually the part was saved in an orientation that cannot
+be printed as it is, for example floating above the bed or balanced on an
+edge. Add `--orient retry` to slice such models again with the slicer's
+auto-orient, and check the result in the slicer before printing.
+
+**"One of the plate is empty or has no object fully inside it"**: the model is
+larger than the printer's bed, or a project plate has nothing on it.
+
+**"Unsupported 3MF version ..."**: the project was saved by a newer version of
+the slicer (for example Bambu Studio 2.5 projects in OrcaSlicer 2.4). Add
+`--allow-newer-files`, or update the slicer.
 
 **"The input model file to the slicer can not be parsed."**: the model file is
 damaged or not a valid STL/3MF/OBJ. Open it in the slicer to check.
@@ -671,8 +741,7 @@ tab ("Latest slicers").
 - **The same presets for every model.** Within a run, each printer uses one
   filament and process for all models; to vary them, use separate runs or
   profiles.
-- **One model at a time, one model per plate.** Models are sliced one after
-  another, and several models are not arranged onto one plate.
+- **One model per plate.** Several models are not arranged onto one plate.
 - **Flatpak installs are not detected** by `batchslicer setup`; configure them
   by hand.
 

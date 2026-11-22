@@ -125,3 +125,31 @@ def test_doctor_command_options() -> None:
 
     assert parse_arguments(["doctor"]) == DoctorOptions()
     assert parse_arguments(["doctor", "--config", "c.yaml"]) == DoctorOptions(config=Path("c.yaml"))
+
+
+def test_slicing_options() -> None:
+    """--orient, --allow-newer-files and --jobs are parsed; unset means "not chosen"."""
+    options = parse_arguments(["--orient", "Retry", "--allow-newer-files", "--jobs", "4"])
+
+    assert isinstance(options, RunOptions)
+    assert (options.orient, options.allow_newer_files, options.jobs) == ("retry", True, 4)
+    unset = parse_arguments([])
+    assert isinstance(unset, RunOptions)
+    assert (unset.orient, unset.allow_newer_files, unset.jobs) == (None, None, None)
+    refused = parse_arguments(["--no-allow-newer-files"])
+    assert isinstance(refused, RunOptions)
+    assert refused.allow_newer_files is False
+
+
+@pytest.mark.parametrize(
+    "arguments", [["--orient", "sideways"], ["--jobs", "0"], ["--jobs", "many"], ["--jobs", "65"]]
+)
+def test_bad_slicing_options_are_usage_errors(
+    arguments: list[str], capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Invalid values stop with status 2 and say why."""
+    with pytest.raises(SystemExit) as stopped:
+        parse_arguments(arguments)
+
+    assert stopped.value.code == 2
+    assert "argument" in capsys.readouterr().err

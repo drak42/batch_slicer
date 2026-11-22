@@ -18,6 +18,7 @@ the caller's working directory.
 import logging
 import subprocess
 import tempfile
+import threading
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -70,6 +71,8 @@ class OrcaBackend:
         self._config = config or get_config()
         self._logger = logger or get_logger()
         self._timeout_seconds = timeout_seconds
+        self._lock = threading.Lock()
+        self._running: set[subprocess.Popen[str]] = set()
 
     @property
     def slicer(self) -> SlicerDefinition:
@@ -87,30 +90,19 @@ class OrcaBackend:
         ``working_directory`` sets where OrcaSlicer runs; ``None`` keeps the
         current directory. Commands that cannot start or exceed the timeout
         produce an unsuccessful result with exit code -1 instead of raising.
+        Several commands may run at once from different threads; see
+        :meth:`stop_all`.
         """
         executed_command = tuple(str(argument) for argument in command)
         started_at = time.perf_counter()
         try:
-            completed = subprocess.run(
+            process = subprocess.Popen(
                 executed_command,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
-                check=False,
-                timeout=self._timeout_seconds,
+                errors="replace",
                 cwd=working_directory,
-            )
-        except subprocess.TimeoutExpired as error:
-            elapsed = time.perf_counter() - started_at
-            message = f"{self._slicer.display_name} timed out after {self._timeout_seconds:g} seconds."
-            self._logger.error("%s Command: %s", message, executed_command)
-            stderr = _as_text(error.stderr)
-            return OrcaResult(
-                False,
-                -1,
-                _as_text(error.stdout),
-                f"{stderr}\n{message}" if stderr else message,
-                elapsed,
-                executed_command,
             )
         except OSError as error:
             elapsed = time.perf_counter() - started_at
@@ -120,12 +112,40 @@ class OrcaBackend:
             )
             return OrcaResult(False, -1, "", message, elapsed, executed_command)
 
+        with self._lock:
+            self._running.add(process)
+        try:
+            stdout, stderr = process.communicate(timeout=self._timeout_seconds)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            partial_stdout, partial_stderr = process.communicate()
+            elapsed = time.perf_counter() - started_at
+            message = f"{self._slicer.display_name} timed out after {self._timeout_seconds:g} seconds."
+            self._logger.error("%s Command: %s", message, executed_command)
+            stderr = _as_text(partial_stderr)
+            return OrcaResult(
+                False,
+                -1,
+                _as_text(partial_stdout),
+                f"{stderr}\n{message}" if stderr else message,
+                elapsed,
+                executed_command,
+            )
+        except BaseException:
+            # Ctrl+C while waiting: do not leave the slicer running.
+            process.kill()
+            process.wait()
+            raise
+        finally:
+            with self._lock:
+                self._running.discard(process)
+
         elapsed = time.perf_counter() - started_at
         result = OrcaResult(
-            completed.returncode == 0,
-            completed.returncode,
-            completed.stdout,
-            completed.stderr,
+            process.returncode == 0,
+            process.returncode,
+            stdout,
+            stderr,
             elapsed,
             executed_command,
         )
@@ -145,6 +165,15 @@ class OrcaBackend:
                 _tail(result.stderr) or "(empty)",
             )
         return result
+
+    def stop_all(self) -> None:
+        """Stop every command this backend is running (used when a run is cancelled)."""
+        with self._lock:
+            running = list(self._running)
+        for process in running:
+            if process.poll() is None:
+                self._logger.warning("Stopping %s (process %s).", self._slicer.display_name, process.pid)
+                process.kill()
 
     def help(self) -> OrcaResult:
         """Run OrcaSlicer with its general help option."""
@@ -167,6 +196,7 @@ class OrcaBackend:
         enable_timelapse: bool = False,
         skip_modified_gcodes: bool = False,
         no_check: bool = False,
+        allow_newer_file: bool = False,
         load_settings: Sequence[PathLike] = (),
         load_filaments: Sequence[PathLike] = (),
     ) -> OrcaResult:
@@ -188,6 +218,7 @@ class OrcaBackend:
                 enable_timelapse=enable_timelapse,
                 skip_modified_gcodes=skip_modified_gcodes,
                 no_check=no_check,
+                allow_newer_file=allow_newer_file,
                 load_settings=load_settings,
                 load_filaments=load_filaments,
             ),
@@ -217,6 +248,7 @@ class OrcaBackend:
         enable_timelapse: bool = False,
         skip_modified_gcodes: bool = False,
         no_check: bool = False,
+        allow_newer_file: bool = False,
         load_settings: Sequence[PathLike] = (),
         load_filaments: Sequence[PathLike] = (),
     ) -> tuple[str, ...]:
@@ -224,7 +256,9 @@ class OrcaBackend:
 
         ``plate`` is 0 for all plates or the 1-based plate number. Options that
         OrcaSlicer expects a value for (``--orient``, ``--arrange``,
-        ``--skip-modified-gcodes``) are passed ``1`` when enabled. Settings and
+        ``--skip-modified-gcodes``) are passed ``1`` when enabled; flags
+        (``--enable-timelapse``, ``--no-check``, ``--allow-newer-file``) take no
+        value. Settings and
         filament files are joined into the single semicolon-separated argument
         OrcaSlicer expects. The input model is the final positional argument.
         Requesting an option the selected slicer lacks raises ``ValueError``.
@@ -253,6 +287,7 @@ class OrcaBackend:
         for flag, enabled in (
             ("--enable-timelapse", enable_timelapse),
             ("--no-check", no_check),
+            ("--allow-newer-file", allow_newer_file),
         ):
             if enabled:
                 self._require_option(flag)

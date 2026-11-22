@@ -41,11 +41,21 @@ not slice. Everything below describes a normal run.
 8. **Choose what to slice** (`cli/file_prompt.py`) and **the output folder**
    (`cli/output_prompt.py`).
 9. **Remember the run** as the profile `last`, and as `--save-profile` if given.
-10. **Slice** (`services/slicing.py`, `backends/orca.py`): for each target, a
+10. **Check the slicing options** (`--orient`, `--allow-newer-files`,
+    `--jobs`, possibly from a profile) against each chosen slicer, and show
+    them with the presets.
+11. **Slice** (`services/slicing.py`, `backends/orca.py`): for each target, a
     job folder (one model) or batch folder (a folder of models) is created, the
-    resolved presets are written into it, and the slicer runs inside it.
-11. **Report** results and exit: 0 success, 1 failure, 130 interrupted.
+    resolved presets are written into it, and the slicer runs inside each
+    model's folder, up to `--jobs` at a time. With `--orient retry` a failed
+    model is sliced once more with auto-orient. The slicer's status files are
+    read and removed; folders of failed or interrupted models are removed.
+12. **Report** (`services/report.py`, `services/gcode_stats.py`): write
+    `report.csv` and `report.json` (kept up to date during a batch), show the
+    summary with print time and filament totals and hints for failures an
+    option may fix, and exit: 0 success, 1 failure, 130 interrupted.
 
 Failures before slicing stop the run with a message naming the problem.
-Ctrl+C at any point stops cleanly (a batch keeps finished models). Unexpected
+Ctrl+C at any point stops cleanly: running slicers are stopped and a batch
+keeps its finished models. Unexpected
 errors are reported in one line with details in the log.

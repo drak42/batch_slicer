@@ -18,6 +18,7 @@ from batchslicer.backends.slicers import SLICERS
 from batchslicer.cli.doctor import DoctorOptions
 from batchslicer.cli.setup import SetupOptions
 from batchslicer.core.locations import user_config_file
+from batchslicer.domain.options import MAX_JOBS, ORIENT_MODES, OrientMode, orient_mode
 from batchslicer.domain.profiles import LAST_RUN
 from batchslicer.version import get_version_string
 
@@ -59,6 +60,10 @@ class RunOptions:
     save_profile: str | None = None
     list_profiles: bool = False
     delete_profile: str | None = None
+    orient: OrientMode | None = None
+    allow_newer_files: bool | None = None
+    jobs: int | None = None
+    """How many models to slice at the same time."""
 
     def has_choices(self) -> bool:
         """Return whether any run choice was given on the command line."""
@@ -110,7 +115,29 @@ def parse_arguments(
         save_profile=namespace.save_profile,
         list_profiles=namespace.list_profiles,
         delete_profile=namespace.delete_profile,
+        orient=namespace.orient,
+        allow_newer_files=namespace.allow_newer_files,
+        jobs=namespace.jobs,
     )
+
+
+def _orient(value: str) -> OrientMode:
+    """Return an --orient value, or explain the choices."""
+    try:
+        return orient_mode(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error)) from error
+
+
+def _jobs(value: str) -> int:
+    """Return a --jobs value: a whole number from 1 to MAX_JOBS."""
+    try:
+        jobs = int(value)
+    except ValueError:
+        jobs = 0
+    if not 1 <= jobs <= MAX_JOBS:
+        raise argparse.ArgumentTypeError(f"must be a whole number from 1 to {MAX_JOBS}: '{value}'")
+    return jobs
 
 
 def _parse_doctor(arguments: Sequence[str]) -> DoctorOptions:
@@ -222,6 +249,33 @@ def _parser() -> argparse.ArgumentParser:
         "--no-prompt",
         action="store_true",
         help="never ask questions; fail if a required choice is missing",
+    )
+    slicing = parser.add_argument_group("slicing")
+    slicing.add_argument(
+        "--orient",
+        type=_orient,
+        metavar="MODE",
+        help=(
+            f"use the slicer's auto-orient: {', '.join(ORIENT_MODES)}. 'retry' slices a model "
+            "that fails once more with auto-orient (often fixes 'Failed slicing the model'); "
+            "'always' auto-orients every model, which may rotate parts saved the right way "
+            "up (default: off)"
+        ),
+    )
+    slicing.add_argument(
+        "--allow-newer-files",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="let the slicer open 3MF projects saved by a newer slicer version",
+    )
+    slicing.add_argument(
+        "--jobs",
+        type=_jobs,
+        metavar="N",
+        help=(
+            "slice N models at the same time (default: 1). Slicers are already "
+            "multi-threaded, so try 2 first; each can use 1-2 GB of memory"
+        ),
     )
     profiles = parser.add_argument_group("profiles (saved choices)")
     starting = profiles.add_mutually_exclusive_group()
