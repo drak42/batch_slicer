@@ -65,6 +65,9 @@ class RunOptions:
     jobs: int | None = None
     """How many models to slice at the same time."""
 
+    exclude: tuple[str, ...] | None = None
+    """Patterns of folders and files to leave out of a folder run (--exclude)."""
+
     def has_choices(self) -> bool:
         """Return whether any run choice was given on the command line."""
         return any(
@@ -118,6 +121,7 @@ def parse_arguments(
         orient=namespace.orient,
         allow_newer_files=namespace.allow_newer_files,
         jobs=namespace.jobs,
+        exclude=tuple(namespace.exclude) if namespace.exclude else None,
     )
 
 
@@ -257,7 +261,8 @@ def _parser() -> argparse.ArgumentParser:
         metavar="MODE",
         help=(
             f"use the slicer's auto-orient: {', '.join(ORIENT_MODES)}. 'retry' slices a model "
-            "that fails once more with auto-orient (often fixes 'Failed slicing the model'); "
+            "that fails once more with auto-orient (often fixes 'Failed slicing the model' "
+            "or 'empty first layer'); "
             "'always' auto-orients every model, which may rotate parts saved the right way "
             "up (default: off)"
         ),
@@ -275,6 +280,17 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "slice N models at the same time (default: 1). Slicers are already "
             "multi-threaded, so try 2 first; each can use 1-2 GB of memory"
+        ),
+    )
+    slicing.add_argument(
+        "--exclude",
+        action="append",
+        metavar="PATTERN",
+        help=(
+            "leave out folders or files matching PATTERN when slicing a folder; repeat "
+            "for several. Without '/' it matches any folder or file name ('Cura-*', "
+            "'*_old.stl'), with '/' a path inside the folder ('kits/old'). Wildcards "
+            "*, ? and [...] work; case is ignored"
         ),
     )
     profiles = parser.add_argument_group("profiles (saved choices)")

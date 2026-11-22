@@ -6,6 +6,20 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **`--exclude PATTERN`** leaves out folders or files when slicing a folder
+  (repeatable; `Cura-*` matches a name at any depth, `kits/old` a path; case is
+  ignored). BatchSlicer says how many it skipped, and profiles save the
+  patterns. In the soak test, `--exclude "Cura-*"` would have left out the 241
+  printer-bed meshes behind 99 of the 216 failures.
+
+### Changed
+
+- The `--orient retry` hint also appears for OrcaSlicer 2.5's "empty first
+  layer" failures, and a failure's reason is no longer repeated when the
+  slicer's log only restates it.
+
 ## [0.6.0] - 2026-11-22
 
 Every supported slicer has preset selection, and the newest OrcaSlicer works.

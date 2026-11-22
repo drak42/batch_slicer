@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from batchslicer.cli.file_prompt import (
+    exclude_models,
     find_models,
     input_from_path,
     prompt_for_folder,
@@ -239,3 +240,34 @@ def test_single_file_mode_lists_models_in_subfolders(tree: Path) -> None:
         "  4) top.stl",
     ]
     assert chosen == (tree / "brackets" / "old" / "v1.obj").absolute()
+
+
+@pytest.mark.parametrize(
+    ("patterns", "left"),
+    [
+        (["brackets"], ["top.stl"]),
+        (["BRACKETS"], ["top.stl"]),
+        (["old"], ["brackets/left.stl", "brackets/right.3MF", "top.stl"]),
+        (["brackets/old"], ["brackets/left.stl", "brackets/right.3MF", "top.stl"]),
+        (["/brackets/old/"], ["brackets/left.stl", "brackets/right.3MF", "top.stl"]),
+        (["*.3mf"], ["brackets/left.stl", "brackets/old/v1.obj", "top.stl"]),
+        (["l*.stl", "top*"], ["brackets/old/v1.obj", "brackets/right.3MF"]),
+        (["nothing", "  "], ["brackets/left.stl", "brackets/old/v1.obj", "brackets/right.3MF", "top.stl"]),
+    ],
+)
+def test_exclude_patterns_leave_out_matching_models(tree: Path, patterns: list[str], left: list[str]) -> None:
+    """Names match at any depth, paths with '/' within the folder; case is ignored."""
+    chosen = input_from_path(tree)
+
+    kept, skipped = exclude_models(chosen, patterns)
+
+    assert sorted(str(path.relative_to(tree.absolute())) for path in kept.models) == left
+    assert skipped == len(chosen.models) - len(left)
+    assert kept.root == chosen.root and kept.is_folder
+
+
+def test_a_single_chosen_file_is_never_excluded(tree: Path) -> None:
+    """Naming one model explicitly slices it whatever the patterns say."""
+    chosen = input_from_path(tree / "top.stl")
+
+    assert exclude_models(chosen, ["top*"]) == (chosen, 0)

@@ -153,3 +153,14 @@ def test_bad_slicing_options_are_usage_errors(
 
     assert stopped.value.code == 2
     assert "argument" in capsys.readouterr().err
+
+
+def test_exclude_can_be_repeated() -> None:
+    """Each --exclude adds a pattern; none given means "not chosen"."""
+    options = parse_arguments(["--exclude", "Cura-*", "--exclude", "kits/old"])
+
+    assert isinstance(options, RunOptions)
+    assert options.exclude == ("Cura-*", "kits/old")
+    unset = parse_arguments([])
+    assert isinstance(unset, RunOptions)
+    assert unset.exclude is None

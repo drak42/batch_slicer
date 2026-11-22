@@ -146,6 +146,13 @@ class ProfileStore:
             if isinstance(jobs, bool) or not isinstance(jobs, int) or not 1 <= jobs <= MAX_JOBS:
                 raise ProfileError(f"{where}: jobs must be a whole number from 1 to {MAX_JOBS}.")
             settings["jobs"] = jobs
+        if values.get("exclude") is not None:
+            exclude = values["exclude"]
+            if isinstance(exclude, str):
+                exclude = [exclude]
+            if not isinstance(exclude, list) or not all(isinstance(item, str) for item in exclude):
+                raise ProfileError(f"{where}: exclude must be a pattern or a list of patterns.")
+            settings["exclude"] = tuple(exclude)
         return settings
 
     def _target(self, name: str, values: Any) -> Target:
@@ -186,7 +193,7 @@ class ProfileStore:
         for key in SETTING_FIELDS:
             value = getattr(profile, key)
             if value is not None:
-                stored[key] = value
+                stored[key] = list(value) if isinstance(value, tuple) else value
         return stored
 
     def _write(self, profiles: dict[str, Profile]) -> None:
@@ -199,7 +206,8 @@ class ProfileStore:
             "# BatchSlicer profiles: saved choices for runs. Edit freely. A profile sets\n"
             "# slicer, printer, filament and process (or a 'targets' list of them, to\n"
             "# slice for several printers), plus input and output, and optionally\n"
-            "# orient (off/retry/always), allow_newer_files (true/false) and jobs.\n"
+            "# orient (off/retry/always), allow_newer_files (true/false), jobs and\n"
+            "# exclude (a list of patterns).\n"
             + yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
         )
         try:

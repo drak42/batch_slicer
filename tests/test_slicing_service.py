@@ -529,3 +529,19 @@ def test_user_printers_are_not_linked_for_slicers_that_resolve_inherits(tmp_path
     service.slice(tmp_path / "cube.stl", tmp_path / "output", _selection())
 
     assert library.write_resolved.call_args.kwargs == {"link_user_printer": False}
+
+
+def test_validation_log_that_repeats_the_message_is_not_added_again(tmp_path: Path) -> None:
+    """OrcaSlicer 2.5's log often repeats its message; the reason is then given once."""
+    backend = Mock()
+    reason = "part.stl: One object has an empty first layer and can't be printed."
+
+    def slice_(model: Path, job: Path, **kwargs: object) -> OrcaResult:
+        (job / "result.json").write_text(json.dumps({"error_string": reason}))
+        (job / "00000.log").write_text(f"found slicing or export error for partplate 1: {reason}\n")
+        return OrcaResult(False, 156, "", "", 1.0, ())
+
+    backend.slice.side_effect = slice_
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW)
+
+    assert service.slice(tmp_path / "part.stl", tmp_path / "out").message == reason

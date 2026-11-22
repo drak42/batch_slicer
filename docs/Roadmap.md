@@ -44,9 +44,8 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 ## Next
 
-- [ ] **Skip folders** (for example `--exclude PATTERN`): the soak test's
-  largest group of failures came from non-model meshes bundled with other
-  software.
+- [x] **Skip folders** (`--exclude PATTERN`): the soak test's largest group of
+  failures came from non-model meshes bundled with other software.
 
 ## Then: decisions on reach
 

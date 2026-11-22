@@ -1098,13 +1098,18 @@ def test_failures_an_option_may_fix_get_a_hint(
     _folder_batch(
         monkeypatch,
         _outcome(success=False, message="Failed slicing the model. (x)", model="/models/a.stl"),
+        _outcome(
+            success=False,
+            message="c.stl: One object has an empty first layer and can't be printed.",
+            model="/models/c.stl",
+        ),
         _outcome(success=False, message="Unsupported 3MF version.", model="/models/b.3mf"),
     )
 
     assert app.main([]) == 1
 
     err = capsys.readouterr().err
-    assert "Hint: 1 model(s) failed with 'Failed slicing the model'" in err
+    assert "Hint: 2 model(s) failed in a way that is often down to how the part was saved" in err
     assert "--orient retry" in err
     assert "--allow-newer-files" in err
 
@@ -1152,3 +1157,42 @@ def test_profile_slicing_settings_apply_unless_overridden(
 def test_run_times_are_shown_briefly(seconds: float, text: str) -> None:
     """Batch times are shown in seconds, or minutes and hours when long."""
     assert app._short_time(seconds) == text
+
+
+def test_exclude_leaves_out_models_and_says_how_many(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Matching models are not sliced, the run says how many were skipped, and it is remembered."""
+    models = (Path("/models/a.stl"), Path("/models/Cura-5/bed.stl"), Path("/models/cura-6/x.stl"))
+    monkeypatch.setattr(
+        app, "prompt_for_input", Mock(return_value=SliceInput(Path("/models"), models, True))
+    )
+    app.SlicingService.return_value.slice_batch.return_value = BatchOutcome(
+        Path("/out/models-1"), (_outcome(success=True, model="/models/a.stl"),)
+    )
+
+    assert app.main(["--exclude", "Cura-*"]) == 0
+
+    assert app.SlicingService.return_value.slice_batch.call_args.args[0] == (Path("/models/a.stl"),)
+    assert "Skipping 2 model files matching --exclude Cura-*" in capsys.readouterr().out
+    assert app.ProfileStore.return_value.save.call_args.args[0].exclude == ("Cura-*",)
+
+
+def test_excluding_everything_stops_with_a_reason(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """If every model matches, nothing is sliced and the reason is given."""
+    monkeypatch.setattr(
+        app,
+        "prompt_for_input",
+        Mock(return_value=SliceInput(Path("/models"), (Path("/models/a.stl"),), True)),
+    )
+
+    assert app.main(["--exclude", "*.stl"]) == 1
+
+    assert "Every model file in /models matches --exclude *.stl" in capsys.readouterr().err
+    app.SlicingService.return_value.slice_batch.assert_not_called()

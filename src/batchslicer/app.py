@@ -30,7 +30,12 @@ from batchslicer.backends.slicers import SLICERS, SlicerDefinition, get_slicer, 
 from batchslicer.banner import get_banner
 from batchslicer.cli.arguments import RunOptions, parse_arguments
 from batchslicer.cli.doctor import DoctorOptions, run_doctor
-from batchslicer.cli.file_prompt import SliceInput, input_from_path, prompt_for_input
+from batchslicer.cli.file_prompt import (
+    SliceInput,
+    exclude_models,
+    input_from_path,
+    prompt_for_input,
+)
 from batchslicer.cli.menu import confirm
 from batchslicer.cli.output_prompt import output_from_path, prompt_for_output
 from batchslicer.cli.preset_prompt import find_preset, select_presets
@@ -58,19 +63,21 @@ _REPORT_INTERVAL_SECONDS = 10.0
 
 _HINTS = (
     (
-        "Failed slicing the model",
+        # OrcaSlicer 2.4 says the first; 2.5 names the reason, usually the second.
+        ("Failed slicing the model", "empty first layer"),
         lambda options: options.orient == "off",
-        "{count} model(s) failed with 'Failed slicing the model'. This is often how a "
-        "part was saved; --orient retry slices them again with the slicer's auto-orient.",
+        "{count} model(s) failed in a way that is often down to how the part was "
+        "saved (for example floating above the bed); --orient retry slices them again "
+        "with the slicer's auto-orient.",
     ),
     (
-        "Unsupported 3MF version",
+        ("Unsupported 3MF version",),
         lambda options: not options.allow_newer_files,
         "{count} project(s) were saved by a newer slicer version; --allow-newer-files "
         "lets the slicer try them (or update the slicer).",
     ),
 )
-"""(text in a failure message, whether the hint applies, hint) for failures an option may fix."""
+"""(texts in a failure message, whether the hint applies, hint) for failures an option may fix."""
 
 
 class _StartupFailed(Exception):
@@ -137,7 +144,7 @@ def _run(options: RunOptions) -> int:
         jobs = options.jobs or 1
         _check_options(targets, slice_options)
         _show_ready(targets, slice_options, jobs)
-        slice_input = _select_input(options, config)
+        slice_input = _apply_exclude(_select_input(options, config), options.exclude or ())
         output_directory = _select_output(options, config)
         logger.info(
             "Selected %d model(s) from %s; output to %s",
@@ -267,6 +274,7 @@ def _plan_targets(
                 else plan.allow_newer_files
             ),
             jobs=options.jobs if options.jobs is not None else plan.jobs,
+            exclude=options.exclude if options.exclude is not None else plan.exclude,
         )
 
     if len(targets) > 1:
@@ -341,6 +349,7 @@ def _remember_choices(
         orient=options.orient,
         allow_newer_files=options.allow_newer_files,
         jobs=options.jobs,
+        exclude=options.exclude,
     )
     try:
         profiles.save(choices)
@@ -605,6 +614,24 @@ def _select_input(options: RunOptions, config: Config) -> SliceInput:
     return prompt_for_input(config.get_path("paths", "incoming"))
 
 
+def _apply_exclude(slice_input: SliceInput, patterns: Sequence[str]) -> SliceInput:
+    """Leave out the models matching --exclude, saying how many, and stop if none remain."""
+    kept, skipped = exclude_models(slice_input, patterns)
+    if skipped:
+        print(
+            f"Skipping {skipped} model file{'s' if skipped != 1 else ''} matching "
+            f"--exclude {' '.join(patterns)}"
+        )
+        logging.getLogger("batchslicer").info(
+            "Excluded %d model(s) matching %s", skipped, ", ".join(patterns)
+        )
+    if slice_input.is_folder and not kept.models:
+        raise SlicerSelectionError(
+            f"Every model file in {slice_input.root} matches --exclude {' '.join(patterns)}."
+        )
+    return kept
+
+
 def _select_output(options: RunOptions, config: Config) -> Path:
     """Return the --output folder, the default folder without prompts, or ask."""
     if options.output is not None:
@@ -728,8 +755,8 @@ def _short_time(seconds: float) -> str:
 def _hints(failed: Sequence[SliceOutcome], options: SliceOptions) -> list[str]:
     """Return suggestions for failures that an option may fix."""
     hints = []
-    for text, applies, hint in _HINTS:
-        count = sum(1 for outcome in failed if text in outcome.message)
+    for texts, applies, hint in _HINTS:
+        count = sum(1 for outcome in failed if any(text in outcome.message for text in texts))
         if count and applies(options):
             hints.append(hint.format(count=count))
     return hints

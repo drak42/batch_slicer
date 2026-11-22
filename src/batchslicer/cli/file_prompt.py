@@ -2,13 +2,15 @@
 
 Model files and folders under the incoming folder are offered as numbered,
 searchable lists, and a path anywhere else can be typed instead. A folder
-includes all of its subfolders. This module only handles the conversation and
-finding candidate files; it does not slice.
+includes all of its subfolders, minus anything matching ``--exclude``
+patterns (:func:`exclude_models`). This module only handles the conversation
+and finding candidate files; it does not slice.
 """
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from pathlib import Path
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass, replace
+from fnmatch import fnmatchcase
+from pathlib import Path, PurePosixPath
 
 from batchslicer.cli.menu import choose, confirm
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
@@ -28,6 +30,39 @@ class SliceInput:
 
     models: tuple[Path, ...]
     is_folder: bool
+
+
+def exclude_models(chosen: SliceInput, patterns: Sequence[str]) -> tuple[SliceInput, int]:
+    """Return ``chosen`` without the models matching ``patterns``, and how many were removed.
+
+    Patterns use shell wildcards (``*``, ``?``, ``[...]``) and ignore case. A
+    pattern without ``/`` matches any folder or file name at any depth
+    (``Cura-*``, ``*_old.stl``); a pattern with ``/`` matches a path within
+    the chosen folder (``kits/old``, ``*/supports/*``). A single chosen file
+    is never excluded.
+    """
+    rules = [pattern.strip().strip("/").casefold() for pattern in patterns if pattern.strip().strip("/")]
+    if not rules or not chosen.is_folder:
+        return chosen, 0
+    kept = tuple(model for model in chosen.models if not _excluded(model, chosen.root, rules))
+    return replace(chosen, models=kept), len(chosen.models) - len(kept)
+
+
+def _excluded(model: Path, root: Path, rules: list[str]) -> bool:
+    """Return whether ``model`` (inside ``root``) matches any of the lower-cased ``rules``."""
+    try:
+        relative = PurePosixPath(model.relative_to(root).as_posix().casefold())
+    except ValueError:
+        return False
+    # The model's path and each folder it is in, e.g. "kits", "kits/old", "kits/old/a.stl".
+    prefixes = [PurePosixPath(*relative.parts[:depth]) for depth in range(1, len(relative.parts) + 1)]
+    for rule in rules:
+        if "/" in rule:
+            if any(fnmatchcase(str(prefix), rule) for prefix in prefixes):
+                return True
+        elif any(fnmatchcase(part, rule) for part in relative.parts):
+            return True
+    return False
 
 
 def find_models(directory: Path, *, recursive: bool = False) -> list[Path]:

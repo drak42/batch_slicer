@@ -53,7 +53,8 @@ repeats the same run.
   yourself are listed first and marked `(mine)`.
 - **Slices one file or a whole folder tree.** Point it at a folder and every
   `.stl`, `.3mf` and `.obj` model in it and its subfolders is sliced, with
-  progress shown per file.
+  progress shown per file. `--exclude` leaves out folders or files you do not
+  want, such as old versions or meshes bundled with other software.
 - **Keeps your file names.** `bracket.stl` becomes `bracket.gcode`, and a batch
   mirrors your folder structure.
 - **Never overwrites earlier results.** Every run gets its own time-stamped
@@ -361,6 +362,7 @@ asking; anything you leave out is still asked for, unless you add
 | `--orient MODE` | the slicer's auto-orient: `off` (default), `retry` (slice a model that fails once more with auto-orient) or `always` (auto-orient every model; this may rotate parts saved the right way up). Not available for Creality Print |
 | `--allow-newer-files` | let the slicer open `.3mf` projects saved by a newer slicer version (`--no-allow-newer-files` turns off a profile's setting) |
 | `--jobs N` | slice N models at the same time (default 1); see [Speed](#speed) |
+| `--exclude PATTERN` | leave out folders or files matching PATTERN when slicing a folder; repeat for several (see [Leaving models out](#leaving-models-out)) |
 | `--list-presets` | list preset names, then exit (see below) |
 | `--profile NAME` | start from a saved profile (see [Profiles](#profiles)); repeat it to slice for several printers |
 | `--last` | repeat the last run |
@@ -413,12 +415,35 @@ batchslicer --slicer orca \
   --input ~/models/bracket.stl --no-prompt
 ```
 
-A large batch, two models at a time, rescuing models the slicer rejects:
+A large batch, two models at a time, rescuing models the slicer rejects and
+leaving out the printer-bed meshes that come with Cura:
 
 ```bash
-batchslicer --profile k2-pla --input ~/Downloads/kits \
-  --orient retry --allow-newer-files --jobs 2 --no-prompt
+batchslicer --profile k2-pla --input ~/Downloads \
+  --exclude "Cura-*" --orient retry --allow-newer-files --jobs 2 --no-prompt
 ```
+
+### Leaving models out
+
+`--exclude PATTERN` leaves out models when slicing a folder. Repeat it for
+several patterns.
+
+| Pattern | Leaves out |
+|---|---|
+| `Cura-*` | every folder (or file) whose name starts with `Cura-`, at any depth |
+| `old` | every folder named `old`, wherever it is |
+| `*_v1.stl` | files ending in `_v1.stl`, in any folder |
+| `kits/old` | only the `old` folder inside `kits`, within the folder being sliced |
+| `*/supports/*` | anything inside a `supports` folder one or more levels down |
+
+- A pattern without `/` matches any single folder or file name; a pattern with
+  `/` matches a path inside the folder being sliced.
+- `*`, `?` and `[...]` work as in the shell, and upper/lower case is ignored.
+  Quote patterns so the shell does not expand them.
+- BatchSlicer says how many model files it skipped. If every model matches, it
+  stops without slicing.
+- A single model file chosen explicitly is always sliced.
+- Hidden folders (names starting with `.`) are always skipped.
 
 Set the slicer and printer, and be asked for everything else:
 
@@ -439,8 +464,10 @@ configuration is not in `~/.config/batchslicer/`:
 ## Profiles
 
 A profile is a named set of choices (slicer, printer, filament, process, input
-and output, plus `--orient`, `--allow-newer-files` and `--jobs` if you gave
-them) that you can reuse instead of typing them again.
+and output, plus `--orient`, `--allow-newer-files`, `--jobs` and `--exclude`
+if you gave them) that you can reuse instead of typing them again. Options you
+add override the profile's; for `--exclude`, the patterns you give replace the
+profile's list.
 
 ```bash
 # slice as usual and save the choices under a name
@@ -650,14 +677,18 @@ again. BatchSlicer lists the printers the slicer has recorded.
 filament selection. Only compatible, visible built-in filaments are listed,
 plus all of your own.
 
-**"Failed slicing the model ..."** (often with "found slicing or export error
-for partplate 1"): usually the part was saved in an orientation that cannot
-be printed as it is, for example floating above the bed or balanced on an
+**"Failed slicing the model ..."** (OrcaSlicer 2.4, often with "found slicing
+or export error for partplate 1") or **"One object has an empty first layer"**
+(OrcaSlicer 2.5): usually the part was saved in an orientation that cannot be
+printed as it is, for example floating above the bed or balanced on an
 edge. Add `--orient retry` to slice such models again with the slicer's
 auto-orient, and check the result in the slicer before printing.
 
-**"One of the plate is empty or has no object fully inside it"**: the model is
-larger than the printer's bed, or a project plate has nothing on it.
+**"One of the plate is empty or has no object fully inside it"** (2.5: "The
+plate has nothing to slice"): the model is larger than the printer's bed, or a
+project plate has nothing on it. If such files are not models at all (for
+example the printer-bed meshes in a Cura download), leave them out with
+`--exclude`.
 
 **"Unsupported 3MF version ..."**: the project was saved by a newer version of
 the slicer (for example Bambu Studio 2.5 or 2.6 projects in OrcaSlicer 2.4 or 2.5). Add

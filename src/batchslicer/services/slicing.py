@@ -345,7 +345,8 @@ class SlicingService:
             message = "The slicer finished but wrote no G-code."
         if not success:
             detail = _read_validation_log(job_directory)
-            if detail and detail not in message:
+            # The log often repeats the slicer's message; add it only if it says more.
+            if detail and detail not in message and not (message and message in detail):
                 message = f"{message} ({detail})" if message else detail
         _remove_status_files(job_directory)
         if success:

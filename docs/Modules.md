@@ -30,7 +30,7 @@ docstring says more, including what it intentionally does not do.
 | `cli/slicer_prompt.py` | choose a slicer |
 | `cli/preset_prompt.py` | choose printer, filament and process; find presets by name |
 | `cli/profile_prompt.py` | offer saved profiles |
-| `cli/file_prompt.py` | choose a model file or a folder of models |
+| `cli/file_prompt.py` | choose a model file or a folder of models; apply `--exclude` patterns |
 | `cli/output_prompt.py` | choose or create the output folder |
 | `cli/setup.py` | `batchslicer setup`: detect slicers, write the configuration |
 | `cli/doctor.py` | `batchslicer doctor`: check the setup and report problems |

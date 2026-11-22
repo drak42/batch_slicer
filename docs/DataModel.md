@@ -10,7 +10,7 @@ in `domain/` know nothing about files, slicers or the user interface.
 | `Preset` | `domain/presets.py` | one preset: name, kind (printer, filament or process), file, whether it is the user's own |
 | `PresetSelection` | `domain/presets.py` | the printer, filament and process chosen for one printer |
 | `Target` | `domain/profiles.py` | one slicer and its preset names, possibly not chosen yet |
-| `Profile` | `domain/profiles.py` | a named run: one or more targets, input, output, and slicing settings (`orient`, `allow_newer_files`, `jobs`) |
+| `Profile` | `domain/profiles.py` | a named run: one or more targets, input, output, and slicing settings (`orient`, `allow_newer_files`, `jobs`, `exclude`) |
 | `SliceOptions` | `domain/options.py` | how every model is sliced: auto-orient mode and newer-file handling |
 
 A profile with one target is stored flat in `profiles.yaml`; one with several

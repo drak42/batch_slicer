@@ -23,7 +23,7 @@ TARGET_FIELDS = ("slicer", "printer", "filament", "process")
 RUN_FIELDS = ("input", "output")
 """The paths shared by every target in a run."""
 
-SETTING_FIELDS = ("orient", "allow_newer_files", "jobs")
+SETTING_FIELDS = ("orient", "allow_newer_files", "jobs", "exclude")
 """How the run slices (see :mod:`batchslicer.domain.options`), shared by every target."""
 
 _NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$")
@@ -61,6 +61,7 @@ class Profile:
     orient: OrientMode | None = None
     allow_newer_files: bool | None = None
     jobs: int | None = None
+    exclude: tuple[str, ...] | None = None
 
     @classmethod
     def single(
@@ -104,6 +105,8 @@ class Profile:
             parts.append("newer files allowed" if self.allow_newer_files else "newer files refused")
         if self.jobs is not None:
             parts.append(f"{self.jobs} job{'s' if self.jobs != 1 else ''}")
+        if self.exclude:
+            parts.append("excluding " + ", ".join(self.exclude))
         return ", ".join(parts) if parts else "no choices saved"
 
 
@@ -127,6 +130,7 @@ def combine(name: str, profiles: Iterable[Profile]) -> Profile:
             (p.allow_newer_files for p in chosen if p.allow_newer_files is not None), None
         ),
         jobs=next((p.jobs for p in chosen if p.jobs is not None), None),
+        exclude=next((p.exclude for p in chosen if p.exclude is not None), None),
     )
 
 

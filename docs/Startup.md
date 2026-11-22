@@ -38,7 +38,8 @@ not slice. Everything below describes a normal run.
 
    In an interactive run, "Slice for another printer as well?" adds targets.
    `--list-presets` stops here after printing names.
-8. **Choose what to slice** (`cli/file_prompt.py`) and **the output folder**
+8. **Choose what to slice** (`cli/file_prompt.py`), leave out models matching
+   `--exclude` (`exclude_models`), and **choose the output folder**
    (`cli/output_prompt.py`).
 9. **Remember the run** as the profile `last`, and as `--save-profile` if given.
 10. **Check the slicing options** (`--orient`, `--allow-newer-files`,

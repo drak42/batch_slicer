@@ -253,3 +253,20 @@ def test_bad_slicing_settings_are_reported(tmp_path: Path, setting: str, message
 
     with pytest.raises(ProfileError, match=message):
         ProfileStore(path).load()
+
+
+def test_exclude_patterns_round_trip(tmp_path: Path) -> None:
+    """Exclude patterns are saved as a list, and a single hand-written pattern is accepted."""
+    path = tmp_path / "profiles.yaml"
+    store = ProfileStore(path)
+    store.save(Profile(name="downloads", exclude=("Cura-*", "kits/old")))
+
+    assert store.get("downloads").exclude == ("Cura-*", "kits/old")
+    assert "excluding Cura-*, kits/old" in store.get("downloads").summary()
+    assert yaml.safe_load(path.read_text(encoding="utf-8"))["downloads"]["exclude"] == ["Cura-*", "kits/old"]
+
+    path.write_text("one:\n  exclude: Cura-*\nbad:\n  exclude: [1, 2]\n", encoding="utf-8")
+    with pytest.raises(ProfileError, match="exclude must be a pattern"):
+        ProfileStore(path).load()
+    path.write_text("one:\n  exclude: Cura-*\n", encoding="utf-8")
+    assert ProfileStore(path).get("one").exclude == ("Cura-*",)
