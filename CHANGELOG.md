@@ -6,6 +6,10 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The roadmap moves the web interface to "Later".
+
 ## [0.13.0] - 2026-11-23
 
 Colours for STL kits, and clearer Creality Print failures.

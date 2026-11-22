@@ -107,10 +107,6 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 ## Next
 
-- **Web interface** (agreed, see [WebPlan](WebPlan.md)): `batchslicer web`
-  in a browser on this computer, with upload, queue, results, download,
-  sending and the printers' CFS; network access with a password in the
-  release after; Docker later.
 - Multi-colour: the Bambu AMS.
 - Windows and macOS work continues on the `feat/windows` and `feat/macos`
   branches (draft pull requests), outside `main`.
@@ -134,9 +130,12 @@ These need a decision from the project owner before work starts.
 
 ## Later: platform
 
+- **Web interface** (agreed, to be done later; see [WebPlan](WebPlan.md)):
+  `batchslicer web` in a browser on this computer, with upload, queue,
+  results, download, sending and the printers' CFS; network access with a
+  password in the release after; Docker after that.
 - Windows and macOS support (locations, slicer detection, reading built-in
   presets without AppImages).
 - A standalone download that does not need Python.
-- A graphical or web interface (the architecture reserves a `web` layer).
 - Sending G-code to Bambu Lab printers (LAN mode); Klipper/Moonraker and
   OctoPrint are done.
