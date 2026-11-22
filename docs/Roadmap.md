@@ -65,10 +65,13 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - Copies of a single model (`--copies N`, asked in interactive runs),
   arranged on as many plates as needed.
 
+### 0.9.1 (2026-11-22): plates survive a failing part
+
+- When one part of a folder fails, the others still go back together on plates.
+
 ## Next
 
-- [x] Putting the parts that slice back together on plates when one part of a
-  folder fails.
+Nothing is scheduled: the next steps need the decisions below.
 
 ## Then: decisions on reach
 
