@@ -28,7 +28,7 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - `batchslicer doctor` for checking a setup and reporting problems.
 - Log rotation; single-file mode lists models in subfolders.
 
-### 0.5.0: large batches (from a soak test of 1,719 real models)
+### 0.5.0 (2026-11-22): large batches (from a soak test of 1,719 real models)
 
 - `--orient retry|always`: slice rejected models again with auto-orient.
 - `--allow-newer-files` for projects saved by newer slicers.
