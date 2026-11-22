@@ -60,9 +60,13 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
   asked before slicing a folder), with a fallback to one per plate.
 - Interactive runs ask whether to send the G-code to a printer.
 
+### 0.9.0 (2026-11-22): copies
+
+- Copies of a single model (`--copies N`, asked in interactive runs),
+  arranged on as many plates as needed.
+
 ## Next
 
-- [x] **Copies** of a single model (`--copies N`, asked in interactive runs).
 - [ ] Putting the parts that slice back together on plates when one part of a
   folder fails.
 
