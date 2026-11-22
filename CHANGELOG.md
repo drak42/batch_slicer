@@ -6,6 +6,10 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-22
+
+Preview pictures on the printer's screen, checked with a real K2 Plus.
+
 ### Added
 
 - **Preview pictures in the G-code.** Printer screens (such as the K2 Plus
@@ -237,7 +241,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/drak42/batch_slicer/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/drak42/batch_slicer/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/drak42/batch_slicer/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/drak42/batch_slicer/compare/v0.4.0...v0.5.0

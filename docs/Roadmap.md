@@ -49,10 +49,18 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - `--send PRINTER` uploads the G-code to a Klipper printer through Moonraker,
   by address or configured name; `--start` prints a single model.
 
+### 0.7.1 (2026-11-22): pictures on the printer's screen
+
+- Preview pictures drawn from the G-code, shown on the K2 Plus touchscreen.
+- Sending checked with a real K2 Plus.
+
 ## Next
 
-- [x] **Try sending with a real printer**: the K2 Plus takes uploads on port
-  7125 or 4408, shows the batch folders, and needs no API key.
+- [ ] **Ask about sending in interactive runs** ("Send to k2plus?") when a
+  printer is configured or was used last time.
+- [ ] **Several models per plate**, and copies: slicing many small parts as one
+  plate saves printer time (OrcaSlicer and Bambu Studio; Creality Print has no
+  command-line arrange).
 
 ## Then: decisions on reach
 
@@ -69,7 +77,6 @@ These need a decision from the project owner before work starts.
 
 | Feature | Why |
 |---|---|
-| Several models per plate, and copies | slicing many small parts as one plate saves printer time |
 | Watch folder | drop models in, get G-code out, unattended |
 | Multi-material (several filaments per printer) | Creality CFS, Bambu AMS |
 | Flat output option | all G-code in one folder |
