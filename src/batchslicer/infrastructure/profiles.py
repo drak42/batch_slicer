@@ -13,7 +13,7 @@ from typing import Any
 
 import yaml
 
-from batchslicer.domain.options import MAX_COPIES, MAX_JOBS, orient_mode
+from batchslicer.domain.options import MAX_COPIES, MAX_JOBS, orient_mode, slot_rule
 from batchslicer.domain.profiles import (
     RUN_FIELDS,
     SETTING_FIELDS,
@@ -146,6 +146,14 @@ class ProfileStore:
                 if not isinstance(values[key], bool):
                     raise ProfileError(f"{where}: {key} must be true or false.")
                 settings[key] = values[key]
+        if values.get("slots") is not None:
+            slots = values["slots"]
+            if not isinstance(slots, dict):
+                raise ProfileError(f"{where}: slots must map patterns to slots, such as '*_lens.stl': 2.")
+            try:
+                settings["slots"] = tuple(slot_rule(f"{pattern}={slot}") for pattern, slot in slots.items())
+            except ValueError as error:
+                raise ProfileError(f"{where}: slots: {error}.") from error
         if values.get("copies") is not None:
             copies = values["copies"]
             if isinstance(copies, bool) or not isinstance(copies, int) or not 1 <= copies <= MAX_COPIES:
@@ -213,7 +221,9 @@ class ProfileStore:
                 stored[key] = str(value)
         for key in SETTING_FIELDS:
             value = getattr(profile, key)
-            if value is not None:
+            if value is not None and key == "slots":
+                stored[key] = {pattern: int(slot) if slot.isdigit() else slot for pattern, slot in value}
+            elif value is not None:
                 stored[key] = list(value) if isinstance(value, tuple) else value
         return stored
 
@@ -229,7 +239,8 @@ class ProfileStore:
             "# slice for several printers), plus input and output, and optionally\n"
             "# orient (off/retry/always), allow_newer_files (true/false), jobs,\n"
             "# exclude (a list of patterns), thumbnails and plates (true/false), copies\n"
-            "# (a number, for a single model), loaded_filaments (true/false) and, per\n"
+            "# (a number, for a single model), loaded_filaments (true/false), slots\n"
+            "# (pattern: filament slot, for STL files) and, per\n"
             "# printer, send (a printer's address or configured name). filament may\n"
             "# be a list, one per slot of a multi-material printer (CFS, AMS).\n"
             + yaml.safe_dump(data, sort_keys=False, allow_unicode=True)

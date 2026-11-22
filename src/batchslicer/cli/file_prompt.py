@@ -9,11 +9,11 @@ and finding candidate files; it does not slice.
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
-from fnmatch import fnmatchcase
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from batchslicer.cli.menu import choose, confirm
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
+from batchslicer.domain.patterns import normalise, path_matches
 
 MODEL_SUFFIXES = frozenset({".stl", ".3mf", ".obj"})
 """File types the slicers' command lines accept as models."""
@@ -41,7 +41,7 @@ def exclude_models(chosen: SliceInput, patterns: Sequence[str]) -> tuple[SliceIn
     the chosen folder (``kits/old``, ``*/supports/*``). A single chosen file
     is never excluded.
     """
-    rules = [pattern.strip().strip("/").casefold() for pattern in patterns if pattern.strip().strip("/")]
+    rules = normalise(patterns)
     if not rules or not chosen.is_folder:
         return chosen, 0
     kept = tuple(model for model in chosen.models if not _excluded(model, chosen.root, rules))
@@ -49,20 +49,12 @@ def exclude_models(chosen: SliceInput, patterns: Sequence[str]) -> tuple[SliceIn
 
 
 def _excluded(model: Path, root: Path, rules: list[str]) -> bool:
-    """Return whether ``model`` (inside ``root``) matches any of the lower-cased ``rules``."""
+    """Return whether ``model`` (inside ``root``) matches any of the normalised ``rules``."""
     try:
-        relative = PurePosixPath(model.relative_to(root).as_posix().casefold())
+        model.relative_to(root)
     except ValueError:
         return False
-    # The model's path and each folder it is in, e.g. "kits", "kits/old", "kits/old/a.stl".
-    prefixes = [PurePosixPath(*relative.parts[:depth]) for depth in range(1, len(relative.parts) + 1)]
-    for rule in rules:
-        if "/" in rule:
-            if any(fnmatchcase(str(prefix), rule) for prefix in prefixes):
-                return True
-        elif any(fnmatchcase(part, rule) for part in relative.parts):
-            return True
-    return False
+    return any(path_matches(model, root, rule) for rule in rules)
 
 
 def find_models(directory: Path, *, recursive: bool = False) -> list[Path]:

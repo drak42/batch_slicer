@@ -338,3 +338,16 @@ def test_filaments_per_slot_are_saved_as_a_list(tmp_path: Path) -> None:
     (tmp_path / "profiles.yaml").write_text("bad:\n  filament: []\n")
     with pytest.raises(ProfileError):
         store.load()
+
+
+def test_slots_are_saved_as_a_mapping(tmp_path: Path) -> None:
+    """slots is stored as pattern: slot (numbers as numbers) and checked when read."""
+    store = ProfileStore(tmp_path / "profiles.yaml")
+    store.save(Profile("kit", slots=(("*_lens.stl", "2"), ("*", "1B"))))
+
+    assert yaml.safe_load((tmp_path / "profiles.yaml").read_text())["kit"]["slots"] == {"*_lens.stl": 2, "*": "1B"}
+    assert store.get("kit").slots == (("*_lens.stl", "2"), ("*", "1B"))
+    assert "slots *_lens.stl -> 2, * -> 1B" in store.get("kit").summary()
+    (tmp_path / "profiles.yaml").write_text("bad:\n  slots: {'*': 99}\n")
+    with pytest.raises(ProfileError, match="not a filament slot"):
+        store.load()

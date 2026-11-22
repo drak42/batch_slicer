@@ -226,6 +226,7 @@ class OrcaBackend:
         allow_newer_file: bool = False,
         load_settings: Sequence[PathLike] = (),
         load_filaments: Sequence[PathLike] = (),
+        filament_ids: Sequence[int] = (),
     ) -> OrcaResult:
         """Slice one model file (or several together) into ``output_directory``.
 
@@ -252,6 +253,7 @@ class OrcaBackend:
                 allow_newer_file=allow_newer_file,
                 load_settings=load_settings,
                 load_filaments=load_filaments,
+                filament_ids=filament_ids,
             ),
             working_directory=output,
         )
@@ -283,6 +285,7 @@ class OrcaBackend:
         allow_newer_file: bool = False,
         load_settings: Sequence[PathLike] = (),
         load_filaments: Sequence[PathLike] = (),
+        filament_ids: Sequence[int] = (),
     ) -> tuple[str, ...]:
         """Return the deterministic command used by :meth:`slice`.
 
@@ -295,6 +298,8 @@ class OrcaBackend:
         OrcaSlicer expects. The input models are the final positional arguments.
         ``copies`` above 1 asks for that many copies in total
         (``--clone-objects N``), arranged on as many plates as needed.
+        ``filament_ids`` gives each input model its filament slot (from 1,
+        ``--load-filament-ids``).
         Requesting an option the selected slicer lacks raises ``ValueError``.
         """
         if plate < 0:
@@ -336,6 +341,8 @@ class OrcaBackend:
             command.extend(("--load-settings", _join_file_list(load_settings)))
         if load_filaments:
             command.extend(("--load-filaments", _join_file_list(load_filaments)))
+        if filament_ids:
+            command.extend(("--load-filament-ids", ",".join(str(slot) for slot in filament_ids)))
         inputs = [input_path] if isinstance(input_path, (str, Path)) else list(input_path)
         command.extend(str(Path(path).absolute()) for path in inputs)
         return tuple(command)

@@ -1890,3 +1890,18 @@ def test_watch_says_how_to_stop(monkeypatch: pytest.MonkeyPatch) -> None:
     assert app._how_to_stop() == "Press Ctrl+C to stop."
     monkeypatch.setattr(app.sys.stdin, "isatty", lambda: False, raising=False)
     assert "batchslicer service uninstall" in app._how_to_stop()
+
+
+def test_slots_are_checked_before_slicing() -> None:
+    """A slot beyond the filaments given, or a loaded slot without the printer's filaments, stops the run."""
+    from batchslicer.domain.options import SliceOptions
+    from batchslicer.domain.printers import PrinterHost
+
+    target = app._ResolvedTarget(CREALITY_PRINT, Mock(), _selection())
+    app._check_slots([target], SliceOptions(slots=(("*", "1"),)), False)
+    with pytest.raises(SlicerSelectionError, match="--slot 2 needs at least 2 filaments"):
+        app._check_slots([target], SliceOptions(slots=(("a", "2"),)), False)
+    with pytest.raises(SlicerSelectionError, match="needs --loaded-filaments and --send"):
+        app._check_slots([target], SliceOptions(slots=(("a", "1B"),)), True)
+    sending = replace(target, host=PrinterHost("k2", "http://k2:7125"))
+    app._check_slots([sending], SliceOptions(slots=(("a", "1B"),)), True)

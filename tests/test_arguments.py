@@ -212,3 +212,12 @@ def test_filament_can_be_given_for_each_slot() -> None:
     assert options.more_filaments == ("PLA White",)  # type: ignore[union-attr]
     assert options.loaded_filaments is True  # type: ignore[union-attr]
     assert parse_arguments(["--no-loaded-filaments"]).loaded_filaments is False  # type: ignore[union-attr]
+
+
+def test_slots_are_given_as_pattern_equals_slot(capsys: pytest.CaptureFixture[str]) -> None:
+    """--slot repeats; a bad slot stops with a usage error."""
+    options = parse_arguments(["--slot", "*_lens.stl=2", "--slot", "lights/*=external"])
+    assert options.slots == (("*_lens.stl", "2"), ("lights/*", "external"))  # type: ignore[union-attr]
+    with pytest.raises(SystemExit):
+        parse_arguments(["--slot", "*_lens.stl=red"])
+    assert "not a filament slot" in capsys.readouterr().err

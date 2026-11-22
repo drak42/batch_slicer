@@ -446,7 +446,8 @@ asking; anything you leave out is still asked for, unless you add
 |---|---|
 | `--slicer NAME` | `orca`, `creality` or `bambu` (full names such as `"Creality Print"` also work) |
 | `--printer NAME` | printer preset name |
-| `--filament NAME` | filament preset name (must suit the printer) |
+| `--filament NAME` | filament preset name (must suit the printer); repeat it for the slots of a multi-colour print, slot 1 first (see [Multi-colour projects](#multi-colour-projects)) |
+| `--slot PATTERN=SLOT` | print STL, OBJ and STEP models matching PATTERN with filament SLOT: a number, or with `--loaded-filaments` a loaded filament such as `1B` or `external`; repeatable (see [Colours for STL files](#colours-for-stl-files)) |
 | `--process NAME` | process (print settings) preset name (must suit the printer) |
 | `--input PATH` | a model file, or a folder: every model in it and its subfolders is sliced, without asking for confirmation |
 | `--output PATH` | output folder; created if missing; defaults to the configured `output` folder |
@@ -459,6 +460,8 @@ asking; anything you leave out is still asked for, unless you add
 | `--no-thumbnails` | don't add preview pictures to the G-code (see [Output](#output)); `--thumbnails` turns them back on over a profile |
 | `--exclude PATTERN` | leave out folders or files matching PATTERN when slicing a folder; repeat for several (see [Leaving models out](#leaving-models-out)) |
 | `--send PRINTER` | after slicing, upload the G-code to PRINTER: its address (`192.168.1.50`, `k2.local:4408` or a full URL) or a name from the configuration's `printers` section (see [Sending G-code to a printer](#sending-g-code-to-a-printer)); `--no-send` turns off a profile's printer |
+| `--loaded-filaments` | match multi-colour projects (and `--slot` names such as `1B`) to the filaments loaded in the `--send` printer's CFS |
+| `--watch` | keep running and slice every model or folder dropped into the input folder (see [Watch folder](#watch-folder)) |
 | `--start` | start printing once the G-code is on the printer; only for a single model that gives one G-code file |
 | `--list-presets` | list preset names, then exit (see below) |
 | `--profile NAME` | start from a saved profile (see [Profiles](#profiles)); repeat it to slice for several printers |
@@ -917,13 +920,45 @@ There are three ways to fill the slots:
    slot-mapping screen already has each colour set to the matched CFS slot
    or external spool.
 
+### Colours for STL files
+
+A kit of STL files can print in several colours too: `--slot PATTERN=SLOT`
+gives the models matching PATTERN (matched like `--exclude`: a name at any
+depth, or a path with `/`) their own filament slot. The first matching rule
+wins; other models use slot 1. With `--plates`, a kit's parts print in their
+colours on the same plate.
+
+```bash
+# lenses in white (slot 2), everything else in black (slot 1)
+batchslicer --profile k2 --input ~/kits/jeep --plates \
+  --filament "Black PLA" --filament "White PLA" --slot "*_lens.stl=2"
+
+# straight from the CFS: lenses from the external spool, the body from CFS 1B
+batchslicer --profile k2 --input ~/kits/jeep --plates --send k2plus \
+  --loaded-filaments --slot "*_lens.stl=external" --slot "*=1B"
+```
+
+- A number means the `--filament` given in that place; a CFS slot (`1A` to
+  `4D`) or `external` needs `--loaded-filaments` and uses the filament loaded
+  there, in its colour.
+- With loaded filaments, end with a catch-all such as `--slot "*=1B"` so every
+  part comes from a known spool.
+- In a profile: `slots: {"*_lens.stl": 2, "*": 1B}`.
+- A slot that cannot be filled (`--slot 3` with two filaments, a CFS slot that
+  is empty) stops the run before slicing, or fails that model with the
+  reason. 3MF projects keep their own slots.
+
+### Asking which way
+
 In an interactive run, when the input holds a multi-colour project,
 BatchSlicer lists its filaments and asks which of the three to use (the first
 is offered only when the printer you send to reports loaded filaments).
 
+### Good to know
+
 - **Preview pictures** show each part of the model in its filament's colour.
 - **Single-colour models** in the same run (STL files, plain 3MF files) print
-  with the first filament as usual. A downloaded project that lists several
+  with the first filament, unless `--slot` gives them another. A downloaded project that lists several
   filaments but uses one prints with one; the others are not used.
 - **`--start` never starts a multi-colour print**: it is sent, and you start
   it on the printer's screen, where you can check which slot each colour
@@ -933,7 +968,8 @@ is offered only when the printer you send to reports loaded filaments).
 - Tested with OrcaSlicer and Bambu Studio. **Creality Print cannot use your
   presets for any 3MF project** (its command line refuses to load presets
   into a project), multi-colour or not; such projects fail at once with that
-  reason.
+  reason. `--slot` works with Creality Print for single files, but not for
+  kits on plates (it cannot arrange).
 
 ## Output
 
@@ -1273,8 +1309,6 @@ the Actions tab ("Latest slicers").
 ## Current limitations
 
 - **Linux only.** Windows and macOS are not supported yet.
-- **Colours for whole STL files.** Multi-colour comes from 3MF projects;
-  giving separate STL files their own filament is not supported yet.
 - **Loaded filaments from Creality's CFS only.** Reading a Bambu AMS needs the
   Bambu connection, which is not built yet.
 - **Creality Print and 3MF projects.** Creality Print's command line cannot

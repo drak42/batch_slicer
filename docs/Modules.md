@@ -44,6 +44,7 @@ docstring says more, including what it intentionally does not do.
 | `domain/presets.py` | `Preset`, `PresetKind`, `PresetSelection` |
 | `domain/profiles.py` | `Target`, `Profile`, combining profiles, valid names |
 | `domain/options.py` | `SliceOptions`, orient modes, the `--jobs` limit |
+| `domain/patterns.py` | match model paths against typed patterns (`--exclude`, `--slot`) |
 | `domain/colours.py` | name `#RRGGBB` colours ("dark blue") and measure how alike two colours look |
 | `domain/filaments.py` | `ProjectFilament`, `LoadedFilament`, and matching a project's slots to the loaded filaments |
 | `domain/printers.py` | `PrinterHost`: printers for `--send`, read and checked from the `printers` section |

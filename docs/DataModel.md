@@ -9,6 +9,7 @@ in `domain/` know nothing about files, slicers or the user interface.
 |---|---|---|
 | `Preset` | `domain/presets.py` | one preset: name, kind (printer, filament or process), file, whether it is the user's own |
 | `PresetSelection` | `domain/presets.py` | the printer, filament and process chosen for one printer; `more_filaments` for slots 2, 3... of a multi-material printer |
+| `SliceOptions.slots` | `domain/options.py` | `--slot` rules: (pattern, slot) pairs, a slot being a number or a loaded slot such as `1B` |
 | `ProjectFilament` | `domain/filaments.py` | one filament slot of a 3MF project: colour, material, preset name |
 | `LoadedFilament` | `domain/filaments.py` | a filament loaded in the printer: CFS slot (`1B`) or `external`, colour, material |
 | `Target` | `domain/profiles.py` | one slicer and its preset names, possibly not chosen yet, and the printer its G-code is sent to (`send`); `more_filaments` for slots 2, 3... (stored with `filament` as a list) |

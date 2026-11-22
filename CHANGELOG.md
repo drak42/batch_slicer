@@ -6,6 +6,14 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `--slot PATTERN=SLOT` gives STL, OBJ and STEP models their own filament
+  slot, so a kit prints in several colours (on one plate with `--plates`). A
+  slot is a number (the `--filament` in that place) or, with
+  `--loaded-filaments`, a loaded CFS slot such as `1B` or `external`.
+  Profiles store it as `slots`.
+
 ### Fixed
 
 - With Creality Print, a 3MF project saved by a slicer now fails at once with

@@ -62,16 +62,11 @@ class FilamentMatcher:
         if len(project) < 2:
             return None
         choice = match_slots(project, [item.loaded for item in self._loaded])
-        folder = job_directory / _FOLDER
-        folder.mkdir(parents=True, exist_ok=True)
         files: list[Path] = []
         lines: list[str] = []
         for number, (slot, index) in enumerate(zip(project, choice, strict=True), start=1):
             item = self._loaded[index]
-            path = folder / f"filament-{item.loaded.slot}.json"
-            if not path.exists():
-                path.write_text(json.dumps(item.settings, indent=4), encoding="utf-8")
-            files.append(path)
+            files.append(self._write(item, job_directory))
             lines.append(
                 f"slot {number} ({describe_project_slot(slot)}) -> {item.loaded.describe()}"
                 f" [{item.preset.name}]"
@@ -79,6 +74,23 @@ class FilamentMatcher:
         self.matches[model] = tuple(lines)
         self._logger.info("Matched %s to loaded filaments: %s", model.name, "; ".join(lines))
         return files
+
+
+    def file_for_slot(self, slot: str, job_directory: Path) -> Path | None:
+        """Return the filament file for one loaded slot (``1B``, ``external``), or None if empty."""
+        for item in self._loaded:
+            if item.loaded.slot.casefold() == slot.casefold():
+                return self._write(item, job_directory)
+        return None
+
+    def _write(self, item: LoadedPreset, job_directory: Path) -> Path:
+        """Write one loaded filament's file into the job's ``presets`` folder, once."""
+        folder = job_directory / _FOLDER
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / f"filament-{item.loaded.slot}.json"
+        if not path.exists():
+            path.write_text(json.dumps(item.settings, indent=4), encoding="utf-8")
+        return path
 
 
 def build_matcher(

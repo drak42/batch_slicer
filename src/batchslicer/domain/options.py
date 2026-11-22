@@ -5,8 +5,13 @@ They are plain values shared by the command line, profiles and the slicing
 service; this module does not run slicers.
 """
 
+import re
+from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal, TypeAlias
+
+from batchslicer.domain.patterns import normalise, path_matches
 
 OrientMode: TypeAlias = Literal["off", "retry", "always"]
 
@@ -27,6 +32,50 @@ MAX_COPIES = 500
 COPYABLE_SUFFIXES = frozenset({".stl", ".obj", ".step", ".stp"})
 """Model files that can be copied (3MF projects keep their own plates)."""
 
+MAX_SLOT = 16
+"""The highest filament slot number (four CFS or AMS units of four)."""
+
+_LOADED_SLOT = re.compile(r"^(?:[1-4][A-Da-d]|external)$", re.IGNORECASE)
+
+SlotRule: TypeAlias = tuple[str, str]
+"""``(pattern, slot)`` from ``--slot PATTERN=SLOT``."""
+
+
+def slot_value(text: str) -> str:
+    """Return a ``--slot`` slot: a number from 1 to :data:`MAX_SLOT`, a CFS slot such as
+    ``1B``, or ``external``. Raises ``ValueError`` for anything else."""
+    value = text.strip()
+    if value.isdigit() and 1 <= int(value) <= MAX_SLOT:
+        return str(int(value))
+    if _LOADED_SLOT.match(value):
+        return value.casefold() if value.casefold() == "external" else value.upper()
+    raise ValueError(
+        f"'{text}' is not a filament slot: use a number from 1 to {MAX_SLOT}, a CFS slot "
+        "such as 1B, or external"
+    )
+
+
+def slot_rule(text: str) -> SlotRule:
+    """Return ``PATTERN=SLOT`` as a rule, raising ``ValueError`` if it is not one."""
+    pattern, equals, slot = text.rpartition("=")
+    if not equals or not pattern.strip():
+        raise ValueError(f"'{text}' is not PATTERN=SLOT, for example '*_lens.stl=2'")
+    return pattern.strip(), slot_value(slot)
+
+
+def slot_for(model: Path, root: Path, rules: Sequence[SlotRule]) -> str:
+    """Return the slot of the first rule ``model`` matches, or ``"1"``."""
+    for pattern, slot in rules:
+        for rule in normalise([pattern]):
+            if path_matches(model, root, rule):
+                return slot
+    return "1"
+
+
+def is_loaded_slot(slot: str) -> bool:
+    """Return whether ``slot`` names a loaded filament (``1B``, ``external``), not a number."""
+    return not slot.isdigit()
+
 
 @dataclass(frozen=True, slots=True)
 class SliceOptions:
@@ -45,6 +94,9 @@ class SliceOptions:
     copies: int = 1
     """How many copies of a single model to slice, arranged on as many plates as needed."""
 
+    slots: tuple[SlotRule, ...] = ()
+    """Filament slots for loose models (``--slot PATTERN=SLOT``), first match wins."""
+
     def describe(self) -> str:
         """Return the options that differ from the defaults, as one line ("" if none)."""
         parts = []
@@ -60,6 +112,10 @@ class SliceOptions:
             parts.append("each folder's models together on plates")
         if not self.thumbnails:
             parts.append("no preview pictures")
+        if self.slots:
+            parts.append(
+                "slots " + ", ".join(f"{pattern} -> {slot}" for pattern, slot in self.slots)
+            )
         return ", ".join(parts)
 
 

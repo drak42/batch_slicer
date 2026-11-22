@@ -50,7 +50,7 @@ from batchslicer.core.config import Config, find_config_file, get_config
 from batchslicer.core.environment import EnvironmentService
 from batchslicer.core.logging import configure_logging, current_log_file
 from batchslicer.domain.filaments import LoadedFilament, ProjectFilament, describe_project_slot
-from batchslicer.domain.options import COPYABLE_SUFFIXES, MAX_COPIES, SliceOptions
+from batchslicer.domain.options import COPYABLE_SUFFIXES, MAX_COPIES, SliceOptions, is_loaded_slot
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.domain.printers import PrinterHost, host_from_address, printer_hosts
 from batchslicer.domain.profiles import LAST_RUN, Profile, Target, combine, is_valid_name
@@ -164,6 +164,7 @@ def _run(options: RunOptions) -> int:
             thumbnails=options.thumbnails is not False,
             plates=bool(options.plates),
             copies=options.copies or 1,
+            slots=options.slots or (),
         )
         jobs = options.jobs or 1
         _check_options(targets, slice_options)
@@ -203,6 +204,7 @@ def _run(options: RunOptions) -> int:
             if any(target.match_loaded for target in targets):
                 options = replace(options, loaded_filaments=True)
         _check_start(options.start, targets, slice_input)
+        _check_slots(targets, slice_options, bool(options.loaded_filaments))
         output_directory = _select_output(options, config)
         _check_printers(targets, logger)
         logger.info(
@@ -364,6 +366,7 @@ def _plan_targets(
                 if options.loaded_filaments is not None
                 else plan.loaded_filaments
             ),
+            slots=options.slots if options.slots is not None else plan.slots,
         )
 
     if len(targets) > 1:
@@ -617,6 +620,7 @@ def _remember_choices(
         plates=options.plates,
         copies=options.copies,
         loaded_filaments=options.loaded_filaments,
+        slots=options.slots,
     )
     if remember_last:
         try:
@@ -659,6 +663,7 @@ def _watch(
     _check_options(targets, slice_options)
     if not from_profile and options.send is None and not options.no_prompt:
         targets = _ask_to_send(targets, profiles, config)
+    _check_slots(targets, slice_options, bool(options.loaded_filaments))
     output_directory = _select_output(options, config)
     resolved_output = output_directory.expanduser().absolute()
     if resolved_output.is_relative_to(folder) or folder.is_relative_to(resolved_output):
@@ -904,6 +909,27 @@ def _check_options(targets: list[_ResolvedTarget], options: SliceOptions) -> Non
             raise SlicerSelectionError(
                 f"{target.slicer.display_name} has no command-line auto-orient, so "
                 "--orient cannot be used with it."
+            )
+
+
+def _check_slots(
+    targets: list[_ResolvedTarget], options: SliceOptions, loaded_filaments: bool
+) -> None:
+    """Stop before slicing if a --slot names a filament that will not be there."""
+    numbers = [int(slot) for _, slot in options.slots if not is_loaded_slot(slot)]
+    loaded = [slot for _, slot in options.slots if is_loaded_slot(slot)]
+    for target in targets:
+        given = len(target.selection.filaments) if target.selection else 1
+        if numbers and max(numbers) > given:
+            raise SlicerSelectionError(
+                f"--slot {max(numbers)} needs at least {max(numbers)} filaments, but "
+                f"{target.describe()} has {given}; give --filament once per slot, slot 1 first."
+            )
+        uses_loaded = loaded_filaments or target.match_loaded
+        if loaded and (not uses_loaded or target.host is None):
+            raise SlicerSelectionError(
+                f"--slot {loaded[0]} names a loaded filament, which needs --loaded-filaments "
+                "and --send PRINTER."
             )
 
 

@@ -43,7 +43,13 @@ from batchslicer.backends.orca import OrcaBackend, OrcaResult
 from batchslicer.backends.presets import PresetLibrary
 from batchslicer.backends.projects import is_project, project_filaments
 from batchslicer.core.logging import get_logger
-from batchslicer.domain.options import MAX_JOBS, SliceOptions
+from batchslicer.domain.options import (
+    COPYABLE_SUFFIXES,
+    MAX_JOBS,
+    SliceOptions,
+    is_loaded_slot,
+    slot_for,
+)
 from batchslicer.domain.presets import PresetSelection
 from batchslicer.services.filament_matching import FilamentMatcher
 from batchslicer.services.gcode_stats import GcodeStats, total_stats
@@ -208,6 +214,8 @@ class SlicingService:
         self._clock = clock
         self._options = options or SliceOptions()
         self._matcher = matcher
+        self._root: Path | None = None
+        """The folder a batch is sliced from, for matching --slot patterns."""
 
     def slice(
         self,
@@ -246,6 +254,7 @@ class SlicingService:
         """
         if not 1 <= jobs <= MAX_JOBS:
             raise ValueError(f"jobs must be between 1 and {MAX_JOBS}: {jobs}")
+        self._root = source_root
         batch_directory = self._create_unique_directory(
             output_directory / f"{source_root.name}-{self._stamp()}"
         )
@@ -419,6 +428,10 @@ class SlicingService:
         filaments: list[Path],
     ) -> SliceOutcome:
         """Run the slicer once for ``models`` together, arranged on plates."""
+        planned = self._slot_filaments(models, job_directory, filaments)
+        if isinstance(planned, str):
+            return SliceOutcome(False, folder, job_directory, (), planned, 0.0, models=models)
+        filaments, filament_ids = planned
         orient = self._options.orient == "always"
         self._logger.info(
             "Slicing %d models from %s together into %s", len(models), folder, job_directory
@@ -431,6 +444,7 @@ class SlicingService:
             allow_newer_file=self._options.allow_newer_files,
             load_settings=settings,
             load_filaments=filaments,
+            filament_ids=filament_ids,
         )
         return self._outcome(folder, job_directory, result, auto_oriented=orient, models=models)
 
@@ -457,6 +471,11 @@ class SlicingService:
             )
             self._logger.warning("Not slicing %s: %s", model, message)
             return SliceOutcome(False, model, job_directory, (), message, 0.0)
+        planned = self._slot_filaments((model,), job_directory, filaments)
+        if isinstance(planned, str):
+            self._logger.warning("Not slicing %s: %s", model, planned)
+            return SliceOutcome(False, model, job_directory, (), planned, 0.0)
+        filaments = planned[0]
         orient = self._options.orient
         self._logger.info(
             "Slicing %s%s into %s", model, f" ({copies} copies)" if copies > 1 else "", job_directory
@@ -496,6 +515,53 @@ class SlicingService:
             load_settings=settings,
             load_filaments=self._filaments_for(model, job_directory, filaments),
         )
+
+    def _slot_filaments(
+        self, models: Sequence[Path], job_directory: Path, filaments: list[Path]
+    ) -> tuple[list[Path], list[int]] | str:
+        """Return the filament files and each model's slot among them, for ``--slot`` rules.
+
+        Applies to loose models (STL, OBJ, STEP) only; 3MF projects keep their
+        own slots. A number picks the chosen filament in that place; a loaded
+        slot (``1B``, ``external``) picks that loaded filament. When the models
+        use one slot, no slot numbers are needed. Returns the reason instead
+        when a slot cannot be filled.
+        """
+        rules = self._options.slots
+        if not rules or not filaments or any(m.suffix.casefold() not in COPYABLE_SUFFIXES for m in models):
+            return filaments, []
+        slots = [slot_for(model, self._slot_root(model), rules) for model in models]
+        if all(slot == "1" for slot in slots):
+            return filaments, []
+        # Numbered slots first, in order (slot 1 stays the first filament), then loaded ones.
+        distinct = list(dict.fromkeys(slots))
+        order = sorted((slot for slot in distinct if not is_loaded_slot(slot)), key=int) + [
+            slot for slot in distinct if is_loaded_slot(slot)
+        ]
+        files: list[Path] = []
+        for slot in order:
+            if not is_loaded_slot(slot):
+                if int(slot) > len(filaments):
+                    return (
+                        f"--slot {slot} needs at least {slot} filaments; give --filament "
+                        f"{slot} times (slot 1 first)."
+                    )
+                files.append(filaments[int(slot) - 1])
+                continue
+            if self._matcher is None:
+                return f"--slot {slot} names a loaded filament, which needs --loaded-filaments."
+            path = self._matcher.file_for_slot(slot, job_directory)
+            if path is None:
+                return f"--slot {slot}: the printer reports no filament loaded there."
+            files.append(path)
+        ids = [order.index(slot) + 1 for slot in slots] if len(order) > 1 else []
+        return files, ids
+
+    def _slot_root(self, model: Path) -> Path:
+        """Return the folder --slot patterns are matched from: the batch's, or the model's own."""
+        if self._root is not None and model.is_relative_to(self._root):
+            return self._root
+        return model.parent
 
     def _filaments_for(self, model: Path, job_directory: Path, filaments: list[Path]) -> list[Path]:
         """Return one filament file per slot the model's project lists.

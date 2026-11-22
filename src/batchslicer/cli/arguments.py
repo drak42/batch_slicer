@@ -19,7 +19,14 @@ from batchslicer.cli.doctor import DoctorOptions
 from batchslicer.cli.service import SERVICE_ACTIONS, ServiceOptions
 from batchslicer.cli.setup import SetupOptions
 from batchslicer.core.locations import user_config_file
-from batchslicer.domain.options import MAX_COPIES, MAX_JOBS, ORIENT_MODES, OrientMode, orient_mode
+from batchslicer.domain.options import (
+    MAX_COPIES,
+    MAX_JOBS,
+    ORIENT_MODES,
+    OrientMode,
+    orient_mode,
+    slot_rule,
+)
 from batchslicer.domain.profiles import LAST_RUN
 from batchslicer.version import get_version_string
 
@@ -86,6 +93,9 @@ class RunOptions:
 
     start: bool = False
     """Start printing the sent G-code (--start); never remembered."""
+
+    slots: tuple[tuple[str, str], ...] | None = None
+    """Filament slots for loose models (--slot PATTERN=SLOT)."""
 
     loaded_filaments: bool | None = None
     """Match multi-colour projects to the filaments loaded in the --send printer (--loaded-filaments)."""
@@ -168,7 +178,16 @@ def parse_arguments(
         start=namespace.start,
         watch=namespace.watch,
         loaded_filaments=namespace.loaded_filaments,
+        slots=tuple(namespace.slot) if namespace.slot else None,
     )
+
+
+def _slot(value: str) -> tuple[str, str]:
+    """Return a --slot value, PATTERN=SLOT, or explain what is wrong."""
+    try:
+        return slot_rule(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error)) from error
 
 
 def _copies(value: str) -> int:
@@ -446,6 +465,19 @@ def _parser() -> argparse.ArgumentParser:
             "slice N copies of a single model (STL, OBJ or STEP), arranged by the slicer "
             "on as many plates as needed. Not for folders, 3MF projects or Creality Print "
             "(asked in interactive runs; default: 1)"
+        ),
+    )
+    slicing.add_argument(
+        "--slot",
+        type=_slot,
+        action="append",
+        metavar="PATTERN=SLOT",
+        help=(
+            "print STL, OBJ and STEP models matching PATTERN (matched like --exclude) with "
+            "filament SLOT: a number (the --filament given in that place) or, with "
+            "--loaded-filaments, a loaded filament such as 1B or external. Repeat for "
+            "several; the first match wins, others use slot 1. With --plates a kit's "
+            "parts print in their colours on the same plate"
         ),
     )
     slicing.add_argument(
