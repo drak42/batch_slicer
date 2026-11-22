@@ -116,6 +116,31 @@ def test_a_multi_colour_project_gets_a_filament_for_every_slot(tmp_path: Path) -
     assert backend.slice.call_args_list[1].kwargs["load_filaments"] == [filament]
 
 
+def test_creality_print_projects_fail_at_once_with_the_reason(tmp_path: Path) -> None:
+    """Creality Print refuses presets for 3MF projects, so it is not run for them."""
+    import zipfile
+
+    from batchslicer.backends.slicers import CREALITY_PRINT, ORCASLICER
+
+    project = tmp_path / "bumper.3mf"
+    with zipfile.ZipFile(project, "w") as archive:
+        archive.writestr("Metadata/project_settings.config", "{}")
+    library = Mock()
+    library.write_resolved.return_value = ([tmp_path / "machine.json"], [tmp_path / "filament.json"])
+    backend = _backend()
+    backend.slicer = CREALITY_PRINT
+    service = SlicingService(backend, presets=library, logger=Mock(), clock=lambda: NOW)
+
+    outcome = service.slice(project, tmp_path / "output", _selection())
+
+    assert not outcome.success
+    assert outcome.message.startswith("Creality Print cannot use your presets for a 3MF project")
+    backend.slice.assert_not_called()
+    assert service.slice(tmp_path / "cube.stl", tmp_path / "output", _selection()).success
+    backend.slicer = ORCASLICER
+    assert service.slice(project, tmp_path / "output", _selection()).success
+
+
 def test_slicing_with_presets_needs_a_library(tmp_path: Path) -> None:
     """Presets cannot be used without the library that resolves them."""
     service = SlicingService(_backend(), logger=Mock(), clock=lambda: NOW)

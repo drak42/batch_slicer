@@ -4,7 +4,7 @@ import json
 import zipfile
 from pathlib import Path
 
-from batchslicer.backends.projects import project_filaments
+from batchslicer.backends.projects import is_project, project_filaments
 from batchslicer.domain.filaments import ProjectFilament
 
 
@@ -54,3 +54,17 @@ def test_files_without_a_filament_list_give_none(tmp_path: Path) -> None:
         project(tmp_path / "text.3mf", {"filament_colour": "#FF0000"}),
     ):
         assert project_filaments(path) == (() if path.name != "text.3mf" else (ProjectFilament("#FF0000"),))
+
+
+def test_projects_are_told_from_plain_3mf_files(tmp_path: Path) -> None:
+    """Only a 3MF carrying a slicer's settings is a project."""
+    plain = tmp_path / "plain.3mf"
+    with zipfile.ZipFile(plain, "w") as archive:
+        archive.writestr("3D/3dmodel.model", "<model/>")
+    broken = tmp_path / "broken.3mf"
+    broken.write_text("not a zip")
+
+    assert is_project(project(tmp_path / "saved.3mf", {}))
+    assert not is_project(plain)
+    assert not is_project(broken)
+    assert not is_project(tmp_path / "cube.stl")

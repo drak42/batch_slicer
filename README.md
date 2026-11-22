@@ -932,7 +932,8 @@ is offered only when the printer you send to reports loaded filaments).
   refused by the slicer; the summary says so.
 - Tested with OrcaSlicer and Bambu Studio. **Creality Print cannot use your
   presets for any 3MF project** (its command line refuses to load presets
-  into a project), multi-colour or not.
+  into a project), multi-colour or not; such projects fail at once with that
+  reason.
 
 ## Output
 
@@ -1277,8 +1278,10 @@ the Actions tab ("Latest slicers").
 - **Loaded filaments from Creality's CFS only.** Reading a Bambu AMS needs the
   Bambu connection, which is not built yet.
 - **Creality Print and 3MF projects.** Creality Print's command line cannot
-  apply your presets to a 3MF project; use OrcaSlicer or Bambu Studio for
-  projects.
+  apply your presets to a 3MF project saved by a slicer, so with Creality
+  Print such projects fail at once with that reason (STL, OBJ and plain 3MF
+  files slice as usual). Slice projects with OrcaSlicer or Bambu Studio;
+  with several printers, list one of them for the projects.
 - **The same presets for every model.** Within a run, each printer uses one
   filament and process for all models; to vary them, use separate runs or
   profiles.

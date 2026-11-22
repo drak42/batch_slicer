@@ -6,6 +6,13 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- With Creality Print, a 3MF project saved by a slicer now fails at once with
+  the reason (its command line cannot apply presets to projects) and a pointer
+  to OrcaSlicer or Bambu Studio, instead of "Invalid parameters to the slicer"
+  after starting Creality Print. Other models in the folder slice as usual.
+
 ## [0.12.1] - 2026-11-23
 
 Small fixes, and CFS matching confirmed on a real printer.

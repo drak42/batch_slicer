@@ -41,7 +41,7 @@ from pathlib import Path
 
 from batchslicer.backends.orca import OrcaBackend, OrcaResult
 from batchslicer.backends.presets import PresetLibrary
-from batchslicer.backends.projects import project_filaments
+from batchslicer.backends.projects import is_project, project_filaments
 from batchslicer.core.logging import get_logger
 from batchslicer.domain.options import MAX_JOBS, SliceOptions
 from batchslicer.domain.presets import PresetSelection
@@ -445,8 +445,18 @@ class SlicingService:
     ) -> SliceOutcome:
         """Run the slicer for one model (``copies`` times over) into an existing job folder.
 
-        With orient "retry", a failure is retried once with auto-orient.
+        With orient "retry", a failure is retried once with auto-orient. A 3MF
+        project the slicer cannot apply presets to fails at once, with the reason.
         """
+        slicer = self._backend.slicer
+        if settings and not slicer.presets_in_projects and is_project(model):
+            message = (
+                f"{slicer.display_name} cannot use your presets for a 3MF project (its command "
+                "line refuses them); slice it with OrcaSlicer or Bambu Studio, for example "
+                "--slicer orca."
+            )
+            self._logger.warning("Not slicing %s: %s", model, message)
+            return SliceOutcome(False, model, job_directory, (), message, 0.0)
         orient = self._options.orient
         self._logger.info(
             "Slicing %s%s into %s", model, f" ({copies} copies)" if copies > 1 else "", job_directory

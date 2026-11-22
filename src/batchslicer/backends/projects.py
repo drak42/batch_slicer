@@ -20,6 +20,18 @@ _SETTINGS = "Metadata/project_settings.config"
 _MAX_SETTINGS_BYTES = 8 * 1024 * 1024
 
 
+def is_project(path: Path) -> bool:
+    """Return whether ``path`` is a 3MF project saved by a slicer (it carries the slicer's settings)."""
+    if path.suffix.casefold() != ".3mf":
+        return False
+    try:
+        with zipfile.ZipFile(path) as archive:
+            archive.getinfo(_SETTINGS)
+    except (OSError, KeyError, zipfile.BadZipFile):
+        return False
+    return True
+
+
 def project_filaments(path: Path) -> tuple[ProjectFilament, ...]:
     """Return the filament slots a 3MF project lists, or ``()`` if it lists none.
 

@@ -37,6 +37,9 @@ class SlicerDefinition:
     """Version from which the slicer's CLI looks up a settings file's ``inherits``
     itself (and fails if it cannot find it); None if it never does."""
 
+    presets_in_projects: bool = True
+    """Whether the CLI accepts presets (``--load-settings``) for a 3MF project."""
+
     @property
     def supports_preset_selection(self) -> bool:
         """Return whether BatchSlicer can list and resolve this slicer's presets."""
@@ -79,6 +82,10 @@ CREALITY_PRINT = SlicerDefinition(
     # Without this, Creality Print reports success but writes no G-code.
     slice_arguments=("--need-gcode-file",),
     app_config_name="Creality.conf",
+    # 7.3: "--load_settings and --load_filaments cannot be used when slicing a 3MF
+    # project". Removing the project's settings from a copy does not help either:
+    # the version check still refuses it, and --allow-newer-file then crashes.
+    presets_in_projects=False,
 )
 
 SLICERS: tuple[SlicerDefinition, ...] = (ORCASLICER, CREALITY_PRINT, BAMBU_STUDIO)
