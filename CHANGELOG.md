@@ -11,6 +11,9 @@ All notable changes to BatchSlicer are recorded here. The format follows
 - The repository is public: README badges, issue forms for bug reports
   (asking for `batchslicer doctor` output) and feature requests, and
   `SECURITY.md` with private vulnerability reporting.
+- Dependabot proposes weekly updates for the GitHub Actions and Python
+  packages BatchSlicer uses; `main` is protected, so those (and any pull
+  request) must pass CI on Python 3.12 and 3.13 before they can be merged.
 
 ## [0.9.2] - 2026-11-22
 

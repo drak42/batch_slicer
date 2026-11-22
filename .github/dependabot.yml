@@ -1,0 +1,24 @@
+# Dependabot opens pull requests when a newer version of something BatchSlicer
+# depends on is released. CI must pass on them before they can be merged.
+version: 2
+updates:
+  # Actions used by the workflows (checkout, setup-python, the PyPI upload, ...).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+
+  # Python packages in pyproject.toml: PyYAML, and the pinned dev tools
+  # (ruff, mypy), whose updates can bring new lint or type errors.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build

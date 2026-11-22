@@ -81,6 +81,11 @@ We intentionally avoid implementing large features without first discussing the 
 
 # Pull Requests
 
+`main` is protected: a pull request can only be merged once CI has passed on
+Python 3.12 and 3.13, and `main` cannot be force-pushed or deleted.
+Dependabot opens pull requests for dependency updates each week; review and
+merge them like any other.
+
 Please keep pull requests focused.
 
 Small pull requests are much easier to review than large ones.
