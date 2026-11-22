@@ -806,8 +806,47 @@ batchslicer --profile k2-pla --input ~/drop --plates --send k2plus --watch
 - **Stop** with Ctrl+C. A drop being sliced at that moment stays in the
   watched folder and is sliced next time.
 
-To keep it running in the background on Linux, start it in a `tmux` or
-`screen` session, or as a systemd user service.
+### Running it in the background
+
+`batchslicer service install` keeps the watch folder running without a
+terminal, as a systemd user service (Linux). It takes the same options as a
+watch run and adds `--watch --no-prompt`, so it needs a profile (or
+`--slicer`, `--printer`, `--filament` and `--process`):
+
+```bash
+batchslicer service install --profile k2-pla --plates --send k2plus
+```
+
+```text
+Wrote /home/you/.config/systemd/user/batchslicer-watch.service
+  runs: batchslicer --config /home/you/.config/batchslicer/config.yaml --profile k2-pla --plates --send k2plus --watch --no-prompt
+  | BatchSlicer ready. Slicer: OrcaSlicer.
+  | Watching /home/you/BatchSlicer/incoming for models; output to /home/you/BatchSlicer/output.
+
+The service 'watch' is watching, and starts again whenever you log in.
+```
+
+- It starts right away, shows its first lines of output, and starts again at
+  every login. If it stops at once (a profile name misspelled, a printer that
+  does not answer), install says so and shows why.
+- The configuration file in use, and the `--input` and `--output` folders,
+  are written with their full paths, so the service works the same whatever
+  folder you installed it from.
+- `batchslicer service status` shows each service, whether it is running and
+  what it runs, with its latest output. `journalctl --user -u
+  batchslicer-watch.service -f` follows it live.
+- `batchslicer service uninstall` stops and removes it. Stopping works like
+  Ctrl+C: the slicer is stopped, and a drop being sliced stays in the folder.
+- `--name NAME` runs several, for example one folder per printer:
+  `batchslicer service install --name ender --profile ender-pla --input ~/drop-ender`.
+  Installing again with the same name replaces it.
+- A user service stops when you log out. To keep it running then, and start
+  it at boot, run `loginctl enable-linger` once.
+- The slicers run without a window, so no desktop session is needed (tested
+  with OrcaSlicer, Bambu Studio and Creality Print AppImages).
+
+Without systemd, run `batchslicer --watch ...` in a `tmux` or `screen`
+session instead.
 
 ## Output
 

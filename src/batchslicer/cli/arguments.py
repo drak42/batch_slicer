@@ -16,6 +16,7 @@ from pathlib import Path
 
 from batchslicer.backends.slicers import SLICERS
 from batchslicer.cli.doctor import DoctorOptions
+from batchslicer.cli.service import SERVICE_ACTIONS, ServiceOptions
 from batchslicer.cli.setup import SetupOptions
 from batchslicer.core.locations import user_config_file
 from batchslicer.domain.options import MAX_COPIES, MAX_JOBS, ORIENT_MODES, OrientMode, orient_mode
@@ -110,17 +111,19 @@ class RunOptions:
 
 def parse_arguments(
     argv: Sequence[str] | None = None,
-) -> RunOptions | SetupOptions | DoctorOptions:
+) -> RunOptions | SetupOptions | DoctorOptions | ServiceOptions:
     """Return the options in ``argv`` (default: the process arguments).
 
-    ``setup`` or ``doctor`` as the first argument selects that command. Invalid options
-    print a usage message and exit with status 2.
+    ``setup``, ``doctor`` or ``service`` as the first argument selects that
+    command. Invalid options print a usage message and exit with status 2.
     """
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments[:1] == ["setup"]:
         return _parse_setup(arguments[1:])
     if arguments[:1] == ["doctor"]:
         return _parse_doctor(arguments[1:])
+    if arguments[:1] == ["service"]:
+        return _parse_service(arguments[1:])
     parser = _parser()
     namespace = parser.parse_args(arguments)
     if namespace.watch:
@@ -185,6 +188,77 @@ def _jobs(value: str) -> int:
     if not 1 <= jobs <= MAX_JOBS:
         raise argparse.ArgumentTypeError(f"must be a whole number from 1 to {MAX_JOBS}: '{value}'")
     return jobs
+
+
+def _service_parser() -> argparse.ArgumentParser:
+    """Build the parser for ``batchslicer service`` (used for help and errors)."""
+    parser = argparse.ArgumentParser(
+        prog="batchslicer service",
+        usage="batchslicer service {install,status,uninstall} [--name NAME] [run options]",
+        description=(
+            "Keep the watch folder running in the background as a systemd user service "
+            "(Linux). 'install' takes the same options as a watch run, such as --profile, "
+            "--input and --send, and adds --watch --no-prompt; it starts the service and "
+            "shows its first lines of output. 'status' shows the installed services, "
+            "'uninstall' stops and removes one."
+        ),
+        epilog=(
+            "Example: batchslicer service install --profile k2-pla --input ~/drop "
+            "--plates --send k2plus"
+        ),
+    )
+    parser.add_argument("action", choices=SERVICE_ACTIONS, help="what to do")
+    parser.add_argument(
+        "--name",
+        metavar="NAME",
+        help=(
+            "the service's name, to run several (default: watch; status without it shows "
+            "every service)"
+        ),
+    )
+    return parser
+
+
+def _parse_service(arguments: Sequence[str]) -> ServiceOptions:
+    """Return the options for ``batchslicer service``.
+
+    Everything after the action except ``--name`` is passed to the service as
+    run options; they are checked here as a watch run without prompts would be.
+    """
+    parser = _service_parser()
+    if not arguments or arguments[0] in ("-h", "--help") or arguments[0] not in SERVICE_ACTIONS:
+        parser.parse_args(arguments)  # prints help, or the error for a missing/unknown action
+    action, rest = arguments[0], list(arguments[1:])
+    if "-h" in rest or "--help" in rest:
+        parser.print_help()
+        raise SystemExit(0)
+    name: str | None = None
+    run_arguments: list[str] = []
+    index = 0
+    while index < len(rest):
+        argument = rest[index]
+        if argument == "--name":
+            if index + 1 >= len(rest):
+                parser.error("--name needs a name")
+            name = rest[index + 1]
+            index += 2
+            continue
+        if argument.startswith("--name="):
+            name = argument.partition("=")[2]
+        else:
+            run_arguments.append(argument)
+        index += 1
+    if action != "install":
+        if run_arguments:
+            parser.error(f"'{action}' takes only --name, not: {' '.join(run_arguments)}")
+        return ServiceOptions(action=action, name=name)
+    run = parse_arguments([*run_arguments, "--watch", "--no-prompt"])
+    if not isinstance(run, RunOptions) or not (run.profiles or run.slicer):
+        parser.error(
+            "install needs --profile NAME (or --slicer with --printer, --filament and "
+            "--process), because the service cannot ask questions"
+        )
+    return ServiceOptions(action=action, name=name, run_arguments=tuple(run_arguments))
 
 
 def _parse_doctor(arguments: Sequence[str]) -> DoctorOptions:
@@ -252,7 +326,8 @@ def _parser() -> argparse.ArgumentParser:
             f"Slice 3D models with {slicers}. Choices not given here are asked "
             "for interactively, unless --no-prompt is used. First time? Run "
             "'batchslicer setup' to find your slicers and create the configuration. "
-            "Something wrong? 'batchslicer doctor' checks your setup."
+            "Something wrong? 'batchslicer doctor' checks your setup. "
+            "'batchslicer service' runs --watch in the background."
         ),
         epilog=(
             "Example: batchslicer --slicer creality --printer 'Creality K2 Plus 0.4 nozzle' "

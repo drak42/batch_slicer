@@ -342,6 +342,9 @@ therefore behaves the same from any working folder.
 `batchslicer setup` (`cli/setup.py`) creates the configuration: it detects
 installed slicers and their settings folders (`backends/detection.py`) and
 writes the file (`render_config`), keeping a backup of any file it replaces.
+`batchslicer service` (`cli/service.py`, `infrastructure/systemd.py`) writes
+systemd user units that run a watch run with the configuration file named
+explicitly.
 
 No module should read configuration files directly.
 

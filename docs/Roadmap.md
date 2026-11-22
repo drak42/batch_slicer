@@ -87,6 +87,8 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 ## Next
 
+- **Watch folder in the background** (built, unreleased): `batchslicer
+  service install` runs `--watch` as a systemd user service.
 - Windows and macOS work continues on the `feat/windows` and `feat/macos`
   branches (draft pull requests), outside `main`.
 

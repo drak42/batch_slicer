@@ -42,6 +42,7 @@ from batchslicer.cli.output_prompt import output_from_path, prompt_for_output
 from batchslicer.cli.preset_prompt import find_preset, select_presets
 from batchslicer.cli.profile_prompt import prompt_for_profile
 from batchslicer.cli.send_prompt import prompt_for_printer
+from batchslicer.cli.service import ServiceOptions, run_service
 from batchslicer.cli.setup import SetupOptions, run_setup
 from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slicer
 from batchslicer.core.config import Config, find_config_file, get_config
@@ -99,6 +100,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _setup(options)
         if isinstance(options, DoctorOptions):
             return EXIT_SUCCESS if run_doctor(options) == 0 else EXIT_FAILURE
+        if isinstance(options, ServiceOptions):
+            return EXIT_SUCCESS if run_service(options) == 0 else EXIT_FAILURE
         return _run(options)
     except KeyboardInterrupt:
         _error("\nCancelled.")

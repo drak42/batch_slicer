@@ -7,9 +7,10 @@ unless `--no-prompt` is used (then a missing choice is an error). Code lives in
 
 ## Commands
 
-`batchslicer setup` (`cli/setup.py`) and `batchslicer doctor`
-(`cli/doctor.py`) are separate commands chosen by the first argument; they do
-not slice. Everything below describes a normal run.
+`batchslicer setup` (`cli/setup.py`), `batchslicer doctor` (`cli/doctor.py`)
+and `batchslicer service` (`cli/service.py`) are separate commands chosen by
+the first argument; they do not slice. A service runs a normal watch run
+(below) with `--watch --no-prompt`. Everything below describes a normal run.
 
 ## Sequence
 

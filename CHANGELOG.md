@@ -6,6 +6,13 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `batchslicer service install` runs the watch folder in the background as a
+  systemd user service, with the same options as a watch run; `status` shows
+  what each service is doing and `uninstall` removes one. Stopping a service
+  works like Ctrl+C. `--name` runs several.
+
 ## [0.10.0] - 2026-11-23
 
 A watch folder, and sending to OctoPrint.
