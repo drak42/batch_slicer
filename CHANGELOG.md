@@ -6,6 +6,11 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Documentation
+
+- Matching to the CFS is confirmed on a Creality K2 Plus: the touchscreen's
+  slot-mapping screen picks the matched slots by itself.
+
 ## [0.12.0] - 2026-11-23
 
 Multi-colour projects, with filaments matched to the Creality CFS.

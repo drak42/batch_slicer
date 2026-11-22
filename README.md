@@ -912,6 +912,11 @@ There are three ways to fill the slots:
    The G-code and its preview picture then show the colours that will really
    print. In a watch run the CFS is read again for every drop.
 
+   **Tested on a Creality K2 Plus with a CFS:** the touchscreen shows the
+   file with its multi-colour preview picture, and when you print it, the
+   slot-mapping screen already has each colour set to the matched CFS slot
+   or external spool.
+
 In an interactive run, when the input holds a multi-colour project,
 BatchSlicer lists its filaments and asks which of the three to use (the first
 is offered only when the printer you send to reports loaded filaments).
