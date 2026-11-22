@@ -105,6 +105,11 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - `--slot PATTERN=SLOT` gives STL models their own filament slot, numbered or
   a loaded CFS slot; Creality Print 3MF projects fail at once with the reason.
 
+### 0.14.0 (2026-11-23): flat output
+
+- `--flat` puts a batch's G-code in one folder; `doctor` lists what is loaded
+  in a Creality printer's CFS.
+
 ## Next
 
 - Multi-colour: the Bambu AMS.
