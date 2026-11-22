@@ -42,12 +42,17 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - OrcaSlicer 2.5: reading its packed `.opc` preset files.
 - Bambu Studio preset selection; the weekly test now covers its presets.
 
+### 0.7.0 (2026-11-22): leave models out, send to the printer
+
+- `--exclude PATTERN` skips folders and files, such as meshes bundled with
+  other software (the soak test's largest group of failures).
+- `--send PRINTER` uploads the G-code to a Klipper printer through Moonraker,
+  by address or configured name; `--start` prints a single model.
+
 ## Next
 
-- [x] **Skip folders** (`--exclude PATTERN`): the soak test's largest group of
-  failures came from non-model meshes bundled with other software.
-- [x] **Send G-code to the printer** (`--send PRINTER`, `--start`) for Klipper
-  printers with Moonraker, such as the K2 Plus.
+- [ ] **Try sending with a real printer** (the K2 Plus) and note in the README
+  which port Creality's Moonraker answers on.
 
 ## Then: decisions on reach
 

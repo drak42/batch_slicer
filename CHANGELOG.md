@@ -6,6 +6,10 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-22
+
+Leave unwanted files out of a batch, and send the results to the printer.
+
 ### Added
 
 - **`--exclude PATTERN`** leaves out folders or files when slicing a folder
@@ -22,7 +26,8 @@ All notable changes to BatchSlicer are recorded here. The format follows
   checked before slicing starts,
   and are checked by `batchslicer doctor`. Profiles remember the printer
   (`--no-send` skips it for one run) but never `--start`. `batchslicer setup`
-  keeps the `printers` section when it rewrites the configuration.
+  keeps the `printers` section when it rewrites the configuration. Tested
+  with real slicing against a stand-in Moonraker; not yet with a real printer.
 
 ### Changed
 
@@ -217,7 +222,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/drak42/batch_slicer/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/drak42/batch_slicer/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/drak42/batch_slicer/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/drak42/batch_slicer/compare/v0.3.0...v0.4.0
