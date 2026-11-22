@@ -95,6 +95,11 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
   or matched to the filaments loaded in the Creality CFS; colour preview
   pictures; grams per filament and filament changes in the report.
 
+### 0.12.1 (2026-11-23): fixes
+
+- Bambu Studio's filament changes are counted; a watch service says how to
+  stop it; CFS matching confirmed on a Creality K2 Plus.
+
 ## Next
 
 - Multi-colour: colours for whole STL files, and the Bambu AMS.
