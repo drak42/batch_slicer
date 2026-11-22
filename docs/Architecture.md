@@ -305,11 +305,12 @@ Application (app.py)
   ↓
 Preset library: resolves the chosen presets into complete files
   ↓
-Slicing service: job or batch folders, up to --jobs at a time, retries
+Slicing service: job or batch folders, up to --jobs at a time, retries,
+  each folder's models together on plates (--plates)
   ↓
 Backend: slicer CLI (OrcaSlicer, Creality Print or Bambu Studio)
   ↓
-G-code, named after each model
+G-code, named after each model (or folder), with preview pictures added
   ↓
 Report (report.csv / report.json) and summary
   ↓
@@ -381,6 +382,8 @@ Examples include:
 
 - Multiple printers (built: several printers per run)
 - Multiple slicers (built: OrcaSlicer, Creality Print, Bambu Studio)
+- Sending to printers (built: Klipper/Moonraker; planned: Bambu LAN, OctoPrint)
+- Arranging parts onto plates (built: `--plates`, by the slicer's own arrange)
 - Distributed workers
 - Remote dashboard
 - REST API

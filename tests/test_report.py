@@ -49,6 +49,7 @@ def test_report_is_written_as_csv_and_json(tmp_path: Path) -> None:
         "status": "ok",
         "auto_oriented": "yes",
         "gcode": "sub/part/part.gcode",
+        "models": "",
         "print_time": "1h 2m",
         "print_seconds": "3730.0",
         "filament_g": "7.41",

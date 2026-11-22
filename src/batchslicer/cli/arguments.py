@@ -68,6 +68,9 @@ class RunOptions:
     exclude: tuple[str, ...] | None = None
     """Patterns of folders and files to leave out of a folder run (--exclude)."""
 
+    plates: bool | None = None
+    """Slice each folder's models together on plates (--plates / --no-plates)."""
+
     thumbnails: bool | None = None
     """Add preview pictures to the G-code (--thumbnails / --no-thumbnails)."""
 
@@ -132,6 +135,7 @@ def parse_arguments(
         jobs=namespace.jobs,
         exclude=tuple(namespace.exclude) if namespace.exclude else None,
         thumbnails=namespace.thumbnails,
+        plates=namespace.plates,
         send=namespace.send,
         start=namespace.start,
     )
@@ -303,6 +307,17 @@ def _parser() -> argparse.ArgumentParser:
             "for several. Without '/' it matches any folder or file name ('Cura-*', "
             "'*_old.stl'), with '/' a path inside the folder ('kits/old'). Wildcards "
             "*, ? and [...] work; case is ignored"
+        ),
+    )
+    slicing.add_argument(
+        "--plates",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "when slicing a folder, slice the loose models (STL, OBJ, STEP) of each folder "
+            "together: the slicer arranges them on as few plates as fit, giving one G-code "
+            "file per plate. 3MF projects keep their own plates. Not for Creality Print "
+            "(asked in interactive runs; default: off)"
         ),
     )
     slicing.add_argument(

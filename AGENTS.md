@@ -20,7 +20,7 @@ If the answer to any of these questions is "no", stop and rethink the implementa
 
 **Repository:** batch_slicer
 
-BatchSlicer is a print automation platform that drives OrcaSlicer, Creality Print and Bambu Studio. The long-term vision is to remove friction from the entire 3D printing workflow through reliable automation.
+BatchSlicer is a print automation platform that drives OrcaSlicer, Creality Print and Bambu Studio, and sends the resulting G-code to Klipper printers through Moonraker. The long-term vision is to remove friction from the entire 3D printing workflow through reliable automation.
 
 ---
 

@@ -141,10 +141,11 @@ class ProfileStore:
             if not isinstance(values["allow_newer_files"], bool):
                 raise ProfileError(f"{where}: allow_newer_files must be true or false.")
             settings["allow_newer_files"] = values["allow_newer_files"]
-        if values.get("thumbnails") is not None:
-            if not isinstance(values["thumbnails"], bool):
-                raise ProfileError(f"{where}: thumbnails must be true or false.")
-            settings["thumbnails"] = values["thumbnails"]
+        for key in ("thumbnails", "plates"):
+            if values.get(key) is not None:
+                if not isinstance(values[key], bool):
+                    raise ProfileError(f"{where}: {key} must be true or false.")
+                settings[key] = values[key]
         if values.get("jobs") is not None:
             jobs = values["jobs"]
             if isinstance(jobs, bool) or not isinstance(jobs, int) or not 1 <= jobs <= MAX_JOBS:
@@ -211,7 +212,7 @@ class ProfileStore:
             "# slicer, printer, filament and process (or a 'targets' list of them, to\n"
             "# slice for several printers), plus input and output, and optionally\n"
             "# orient (off/retry/always), allow_newer_files (true/false), jobs,\n"
-            "# exclude (a list of patterns), thumbnails (true/false) and, per\n"
+            "# exclude (a list of patterns), thumbnails and plates (true/false) and, per\n"
             "# printer, send (a printer's address or configured name).\n"
             + yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
         )

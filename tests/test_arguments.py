@@ -186,3 +186,10 @@ def test_thumbnails_option() -> None:
     assert parse_arguments([]).thumbnails is None
     assert parse_arguments(["--no-thumbnails"]).thumbnails is False
     assert parse_arguments(["--thumbnails"]).thumbnails is True
+
+
+def test_plates_option() -> None:
+    """--plates / --no-plates; unset means ask (or off without prompts)."""
+    assert parse_arguments([]).plates is None
+    assert parse_arguments(["--plates"]).plates is True
+    assert parse_arguments(["--no-plates"]).plates is False

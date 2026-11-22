@@ -8,6 +8,16 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ### Added
 
+- **Several models per plate.** When slicing a folder, the loose models (STL,
+  OBJ, STEP) of each folder can be sliced together: the slicer arranges them
+  on as few plates as fit, giving one G-code file per plate, named after the
+  folder. Interactive runs ask ("Put the models in each folder together on
+  plates?"); `--plates` / `--no-plates` decide on the command line, and
+  profiles can save it. If a part fails, the folder's models are sliced one
+  by one instead. 3MF projects keep their own plates. OrcaSlicer and Bambu
+  Studio (Creality Print cannot arrange from its command line). The report
+  lists each plate group's models.
+
 - **Interactive runs ask whether to send the G-code** to a printer, when one
   is configured or the last run sent to one ("Enter keeps what the last run
   did"; another address can be typed). Runs from a profile or with `--send` /

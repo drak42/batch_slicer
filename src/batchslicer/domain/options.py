@@ -33,6 +33,9 @@ class SliceOptions:
     thumbnails: bool = True
     """Add preview pictures, drawn from the G-code, for printer screens."""
 
+    plates: bool = False
+    """Slice the loose models of each folder together, arranged on as few plates as fit."""
+
     def describe(self) -> str:
         """Return the options that differ from the defaults, as one line ("" if none)."""
         parts = []
@@ -42,6 +45,8 @@ class SliceOptions:
             parts.append("auto-orient every model")
         if self.allow_newer_files:
             parts.append("allow newer 3MF files")
+        if self.plates:
+            parts.append("each folder's models together on plates")
         if not self.thumbnails:
             parts.append("no preview pictures")
         return ", ".join(parts)

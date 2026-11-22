@@ -584,3 +584,92 @@ def test_a_picture_problem_does_not_fail_the_slice(tmp_path: Path, monkeypatch: 
 
     assert outcome.success
     assert "disk full" in str(logger.warning.call_args)
+
+
+def _plates_backend(*, together_fails: bool = False) -> Mock:
+    """Return a backend that writes plates for several models, or fails for them."""
+    backend = Mock()
+    backend.resolves_inherits.return_value = False
+
+    def slice_(model: object, job: Path, **kwargs: object) -> OrcaResult:
+        if isinstance(model, tuple):
+            if together_fails:
+                (job / "result.json").write_text(json.dumps({"error_string": "bad part"}))
+                return OrcaResult(False, 1, "", "", 3.0, ())
+            assert kwargs["arrange"] is True
+            (job / "plate_1.gcode").write_text("G1")
+            (job / "plate_2.gcode").write_text("G1")
+            return OrcaResult(True, 0, "", "", 5.0, ())
+        (job / "plate_1.gcode").write_text("G1")
+        return OrcaResult(True, 0, "", "", 1.0, ())
+
+    backend.slice.side_effect = slice_
+    return backend
+
+
+def test_plates_put_each_folders_loose_models_together(tmp_path: Path) -> None:
+    """A folder's STL/OBJ files share plates; 3MF projects and lone models are sliced alone."""
+    source = tmp_path / "models"
+    kit = [source / "kit" / "a.stl", source / "kit" / "b.obj"]
+    models = [source / "project.3mf", kit[0], source / "lone" / "c.stl", kit[1]]
+    backend = _plates_backend()
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(plates=True))
+    started: list[Path] = []
+
+    batch = service.slice_batch(models, source, tmp_path / "out", on_start=lambda n, t, m: started.append(m))
+
+    assert started == [source / "project.3mf", source / "kit", source / "lone" / "c.stl"]
+    together = batch.outcomes[1]
+    assert together.model == source / "kit"
+    assert together.models == tuple(kit)
+    assert [path.relative_to(batch.batch_directory).as_posix() for path in together.gcode_files] == [
+        "kit/plates/kit_plate_1.gcode",
+        "kit/plates/kit_plate_2.gcode",
+    ]
+    assert (batch.planned, batch.models_succeeded, together.model_count) == (4, 4, 2)
+    assert backend.slice.call_args_list[1].args[0] == tuple(kit)
+
+
+def test_plates_fall_back_to_one_by_one(tmp_path: Path) -> None:
+    """If the models cannot be sliced together, each is sliced on its own instead."""
+    source = tmp_path / "models"
+    kit = [source / "kit" / "a.stl", source / "kit" / "b.stl"]
+    service = SlicingService(
+        _plates_backend(together_fails=True), logger=Mock(), clock=lambda: NOW, options=SliceOptions(plates=True)
+    )
+
+    batch = service.slice_batch(kit, source, tmp_path / "out")
+
+    assert [outcome.model for outcome in batch.outcomes] == kit
+    assert all(outcome.success and not outcome.models for outcome in batch.outcomes)
+    assert not (batch.batch_directory / "kit" / "plates").exists()
+    assert (batch.batch_directory / "kit" / "a" / "a.gcode").is_file()
+
+
+def test_plates_are_off_by_default(tmp_path: Path) -> None:
+    """Without the option every model is sliced on its own, as before."""
+    source = tmp_path / "models"
+    kit = [source / "kit" / "a.stl", source / "kit" / "b.stl"]
+    service = SlicingService(_plates_backend(), logger=Mock(), clock=lambda: NOW)
+
+    batch = service.slice_batch(kit, source, tmp_path / "out")
+
+    assert [outcome.models for outcome in batch.outcomes] == [(), ()]
+
+
+def test_interrupted_plates_leave_no_partial_output(tmp_path: Path) -> None:
+    """Ctrl+C while a folder is sliced together removes its plates folder."""
+    source = tmp_path / "models"
+    backend = Mock()
+
+    def slice_(model: object, job: Path, **kwargs: object) -> OrcaResult:
+        (job / "plate_1.gcode.tmp").write_text("G1")
+        raise KeyboardInterrupt
+
+    backend.slice.side_effect = slice_
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(plates=True))
+
+    batch = service.slice_batch([source / "a.stl", source / "b.stl"], source, tmp_path / "out")
+
+    assert batch.interrupted_models == (source,)
+    assert list(batch.batch_directory.iterdir()) == []

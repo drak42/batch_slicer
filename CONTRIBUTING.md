@@ -56,7 +56,9 @@ Before committing, run the same checks as GitHub Actions:
 ```
 
 After changing anything that talks to a slicer, also run the real-slicer tests
-against your installed slicers (see "Testing" in the README).
+against your installed slicers (see "Testing" in the README). After changing
+sending, try it once with a real printer (sending a file without `--start`
+is safe).
 [docs/Modules.md](docs/Modules.md) says where things live, and
 [docs/Startup.md](docs/Startup.md) what happens during a run.
 
@@ -144,7 +146,8 @@ A feature is not complete until tests pass.
 
 1. Make sure `main` is green on GitHub Actions.
 2. Set the new version in `src/batchslicer/version.py` (`__version__`); it is
-   the only place the number is written.
+   the only place the program reads it from. Update the **Version** line at the
+   top of `docs/Architecture.md` to match.
 3. In `CHANGELOG.md`, move the entries under `[Unreleased]` into a new
    `## [X.Y.Z] - YYYY-MM-DD` section and update the comparison links at the
    bottom. A test checks that the current version has a section. In

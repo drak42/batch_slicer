@@ -39,6 +39,12 @@ workshop, reporting what each job will cost in time and material, arranging
 parts onto plates, and handing finished G-code to the printers, while staying
 understandable, extensible and enjoyable to maintain.
 
+Much of that is in place: it slices for several printers at once, reports
+print time and filament, puts a folder's parts together on plates, adds
+preview pictures for printer screens, and sends G-code to Klipper printers.
+Next come copies on plates, multi-material printers, watch folders and other
+kinds of printer connection.
+
 See [Roadmap](Roadmap.md) for the concrete plan and
 [Architecture](Architecture.md) for how the software is built.
 

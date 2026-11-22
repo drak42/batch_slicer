@@ -296,3 +296,12 @@ def test_thumbnails_setting_is_saved_and_checked(tmp_path: Path) -> None:
     (tmp_path / "profiles.yaml").write_text("bad:\n  thumbnails: maybe\n")
     with pytest.raises(ProfileError, match="thumbnails must be true or false"):
         store.load()
+
+
+def test_plates_setting_is_saved(tmp_path: Path) -> None:
+    """plates is stored as true/false and shown in the summary."""
+    store = ProfileStore(tmp_path / "profiles.yaml")
+    store.save(Profile("kits", plates=True))
+
+    assert store.get("kits").plates is True
+    assert "models together on plates" in store.get("kits").summary()

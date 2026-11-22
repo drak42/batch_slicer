@@ -152,6 +152,10 @@ def _run(options: RunOptions) -> int:
         _check_options(targets, slice_options)
         _show_ready(targets, slice_options, jobs, start=options.start)
         slice_input = _apply_exclude(_select_input(options, config), options.exclude or ())
+        if options.plates is None and not from_profile and not options.no_prompt:
+            options = replace(options, plates=_ask_plates(targets, slice_input, profiles))
+        slice_options = replace(slice_options, plates=bool(options.plates) and slice_input.is_folder)
+        _check_options(targets, slice_options)
         if not from_profile and options.send is None and not options.no_prompt:
             targets = _ask_to_send(targets, profiles, config)
         _check_start(options.start, targets, slice_input)
@@ -298,6 +302,7 @@ def _plan_targets(
             jobs=options.jobs if options.jobs is not None else plan.jobs,
             exclude=options.exclude if options.exclude is not None else plan.exclude,
             thumbnails=options.thumbnails if options.thumbnails is not None else plan.thumbnails,
+            plates=options.plates if options.plates is not None else plan.plates,
         )
 
     if len(targets) > 1:
@@ -426,6 +431,42 @@ def _ask_to_send(
     return [replace(targets[0], host=chosen)]
 
 
+def _ask_plates(
+    targets: list[_ResolvedTarget],
+    slice_input: SliceInput,
+    profiles: ProfileStore,
+) -> bool | None:
+    """Ask whether to put each folder's models together on plates, when that is possible.
+
+    Asked only for a folder with at least one subfolder holding two or more
+    loose models, and only when every chosen slicer can arrange. Enter keeps
+    what the last run did.
+    """
+    if not slice_input.is_folder or not all(t.slicer.supports("--arrange") for t in targets):
+        return None
+    counts: dict[Path, int] = {}
+    for model in slice_input.models:
+        if model.suffix.casefold() in (".stl", ".obj", ".step", ".stp"):
+            counts[model.parent] = counts.get(model.parent, 0) + 1
+    shared = {folder: count for folder, count in counts.items() if count > 1}
+    if not shared:
+        return None
+    try:
+        previous = profiles.load().get(LAST_RUN)
+    except ProfileError:
+        previous = None
+    default = bool(previous is not None and previous.plates)
+    models = sum(shared.values())
+    folders = len(shared)
+    return confirm(
+        f"Put the models in each folder together on plates? ({models} models in {folders} "
+        f"folder{'s' if folders != 1 else ''} could share plates; 3MF projects keep their own)",
+        read_line=input,
+        write=print,
+        default=default,
+    )
+
+
 def _check_start(start: bool, targets: list[_ResolvedTarget], slice_input: SliceInput) -> None:
     """Stop before slicing if --start cannot be done for this run."""
     if not start:
@@ -469,6 +510,7 @@ def _remember_choices(
         jobs=options.jobs,
         exclude=options.exclude,
         thumbnails=options.thumbnails,
+        plates=options.plates,
     )
     try:
         profiles.save(choices)
@@ -613,10 +655,13 @@ def _print_names(presets: Sequence[Preset]) -> None:
 
 def _check_options(targets: list[_ResolvedTarget], options: SliceOptions) -> None:
     """Stop before slicing if a chosen slicer cannot do what the options ask."""
-    if options.orient == "off":
-        return
     for target in targets:
-        if not target.slicer.supports("--orient"):
+        if options.plates and not target.slicer.supports("--arrange"):
+            raise SlicerSelectionError(
+                f"{target.slicer.display_name} cannot arrange models from its command line, "
+                "so --plates cannot be used with it."
+            )
+        if options.orient != "off" and not target.slicer.supports("--orient"):
             raise SlicerSelectionError(
                 f"{target.slicer.display_name} has no command-line auto-orient, so "
                 "--orient cannot be used with it."
@@ -838,14 +883,23 @@ def _slice_folder(
     finished: list[SliceOutcome] = []
     last_report = time.monotonic()
 
+    open_line: Path | None = None  # the model or folder whose progress line awaits its result
+
     def on_start(number: int, count: int, model: Path) -> None:
+        nonlocal open_line
         if jobs == 1:
-            print(f"  [{number}/{count}] {model.relative_to(slice_input.root)} ... ", end="", flush=True)
+            print(f"  [{number}/{count}] {_label(model, slice_input.root)} ... ", end="", flush=True)
+            open_line = model
 
     def on_result(number: int, count: int, outcome: SliceOutcome) -> None:
-        nonlocal last_report
-        if jobs > 1:
-            print(f"  [{number}/{count}] {outcome.model.relative_to(slice_input.root)} ... ", end="")
+        nonlocal last_report, open_line
+        if open_line is not None and open_line != outcome.model:
+            # A folder's models could not share plates and were sliced one by one.
+            print("could not share plates; sliced one by one:")
+            open_line = None
+        if open_line is None:
+            print(f"  [{number}/{count}] {_label(outcome.model, slice_input.root)} ... ", end="")
+        open_line = None
         print(_result_text(outcome), flush=True)
         finished.append(outcome)
         if time.monotonic() - last_report >= _REPORT_INTERVAL_SECONDS:
@@ -878,10 +932,25 @@ def _write_report(
         logging.getLogger("batchslicer").warning("Could not update the report: %s", error)
 
 
+def _label(model: Path, root: Path) -> str:
+    """Return a model (or a folder sliced together on plates) as shown in progress lines."""
+    relative = model.relative_to(root)
+    if model == root or model.is_dir():
+        name = model.name if model == root else str(relative)
+        return f"{name}/ (models together on plates)"
+    return str(relative)
+
+
 def _result_text(outcome: SliceOutcome) -> str:
-    """Return how one model in a batch went, as shown after its name."""
+    """Return how one model (or plate group) in a batch went, as shown after its name."""
     if outcome.success:
         oriented = ", auto-oriented" if outcome.auto_oriented else ""
+        if outcome.models:
+            plates = len(outcome.gcode_files)
+            return (
+                f"done ({outcome.elapsed:.1f}s, {len(outcome.models)} models on "
+                f"{plates} plate{'s' if plates != 1 else ''}{oriented})"
+            )
         return f"done ({outcome.elapsed:.1f}s{oriented})"
     return f"FAILED: {outcome.message or 'unknown error'}"
 
@@ -894,13 +963,19 @@ def _report_batch(batch: BatchOutcome, root: Path, options: SliceOptions) -> Non
         running = ", ".join(str(model) for model in batch.interrupted_models) or "the batch"
         _error(
             f"Interrupted while slicing {running}; "
-            f"{total - len(batch.outcomes)} model file(s) were not sliced."
+            f"{total - sum(outcome.model_count for outcome in batch.outcomes)} model file(s) "
+            "were not sliced."
         )
     took = batch.wall_seconds or batch.elapsed
     print(
-        f"Sliced {len(batch.succeeded)} of {total} model file{'s' if total != 1 else ''} "
+        f"Sliced {batch.models_succeeded} of {total} model file{'s' if total != 1 else ''} "
         f"in {_short_time(took)}."
     )
+    grouped = [outcome for outcome in batch.succeeded if outcome.models]
+    if grouped:
+        on_plates = sum(len(outcome.models) for outcome in grouped)
+        plates = sum(len(outcome.gcode_files) for outcome in grouped)
+        print(f"  {on_plates} of them together on {plates} plate{'s' if plates != 1 else ''}.")
     oriented = sum(1 for outcome in batch.succeeded if outcome.auto_oriented)
     if oriented:
         print(f"  {oriented} of them with auto-orient.")

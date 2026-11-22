@@ -1434,3 +1434,101 @@ def test_no_question_without_any_printer_to_offer(
     monkeypatch.setattr(app, "prompt_for_printer", Mock(side_effect=AssertionError("asked")))
 
     assert app.main([]) == 0
+
+
+def _kit_batch(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make the run slice a folder with two loose models in one subfolder."""
+    _folder_batch(
+        monkeypatch,
+        _outcome(success=True, model="/models/kit/a.stl"),
+        _outcome(success=True, model="/models/kit/b.stl"),
+    )
+
+
+def test_folder_run_asks_whether_to_use_plates(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """With loose models sharing a folder, the run asks; the answer is used and remembered."""
+    from batchslicer.infrastructure.profiles import ProfileStore
+
+    store = _store_with(monkeypatch, tmp_path)
+    monkeypatch.setattr(app, "prompt_for_profile", Mock(return_value=None))
+    monkeypatch.setattr(app, "prompt_for_slicer", Mock(return_value=_REAL_SLICERS[0]))  # OrcaSlicer
+    monkeypatch.setattr(app, "PresetLibrary", Mock())
+    monkeypatch.setattr(app, "select_presets", Mock(return_value=_selection()))
+    _kit_batch(monkeypatch)
+    questions: list[str] = []
+
+    def answer(question: str, **kwargs: object) -> bool:
+        questions.append(question)
+        return question.startswith("Put the models")
+
+    monkeypatch.setattr(app, "confirm", answer)
+
+    assert app.main([]) == 0
+
+    asked = [q for q in questions if q.startswith("Put the models")]
+    assert asked == [
+        "Put the models in each folder together on plates? (2 models in 1 folder could share "
+        "plates; 3MF projects keep their own)"
+    ]
+    assert app.SlicingService.call_args.kwargs["options"].plates is True
+    assert ProfileStore(store).get("last").plates is True
+
+
+@pytest.mark.parametrize("arguments", [["--plates"], ["--no-plates"]])
+def test_plates_option_is_not_asked(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    arguments: list[str],
+) -> None:
+    """--plates or --no-plates decides without a question."""
+    monkeypatch.setattr(app, "prompt_for_slicer", Mock(return_value=_REAL_SLICERS[0]))
+    monkeypatch.setattr(app, "PresetLibrary", Mock())
+    monkeypatch.setattr(app, "select_presets", Mock(return_value=_selection()))
+    _kit_batch(monkeypatch)
+    confirm = Mock(return_value=False)
+    monkeypatch.setattr(app, "confirm", confirm)
+
+    assert app.main(arguments) == 0
+
+    assert not any("plates" in str(call) for call in confirm.call_args_list)
+    assert app.SlicingService.call_args.kwargs["options"].plates is (arguments == ["--plates"])
+
+
+def test_plates_are_refused_for_creality_print(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Creality Print cannot arrange from its command line, so --plates stops before slicing."""
+    monkeypatch.setattr(app, "prompt_for_slicer", Mock(return_value=CREALITY_PRINT))
+    monkeypatch.setattr(app, "PresetLibrary", Mock())
+    monkeypatch.setattr(app, "select_presets", Mock(return_value=_selection()))
+    _kit_batch(monkeypatch)
+
+    assert app.main(["--plates"]) == 1
+
+    assert "cannot arrange models" in _all_output(capsys)
+    app.SlicingService.return_value.slice_batch.assert_not_called()
+
+
+def test_summary_counts_models_on_plates(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A plate of several models counts each model, and the plates are totalled."""
+    monkeypatch.setattr(app, "write_report", Mock(return_value=(Path("/out/report.csv"), Path("/out/r.json"))))
+    job = Path("/out/models-1/kit/plates")
+    together = SliceOutcome(
+        True, Path("/models/kit"), job, (job / "kit_plate_1.gcode", job / "kit_plate_2.gcode"),
+        "", 5.0, models=(Path("/models/kit/a.stl"), Path("/models/kit/b.stl"), Path("/models/kit/c.stl")),
+    )
+    batch = BatchOutcome(Path("/out/models-1"), (together, _outcome(success=True)), planned=4)
+
+    app._report_batch(batch, Path("/models"), app.SliceOptions())
+
+    out = capsys.readouterr().out
+    assert "Sliced 4 of 4 model files" in out
+    assert "3 of them together on 2 plates." in out

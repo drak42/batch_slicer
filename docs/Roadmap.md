@@ -58,9 +58,9 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 - [x] **Ask about sending in interactive runs** ("Send to k2plus?") when a
   printer is configured or was used last time.
-- [ ] **Several models per plate**, and copies: slicing many small parts as one
-  plate saves printer time (OrcaSlicer and Bambu Studio; Creality Print has no
-  command-line arrange).
+- [x] **Several models per plate** (`--plates`, asked in interactive runs).
+- [ ] **Copies** of a part on plates (`--copies N`), and putting the parts
+  that slice back together when one part of a folder fails.
 
 ## Then: decisions on reach
 

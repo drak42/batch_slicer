@@ -1,4 +1,4 @@
-"""Write a report of a slicing run: one row per model, as CSV and JSON.
+"""Write a report of a slicing run: one row per model (or plate group), as CSV and JSON.
 
 ``report.csv`` opens in any spreadsheet for costing and planning;
 ``report.json`` holds the same rows for scripts. Both are written into the
@@ -23,6 +23,7 @@ REPORT_JSON = "report.json"
 
 COLUMNS = (
     "model",
+    "models",
     "status",
     "auto_oriented",
     "gcode",
@@ -45,6 +46,7 @@ def report_rows(outcomes: Sequence[SliceOutcome], directory: Path, root: Path) -
         rows.append(
             {
                 "model": _relative(outcome.model, root),
+                "models": [_relative(path, root) for path in outcome.models],
                 "status": "ok" if outcome.success else "failed",
                 "auto_oriented": outcome.auto_oriented,
                 "gcode": [_relative(path, directory) for path in outcome.gcode_files],
@@ -87,6 +89,7 @@ def write_report(
                     **row,
                     "auto_oriented": "yes" if row["auto_oriented"] else "",
                     "gcode": "; ".join(row["gcode"]),
+                    "models": "; ".join(row["models"]),
                 }
             )
 

@@ -11,7 +11,12 @@ named after their model (``bracket.stl`` gives ``bracket.gcode``) instead of the
 slicer's generic ``plate_N.gcode``.
 
 With ``orient="retry"`` a model that fails is sliced once more with the
-slicer's auto-orient; with ``"always"`` every model is. Several models can be
+slicer's auto-orient; with ``"always"`` every model is. With ``plates`` the
+loose models (STL, OBJ, STEP) of each folder in a batch are sliced together:
+the slicer arranges them, adding plates for any that do not fit, into a
+``plates`` folder whose G-code is named after the source folder. If that
+fails, the folder's models are sliced one by one instead. 3MF projects keep
+their own plates. Several models can be
 sliced at the same time (``jobs``), each by its own slicer process. The
 slicer's own status files (``result.json``, ``NNNNN.log``) are read for the
 outcome and then removed, so a job folder holds only G-code (and presets); a
@@ -43,6 +48,9 @@ _RESULT_FILE_NAME = "result.json"
 _PRESETS_FOLDER_NAME = "presets"
 _PLATE_GCODE_PATTERN = re.compile(r"plate_(\d+)\.gcode")
 _VALIDATION_LOG_PATTERN = re.compile(r"\d+\.log")
+_PLATES_FOLDER_NAME = "plates"
+_LOOSE_MODEL_SUFFIXES = frozenset({".stl", ".obj", ".step", ".stp"})
+"""Model files that can share a plate (3MF projects bring their own plates)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +70,15 @@ class SliceOutcome:
 
     stats: GcodeStats = field(default_factory=GcodeStats)
     """Print time and filament use, totalled over the G-code files."""
+
+    models: tuple[Path, ...] = ()
+    """The model files sliced together on plates; empty for a single model
+    (then :attr:`model` is the model, otherwise the folder they came from)."""
+
+    @property
+    def model_count(self) -> int:
+        """Return how many model files this outcome covers."""
+        return len(self.models) or 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,6 +113,11 @@ class BatchOutcome:
         return tuple(outcome for outcome in self.outcomes if not outcome.success)
 
     @property
+    def models_succeeded(self) -> int:
+        """Return how many model files sliced (a plate of several counts each)."""
+        return sum(outcome.model_count for outcome in self.succeeded)
+
+    @property
     def elapsed(self) -> float:
         """Return the total slicing time in seconds, summed over models."""
         return sum(outcome.elapsed for outcome in self.outcomes)
@@ -110,11 +132,48 @@ class BatchOutcome:
 
 
 ProgressCallback = Callable[[int, int, Path], None]
-"""Called as ``(number, total, model)`` before each model in a batch is sliced."""
+"""Called as ``(number, total, model)`` before each model in a batch is sliced
+(``model`` is the folder when its models are sliced together on plates)."""
 
 ResultCallback = Callable[[int, int, SliceOutcome], None]
-"""Called as ``(finished, total, outcome)`` after each model in a batch is sliced,
-from the calling thread, in the order models finish."""
+"""Called as ``(finished, total, outcome)`` after each model (or plate group) in
+a batch is sliced, from the calling thread, in the order they finish."""
+
+
+@dataclass(frozen=True, slots=True)
+class _Work:
+    """One slicer job in a batch: a single model, or a folder's models together."""
+
+    models: tuple[Path, ...]
+    folder: Path | None = None
+    """The folder whose models share plates; ``None`` for a single model."""
+
+    @property
+    def label(self) -> Path:
+        return self.folder if self.folder is not None else self.models[0]
+
+
+def _plan_work(models: Sequence[Path], plates: bool) -> list[_Work]:
+    """Return the jobs for a batch, in model order.
+
+    With ``plates``, the loose models of each folder (two or more) become one
+    job, placed where the folder's first model was; everything else is sliced
+    on its own.
+    """
+    groups: dict[Path, list[Path]] = {}
+    if plates:
+        for model in models:
+            if model.suffix.casefold() in _LOOSE_MODEL_SUFFIXES:
+                groups.setdefault(model.parent, []).append(model)
+    work: list[_Work] = []
+    for model in models:
+        group = groups.get(model.parent)
+        if group is not None and len(group) > 1 and model in group:
+            if model == group[0]:
+                work.append(_Work(tuple(group), model.parent))
+            continue
+        work.append(_Work((model,)))
+    return work
 
 
 class SlicingService:
@@ -188,34 +247,46 @@ class SlicingService:
         )
 
         started_at = time.perf_counter()
-        total = len(models)
-        finished: dict[int, SliceOutcome] = {}
-        running: dict[Future[SliceOutcome], int] = {}
-        job_directories: dict[int, Path] = {}
-        queue = list(enumerate(models))
+        work = _plan_work(models, self._options.plates)
+        total = len(work)
+        finished: dict[int, tuple[SliceOutcome, ...]] = {}
+        running: dict[Future[tuple[SliceOutcome, ...]], int] = {}
+        job_directories: dict[int, list[Path]] = {}
+        queue = list(enumerate(work))
         interrupted = False
         with ThreadPoolExecutor(max_workers=jobs, thread_name_prefix="slice") as executor:
             try:
                 while queue or running:
                     while queue and len(running) < jobs:
-                        index, model = queue.pop(0)
+                        index, item = queue.pop(0)
                         if on_start is not None:
-                            on_start(index + 1, total, model)
-                        job_directory = self._create_unique_directory(
-                            batch_directory / model.parent.relative_to(source_root) / model.stem
-                        )
-                        job_directories[index] = job_directory
-                        future = executor.submit(
-                            self._slice_into, model, job_directory, settings, filaments
-                        )
+                            on_start(index + 1, total, item.label)
+                        folder = batch_directory / item.models[0].parent.relative_to(source_root)
+                        name = _PLATES_FOLDER_NAME if item.folder is not None else item.models[0].stem
+                        job_directory = self._create_unique_directory(folder / name)
+                        job_directories[index] = [job_directory]
+                        if item.folder is None:
+                            future = executor.submit(
+                                self._slice_single, item.models[0], job_directory, settings, filaments
+                            )
+                        else:
+                            future = executor.submit(
+                                self._slice_together,
+                                item,
+                                job_directory,
+                                settings,
+                                filaments,
+                                job_directories[index],
+                            )
                         running[future] = index
                     done, _ = wait(running, return_when=FIRST_COMPLETED)
                     for future in sorted(done, key=running.__getitem__):
-                        outcome = future.result()
+                        outcomes = future.result()
                         index = running.pop(future)
-                        finished[index] = outcome
+                        finished[index] = outcomes
                         if on_result is not None:
-                            on_result(len(finished), total, outcome)
+                            for outcome in outcomes:
+                                on_result(len(finished), total, outcome)
             except KeyboardInterrupt:
                 interrupted = True
                 self._backend.stop_all()
@@ -223,21 +294,24 @@ class SlicingService:
                     future.cancel()
                 self._logger.warning(
                     "Batch interrupted while slicing %s.",
-                    ", ".join(str(models[index]) for index in sorted(running.values())),
+                    ", ".join(str(work[index].label) for index in sorted(running.values())),
                 )
 
         if interrupted:
             for index in running.values():
-                # Only partial output of this run is in an interrupted model's new folder.
-                shutil.rmtree(job_directories[index], ignore_errors=True)
+                # Only partial output of this run is in an interrupted model's new folders.
+                for directory in job_directories[index]:
+                    shutil.rmtree(directory, ignore_errors=True)
         _remove_empty_folders(batch_directory)
 
         batch = BatchOutcome(
             batch_directory=batch_directory,
-            outcomes=tuple(finished[index] for index in sorted(finished)),
-            planned=total,
+            outcomes=tuple(
+                outcome for index in sorted(finished) for outcome in finished[index]
+            ),
+            planned=len(models),
             interrupted=interrupted,
-            interrupted_models=tuple(models[index] for index in sorted(running.values()))
+            interrupted_models=tuple(work[index].label for index in sorted(running.values()))
             if interrupted
             else (),
             wall_seconds=time.perf_counter() - started_at,
@@ -250,6 +324,61 @@ class SlicingService:
             total - len(batch.outcomes),
         )
         return batch
+
+    def _slice_single(
+        self,
+        model: Path,
+        job_directory: Path,
+        settings: list[Path],
+        filaments: list[Path],
+    ) -> tuple[SliceOutcome, ...]:
+        """Slice one model of a batch (see :meth:`_slice_into`)."""
+        return (self._slice_into(model, job_directory, settings, filaments),)
+
+    def _slice_together(
+        self,
+        work: _Work,
+        job_directory: Path,
+        settings: list[Path],
+        filaments: list[Path],
+        created: list[Path],
+    ) -> tuple[SliceOutcome, ...]:
+        """Slice a folder's models together on plates, or one by one if that fails.
+
+        Folders made for the one-by-one models are added to ``created`` so an
+        interrupted batch can remove them.
+        """
+        assert work.folder is not None
+        orient = self._options.orient == "always"
+        self._logger.info(
+            "Slicing %d models from %s together into %s", len(work.models), work.folder, job_directory
+        )
+        result = self._backend.slice(
+            work.models,
+            job_directory,
+            orient=orient,
+            arrange=True,
+            allow_newer_file=self._options.allow_newer_files,
+            load_settings=settings,
+            load_filaments=filaments,
+        )
+        outcome = self._outcome(
+            work.folder, job_directory, result, auto_oriented=orient, models=work.models
+        )
+        if outcome.success:
+            return (outcome,)
+        self._logger.info(
+            "Slicing %s together failed (%s); slicing its models one by one.",
+            work.folder,
+            outcome.message or "unknown error",
+        )
+        shutil.rmtree(job_directory, ignore_errors=True)
+        outcomes = []
+        for model in work.models:
+            directory = self._create_unique_directory(job_directory.parent / model.stem)
+            created.append(directory)
+            outcomes.append(self._slice_into(model, directory, settings, filaments))
+        return tuple(outcomes)
 
     def _slice_into(
         self,
@@ -332,13 +461,16 @@ class SlicingService:
         result: OrcaResult,
         *,
         auto_oriented: bool = False,
+        models: tuple[Path, ...] = (),
     ) -> SliceOutcome:
         """Combine the process result, the slicer's status files and the G-code found.
 
-        The status files are removed once read, so a retry starts clean and the
-        job folder keeps only results.
+        ``model`` is the model, or the folder when ``models`` were sliced
+        together (the G-code is then named after the folder). The status files
+        are removed once read, so a retry starts clean and the job folder keeps
+        only results.
         """
-        gcode_files = _name_gcode_after_model(model, job_directory)
+        gcode_files = _name_gcode_after(model.name if models else model.stem, job_directory)
         message = _read_result_message(job_directory / _RESULT_FILE_NAME)
         success = result.success and bool(gcode_files)
         if not message:
@@ -371,6 +503,7 @@ class SlicingService:
             elapsed=result.elapsed,
             auto_oriented=auto_oriented and success,
             stats=total_stats(gcode_files) if success else GcodeStats(),
+            models=models,
         )
 
 
@@ -440,11 +573,11 @@ def _read_result_message(path: Path) -> str:
     return message if isinstance(message, str) else ""
 
 
-def _name_gcode_after_model(model: Path, job_directory: Path) -> tuple[Path, ...]:
-    """Rename the slicer's ``plate_N.gcode`` files after ``model`` and return all G-code.
+def _name_gcode_after(name: str, job_directory: Path) -> tuple[Path, ...]:
+    """Rename the slicer's ``plate_N.gcode`` files after ``name`` and return all G-code.
 
-    A single plate becomes ``<model name>.gcode``; several plates become
-    ``<model name>_plate_N.gcode``. Other G-code files are left as they are.
+    A single plate becomes ``<name>.gcode``; several plates become
+    ``<name>_plate_N.gcode``. Other G-code files are left as they are.
     """
     plates = sorted(
         (
@@ -454,8 +587,8 @@ def _name_gcode_after_model(model: Path, job_directory: Path) -> tuple[Path, ...
         ),
     )
     for number, path in plates:
-        name = f"{model.stem}.gcode" if len(plates) == 1 else f"{model.stem}_plate_{number}.gcode"
-        target = path.with_name(name)
+        file_name = f"{name}.gcode" if len(plates) == 1 else f"{name}_plate_{number}.gcode"
+        target = path.with_name(file_name)
         if target != path and not target.exists():
             path.rename(target)
     return tuple(sorted(job_directory.glob("*.gcode")))

@@ -213,7 +213,7 @@ class OrcaBackend:
 
     def slice(
         self,
-        input_path: PathLike,
+        input_path: PathLike | Sequence[PathLike],
         output_directory: PathLike,
         *,
         plate: int = ALL_PLATES,
@@ -226,7 +226,10 @@ class OrcaBackend:
         load_settings: Sequence[PathLike] = (),
         load_filaments: Sequence[PathLike] = (),
     ) -> OrcaResult:
-        """Slice one model file into ``output_directory`` with requested options.
+        """Slice one model file (or several together) into ``output_directory``.
+
+        Several input files are loaded together; with ``arrange`` the slicer
+        places them on the plate and adds plates for any that do not fit.
 
         The slicer runs from inside ``output_directory`` (created if needed), so
         any extra files it writes there, such as validation logs, stay with the
@@ -265,7 +268,7 @@ class OrcaBackend:
 
     def build_slice_command(
         self,
-        input_path: PathLike,
+        input_path: PathLike | Sequence[PathLike],
         output_directory: PathLike,
         *,
         plate: int = ALL_PLATES,
@@ -286,7 +289,7 @@ class OrcaBackend:
         (``--enable-timelapse``, ``--no-check``, ``--allow-newer-file``) take no
         value. Settings and
         filament files are joined into the single semicolon-separated argument
-        OrcaSlicer expects. The input model is the final positional argument.
+        OrcaSlicer expects. The input models are the final positional arguments.
         Requesting an option the selected slicer lacks raises ``ValueError``.
         """
         if plate < 0:
@@ -322,7 +325,8 @@ class OrcaBackend:
             command.extend(("--load-settings", _join_file_list(load_settings)))
         if load_filaments:
             command.extend(("--load-filaments", _join_file_list(load_filaments)))
-        command.append(str(Path(input_path).absolute()))
+        inputs = [input_path] if isinstance(input_path, (str, Path)) else list(input_path)
+        command.extend(str(Path(path).absolute()) for path in inputs)
         return tuple(command)
 
     def _run_in_scratch_directory(self, command: Sequence[str]) -> OrcaResult:

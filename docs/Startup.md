@@ -42,7 +42,10 @@ not slice. Everything below describes a normal run.
    `printers` section, or from the address given (`domain/printers.py`).
 8. **Choose what to slice** (`cli/file_prompt.py`), leave out models matching
    `--exclude` (`exclude_models`), and **choose the output folder**
-   (`cli/output_prompt.py`). An interactive run without a profile, `--send`
+   (`cli/output_prompt.py`). For a folder with loose models to share plates,
+   an interactive run without a profile, `--plates` or `--no-plates` asks
+   whether to slice each folder's models together; `--plates` is refused for
+   Creality Print. An interactive run without a profile, `--send`
    or `--no-send` then asks whether to send the G-code
    (`cli/send_prompt.py`), when a printer is configured or the last run sent
    to one. `--start` is refused here unless every target
@@ -56,7 +59,9 @@ not slice. Everything below describes a normal run.
 11. **Slice** (`services/slicing.py`, `backends/orca.py`): for each target, a
     job folder (one model) or batch folder (a folder of models) is created, the
     resolved presets are written into it, and the slicer runs inside each
-    model's folder, up to `--jobs` at a time. With `--orient retry` a failed
+    model's folder, up to `--jobs` at a time. With `--plates` the loose models
+    of each folder are one job (`--arrange 1`, named after the folder), sliced
+    one by one if that fails. With `--orient retry` a failed
     model is sliced once more with auto-orient. The slicer's status files are
     read and removed; folders of failed or interrupted models are removed.
     Preview pictures are drawn from each G-code file and inserted into it

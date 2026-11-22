@@ -646,3 +646,13 @@ def test_slicers_that_resolve_inherits_are_recognised(
     assert backend.resolves_inherits() is expected
     assert backend.resolves_inherits() is expected
     assert popen.call_count == (1 if slicer is ORCASLICER else 0)
+
+
+def test_several_models_are_passed_together(backend: OrcaBackend, tmp_path: Path) -> None:
+    """Models sliced together on plates are all given at the end, after --arrange 1."""
+    models = [tmp_path / "a.stl", tmp_path / "b b.stl"]
+
+    command = backend.build_slice_command(models, tmp_path / "out", arrange=True)
+
+    assert command[-2:] == (str(models[0]), str(models[1]))
+    assert command[command.index("--arrange") + 1] == "1"

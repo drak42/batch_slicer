@@ -49,7 +49,7 @@ docstring says more, including what it intentionally does not do.
 
 | Module | Purpose |
 |---|---|
-| `services/slicing.py` | slice one model or a batch into job folders (parallel jobs, auto-orient retry, clean-up) |
+| `services/slicing.py` | slice one model or a batch into job folders (parallel jobs, auto-orient retry, models together on plates, clean-up) |
 | `services/report.py` | write `report.csv` and `report.json` |
 | `services/gcode_stats.py` | read print time and filament use from G-code |
 | `services/thumbnails.py` | draw preview pictures from G-code toolpaths and insert them as PNG blocks |
