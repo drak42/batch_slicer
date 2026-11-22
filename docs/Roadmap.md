@@ -54,11 +54,14 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - Preview pictures drawn from the G-code, shown on the K2 Plus touchscreen.
 - Sending checked with a real K2 Plus.
 
+### 0.8.0 (2026-11-22): kits on plates
+
+- Several models per plate: each folder's parts arranged together (`--plates`,
+  asked before slicing a folder), with a fallback to one per plate.
+- Interactive runs ask whether to send the G-code to a printer.
+
 ## Next
 
-- [x] **Ask about sending in interactive runs** ("Send to k2plus?") when a
-  printer is configured or was used last time.
-- [x] **Several models per plate** (`--plates`, asked in interactive runs).
 - [ ] **Copies** of a part on plates (`--copies N`), and putting the parts
   that slice back together when one part of a folder fails.
 

@@ -6,6 +6,10 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-22
+
+Kits on plates, and sending to the printer from interactive runs.
+
 ### Added
 
 - **Several models per plate.** When slicing a folder, the loose models (STL,
@@ -16,8 +20,8 @@ All notable changes to BatchSlicer are recorded here. The format follows
   profiles can save it. If a part fails, the folder's models are sliced one
   by one instead. 3MF projects keep their own plates. OrcaSlicer and Bambu
   Studio (Creality Print cannot arrange from its command line). The report
-  lists each plate group's models.
-
+  lists each plate group's models. Tested with OrcaSlicer 2.5.2 and Bambu
+  Studio 2.9.1.
 - **Interactive runs ask whether to send the G-code** to a printer, when one
   is configured or the last run sent to one ("Enter keeps what the last run
   did"; another address can be typed). Runs from a profile or with `--send` /
@@ -258,7 +262,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/drak42/batch_slicer/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/drak42/batch_slicer/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/drak42/batch_slicer/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/drak42/batch_slicer/compare/v0.5.0...v0.6.0
