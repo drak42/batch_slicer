@@ -73,11 +73,12 @@ def is_appimage(path: Path) -> bool:
 
 
 def _installed_profiles(executable: Path) -> Path | None:
-    """Return the profiles folder of a non-AppImage installation, if there is one."""
+    """Return the profiles folder of a regular install or macOS app, if there is one."""
     base = executable.resolve().parent
     for candidate in (
         base / _BUNDLED_PROFILES,
         base.parent / _BUNDLED_PROFILES,
+        base.parent / "Resources" / "profiles",  # a macOS app
         base.parent / "share" / "OrcaSlicer" / "profiles",
     ):
         if any(candidate.glob("*/machine/**/*.json")):

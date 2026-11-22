@@ -95,7 +95,8 @@ def run_setup(
     if not chosen:
         raise SlicerSelectionError(
             "No usable slicer was found. Install OrcaSlicer, Creality Print or Bambu "
-            "Studio (an AppImage in ~/Apps works), open it once, then run setup again."
+            "Studio (an AppImage in ~/Apps works; on a Mac, the app in Applications), "
+            "open it once, then run setup again."
         )
 
     printers = _existing_printers(target)

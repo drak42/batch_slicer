@@ -1,5 +1,6 @@
 """Tests for finding installed slicers and their settings folders."""
 
+import plistlib
 from pathlib import Path
 
 import pytest
@@ -174,3 +175,76 @@ def test_creality_print_updated_in_place_uses_its_newest_settings(tmp_path: Path
     )
 
     assert found == base / "7.3"
+
+
+def _app(folder: Path, name: str, *, program: str, version: str | None = None) -> Path:
+    """Create a macOS app bundle with one program and, if given, a version."""
+    bundle = folder / f"{name}.app"
+    executable = _touch(bundle / "Contents" / "MacOS" / program)
+    info: dict[str, str] = {"CFBundleExecutable": program}
+    if version is not None:
+        info["CFBundleShortVersionString"] = version
+    (bundle / "Contents" / "Info.plist").write_bytes(plistlib.dumps(info))
+    return executable
+
+
+@pytest.mark.usefixtures("macos")
+def test_finds_mac_apps(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """On macOS, apps in /Applications and ~/Applications are found, with their versions."""
+    system = tmp_path / "Applications"
+    monkeypatch.setattr(detection, "_MAC_APP_FOLDERS", (system,))
+    home = tmp_path / "home"
+    orca = _app(system, "OrcaSlicer", program="OrcaSlicer", version="2.5.2")
+    beta = _app(home / "Applications", "OrcaSlicer 2.6 beta", program="OrcaSlicer", version="2.6.0")
+    bambu = _app(system, "BambuStudio", program="BambuStudio", version="02.09.00.70")
+    creality = _app(system, "Creality Print", program="CrealityPrint", version="7.3.0")
+
+    found = find_installations("orca", home=home, environ={"PATH": ""})
+
+    assert [(item.executable, item.version_text, item.prerelease) for item in found] == [
+        (orca, "2.5.2", False),
+        (beta, "2.6.0", True),
+    ]
+    bambu_found = find_installations("bambu_studio", home=home, environ={"PATH": ""})
+    assert [(item.executable, item.version_text) for item in bambu_found] == [(bambu, "2.9.0.70")]
+    assert [
+        (item.executable, item.version_text)
+        for item in find_installations("creality_print", home=home, environ={"PATH": ""})
+    ] == [(creality, "7.3.0")]
+
+
+@pytest.mark.usefixtures("macos")
+def test_mac_app_without_info_plist(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Without Info.plist, the only program inside is used and the version comes from the name."""
+    monkeypatch.setattr(detection, "_MAC_APP_FOLDERS", (tmp_path,))
+    program = _touch(tmp_path / "OrcaSlicer_V2.4.0.app" / "Contents" / "MacOS" / "OrcaSlicer")
+    _touch(tmp_path / "OrcaSlicer_V2.3.0.app" / "Contents" / "Resources" / "readme")
+
+    found = find_installations("orca", home=tmp_path / "home", environ={"PATH": ""})
+
+    assert [(item.executable, item.version_text) for item in found] == [(program, "2.4.0")]
+
+
+def test_mac_apps_are_ignored_on_linux(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """App bundles are only looked for on macOS."""
+    monkeypatch.setattr(detection, "_MAC_APP_FOLDERS", (tmp_path,))
+    _app(tmp_path, "OrcaSlicer", program="OrcaSlicer", version="2.5.2")
+
+    assert find_installations("orca", home=tmp_path / "home", environ={"PATH": ""}) == []
+
+
+@pytest.mark.usefixtures("macos")
+def test_mac_settings_folders(tmp_path: Path) -> None:
+    """On macOS, settings are under ~/Library/Application Support, not XDG_CONFIG_HOME."""
+    support = tmp_path / "Library" / "Application Support"
+    environ = {"XDG_CONFIG_HOME": str(tmp_path / "config")}
+    (tmp_path / "config" / "OrcaSlicer").mkdir(parents=True)
+    assert find_data_directory("orca", home=tmp_path, environ=environ) is None
+
+    (support / "OrcaSlicer").mkdir(parents=True)
+    (support / "Creality" / "Creality Print" / "7.3").mkdir(parents=True)
+
+    assert find_data_directory("orca", home=tmp_path, environ=environ) == support / "OrcaSlicer"
+    assert find_data_directory("creality_print", home=tmp_path, environ=environ) == (
+        support / "Creality" / "Creality Print" / "7.3"
+    )
