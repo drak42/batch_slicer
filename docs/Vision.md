@@ -41,7 +41,8 @@ understandable, extensible and enjoyable to maintain.
 
 Much of that is in place: it slices for several printers at once, reports
 print time and filament, puts a folder's parts together on plates, adds
-preview pictures for printer screens, and sends G-code to Klipper printers.
+preview pictures for printer screens, and sends G-code to Klipper and
+OctoPrint printers.
 Next come copies on plates, multi-material printers, watch folders and other
 kinds of printer connection.
 

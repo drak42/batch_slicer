@@ -8,34 +8,25 @@ library is used. This module does not choose files or decide whether to
 start a print; that is the sending service's job.
 """
 
-import json
-import mimetypes
-import uuid
-from collections.abc import Iterator
-from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.error import HTTPError
+from urllib.request import Request
 
 from batchslicer.domain.printers import PrinterHost
+from batchslicer.infrastructure.printer_api import (
+    PrinterError,
+    PrinterStatus,
+    UploadResult,
+    multipart_body,
+    send_json,
+    upload_request,
+)
 
-_CHUNK_BYTES = 1024 * 1024
+MoonrakerError = PrinterError
+"""Kept as a name for errors from Moonraker; the same as :class:`PrinterError`."""
 
-
-class MoonrakerError(Exception):
-    """Raised when the printer cannot be reached or refuses a request."""
-
-
-@dataclass(frozen=True, slots=True)
-class UploadResult:
-    """What the printer did with one uploaded file."""
-
-    remote_path: str
-    """Where the file is on the printer, inside its ``gcodes`` folder."""
-
-    print_started: bool = False
-    print_queued: bool = False
+__all__ = ["MoonrakerClient", "MoonrakerError", "UploadResult"]
 
 
 class MoonrakerClient:
@@ -62,6 +53,17 @@ class MoonrakerClient:
         """Return Moonraker's ``/server/info`` (includes ``klippy_state``)."""
         return self._request(Request(self._url("/server/info"), headers=self._headers()), self._timeout)
 
+    def status(self) -> PrinterStatus:
+        """Return Klipper's state; it is ready when Klipper says ``ready``."""
+        info = self.server_info()
+        state = str(info.get("klippy_state", "unknown"))
+        version = str(info.get("moonraker_version", "") or "").strip("?")  # Creality's says "?"
+        return PrinterStatus(
+            state=f"Klipper is {state}",
+            ready=state == "ready",
+            software=f"Moonraker {version}".strip(),
+        )
+
     def upload(self, path: Path, folder: str = "", *, start: bool = False) -> UploadResult:
         """Upload ``path`` into ``folder`` of the printer's G-code files.
 
@@ -69,40 +71,11 @@ class MoonrakerClient:
         printer starts printing it (or queues it, if Moonraker's job queue is
         on); the result says which happened.
         """
-        boundary = f"batchslicer-{uuid.uuid4().hex}"
         fields = {"root": "gcodes", "print": "true" if start else "false"}
         if folder:
             fields["path"] = folder
-        head = b"".join(
-            _part_header(boundary, f'name="{key}"') + value.encode("utf-8") + b"\r\n"
-            for key, value in fields.items()
-        )
-        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-        head += _part_header(
-            boundary,
-            f'name="file"; filename="{_quoted(path.name)}"',
-            content_type,
-        )
-        tail = f"\r\n--{boundary}--\r\n".encode("ascii")
-        size = len(head) + path.stat().st_size + len(tail)
-
-        def body() -> Iterator[bytes]:
-            yield head
-            with path.open("rb") as stream:
-                while chunk := stream.read(_CHUNK_BYTES):
-                    yield chunk
-            yield tail
-
-        request = Request(
-            self._url("/server/files/upload"),
-            data=body(),
-            method="POST",
-            headers={
-                **self._headers(),
-                "Content-Type": f"multipart/form-data; boundary={boundary}",
-                "Content-Length": str(size),
-            },
-        )
+        body = multipart_body(fields, path)
+        request = upload_request(self._url("/server/files/upload"), self._headers(), body)
         answer = self._request(request, self._upload_timeout)
         item = answer.get("item")
         if not isinstance(item, dict):
@@ -125,45 +98,17 @@ class MoonrakerClient:
 
     def _request(self, request: Request, timeout: float) -> dict[str, Any]:
         """Send ``request`` and return its JSON answer (Moonraker's ``result`` when wrapped)."""
-        try:
-            with urlopen(request, timeout=timeout) as response:  # noqa: S310 - http(s) only, checked in domain.printers
-                data = json.loads(response.read().decode("utf-8") or "{}")
-        except HTTPError as error:
-            raise MoonrakerError(_refusal(self._host, error)) from error
-        except (URLError, TimeoutError, ConnectionError) as error:
-            reason = getattr(error, "reason", error)
-            raise MoonrakerError(f"Cannot reach {self._host.describe()}: {reason}") from error
-        except (ValueError, UnicodeDecodeError) as error:
-            raise MoonrakerError(
-                f"{self._host.describe()} did not answer like Moonraker (is the address "
-                "right, including the port?)"
-            ) from error
+        data = send_json(request, timeout, self._host, software="Moonraker", refusal=_refusal)
         if not isinstance(data, dict):
-            raise MoonrakerError(f"{self._host.describe()} gave an unexpected answer.")
+            raise PrinterError(f"{self._host.describe()} gave an unexpected answer.")
         result = data.get("result", data)
         return result if isinstance(result, dict) else {}
 
 
-def _part_header(boundary: str, disposition: str, content_type: str | None = None) -> bytes:
-    lines = [f"--{boundary}", f"Content-Disposition: form-data; {disposition}"]
-    if content_type:
-        lines.append(f"Content-Type: {content_type}")
-    return ("\r\n".join(lines) + "\r\n\r\n").encode("utf-8")
-
-
-def _quoted(name: str) -> str:
-    return name.replace("\\", "\\\\").replace('"', '\\"').replace("\r", " ").replace("\n", " ")
-
-
-def _refusal(host: PrinterHost, error: HTTPError) -> str:
+def _refusal(host: PrinterHost, error: HTTPError, body: Any) -> str:
     """Return why the printer refused a request, using Moonraker's own message when given."""
-    message = ""
-    try:
-        data = json.loads(error.read().decode("utf-8"))
-        details = data.get("error", {}) if isinstance(data, dict) else {}
-        message = str(details.get("message", "")) if isinstance(details, dict) else ""
-    except (ValueError, UnicodeDecodeError, OSError):
-        pass
+    details = body.get("error", {}) if isinstance(body, dict) else {}
+    message = str(details.get("message", "")) if isinstance(details, dict) else ""
     if error.code in (401, 403):
         return (
             f"{host.describe()} refused access (HTTP {error.code}); set its api_key in the "

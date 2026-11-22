@@ -351,15 +351,16 @@ def _parser() -> argparse.ArgumentParser:
             "G-code itself (default: on; --no-thumbnails saves about a second per model)"
         ),
     )
-    sending = parser.add_argument_group("sending to a printer (Klipper/Moonraker)")
+    sending = parser.add_argument_group("sending to a printer (Klipper/Moonraker or OctoPrint)")
     choosing = sending.add_mutually_exclusive_group()
     choosing.add_argument(
         "--send",
         metavar="PRINTER",
         help=(
             "after slicing, upload the G-code to PRINTER: its address (192.168.1.50, "
-            "k2.local:4408 or a full URL; port 7125 if none is given) or a name from "
-            "the configuration's 'printers' section. A folder keeps its structure on "
+            "k2.local:4408 or a full URL, reached through Moonraker on port 7125 if "
+            "none is given) or a name from the configuration's 'printers' section, "
+            "which may also be an OctoPrint server. A folder keeps its structure on "
             "the printer"
         ),
     )

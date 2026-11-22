@@ -7,15 +7,19 @@ from unittest.mock import Mock
 import pytest
 
 from batchslicer.domain.printers import (
+    OCTOPRINT,
     PrinterHost,
     PrinterHostError,
     host_from_address,
     printer_hosts,
 )
 from batchslicer.infrastructure.moonraker import MoonrakerClient, MoonrakerError
+from batchslicer.infrastructure.octoprint import OctoPrintClient
+from batchslicer.infrastructure.printer_api import PrinterError
+from batchslicer.infrastructure.printer_clients import client_for
 from batchslicer.services.sending import SendingService, Upload, plan_uploads
 from batchslicer.services.slicing import SliceOutcome
-from conftest import FakeMoonraker
+from conftest import FakeMoonraker, FakeOctoPrint
 
 # --- configuration ---------------------------------------------------------
 
@@ -48,6 +52,8 @@ def test_no_printers_section_means_no_printers(section: object) -> None:
         ({"k2": {"url": "http://x", "port": 1}}, "unknown settings: port"),
         ({"bad name!": {"url": "http://x"}}, "printer names"),
         ({"k2": {"url": "http://x", "api_key": 5}}, "api_key must be text"),
+        ({"k2": {"url": "http://x", "type": "bambu"}}, "type must be moonraker or octoprint"),
+        ({"ender": {"url": "http://x", "type": "octoprint"}}, "OctoPrint needs an api_key"),
         (["k2"], "must map printer names"),
     ],
 )
@@ -55,6 +61,16 @@ def test_unusable_printer_settings_are_explained(section: object, message: str) 
     """Each mistake names the printer and what to fix."""
     with pytest.raises(PrinterHostError, match=message):
         printer_hosts(section)
+
+
+def test_octoprint_printers_are_read_from_the_configuration() -> None:
+    """type: octoprint (in any case) gives an OctoPrint printer, shown as such."""
+    hosts = printer_hosts({"ender": {"type": "OctoPrint", "url": "octopi.local", "api_key": "k"}})
+
+    assert hosts == {"ender": PrinterHost("ender", "http://octopi.local", "k", OCTOPRINT)}
+    assert hosts["ender"].describe() == "ender (OctoPrint, http://octopi.local)"
+    assert isinstance(client_for(hosts["ender"]), OctoPrintClient)
+    assert isinstance(client_for(PrinterHost("k2", "http://k2:7125")), MoonrakerClient)
 
 
 # --- Moonraker -------------------------------------------------------------
@@ -205,7 +221,7 @@ def test_single_file_can_be_started(fake_moonraker: FakeMoonraker, tmp_path: Pat
     assert service.send([Upload(tmp_path / "cube.gcode", "")], start=True).sent[0].print_started
     fake_moonraker.busy = True
     assert not service.send([Upload(tmp_path / "cube.gcode", "")], start=True).sent[0].print_started
-    assert service.check() == "ready"
+    assert service.check().ready
 
 
 @pytest.mark.parametrize(
@@ -233,3 +249,89 @@ def test_plain_names_and_bad_addresses() -> None:
         host_from_address("192.168.1.50:abc")
     with pytest.raises(PrinterHostError, match="not a printer address"):
         host_from_address("ftp://192.168.1.50")
+
+
+# --- OctoPrint -------------------------------------------------------------
+
+
+def _octoprint(fake: FakeOctoPrint, api_key: str | None = None) -> OctoPrintClient:
+    key = fake.api_key if api_key is None else api_key
+    return OctoPrintClient(PrinterHost("ender", fake.url, key, OCTOPRINT), timeout_seconds=5)
+
+
+def test_octoprint_status(fake_octoprint: FakeOctoPrint) -> None:
+    """OctoPrint's version and the printer's connection state are read."""
+    status = _octoprint(fake_octoprint).status()
+    assert (status.state, status.ready, status.software) == (
+        "printer is Operational",
+        True,
+        "OctoPrint 1.10.3",
+    )
+
+    fake_octoprint.printer_state = "Offline"
+    status = _octoprint(fake_octoprint).status()
+    assert not status.ready
+    assert status.note() == " (printer is Offline; it can still take files)"
+
+
+def test_octoprint_wrong_api_key_is_explained(fake_octoprint: FakeOctoPrint) -> None:
+    """A refused key points to OctoPrint's Application Keys."""
+    with pytest.raises(PrinterError, match=r"HTTP 403.*Application Keys"):
+        _octoprint(fake_octoprint, "wrong").status()
+
+
+def test_octoprint_upload_creates_folders(fake_octoprint: FakeOctoPrint, tmp_path: Path) -> None:
+    """Missing folders are created once, then files go into them; existing ones are fine."""
+    for name in ("left.gcode", "right.gcode"):
+        (tmp_path / name).write_text(f"; {name}\n")
+    fake_octoprint.folders.add("kits")
+    client = _octoprint(fake_octoprint)
+
+    first = client.upload(tmp_path / "left.gcode", "kits/boat")
+    second = client.upload(tmp_path / "right.gcode", "kits/boat")
+    top = client.upload(tmp_path / "left.gcode")
+
+    assert [first.remote_path, second.remote_path, top.remote_path] == [
+        "kits/boat/left.gcode",
+        "kits/boat/right.gcode",
+        "left.gcode",
+    ]
+    assert fake_octoprint.folders == {"kits", "kits/boat"}
+    assert fake_octoprint.files["kits/boat/right.gcode"] == b"; right.gcode\n"
+    assert fake_octoprint.forms[0] == {"select": "false", "print": "false", "path": "kits/boat"}
+    assert not first.print_started
+
+
+def test_octoprint_start_and_busy_printer(fake_octoprint: FakeOctoPrint, tmp_path: Path) -> None:
+    """A ready printer starts the file; one that is printing refuses to replace it."""
+    (tmp_path / "cube.gcode").write_text("G28\n")
+    service = SendingService(_octoprint(fake_octoprint), logger=Mock())
+
+    started = service.send([Upload(tmp_path / "cube.gcode", "")], start=True)
+    assert started.sent[0].print_started
+    assert fake_octoprint.forms[-1] == {"select": "true", "print": "true"}
+
+    again = service.send([Upload(tmp_path / "cube.gcode", "")], start=True)
+    assert again.failed[0].error.endswith(
+        "refused the request (HTTP 409): Trying to overwrite file that is currently being printed"
+    )
+
+
+def test_octoprint_not_ready_keeps_the_file_without_printing(
+    fake_octoprint: FakeOctoPrint, tmp_path: Path
+) -> None:
+    """When the printer is not connected, the file is stored but not started."""
+    (tmp_path / "cube.gcode").write_text("G28\n")
+    fake_octoprint.printer_state = "Closed"
+
+    result = _octoprint(fake_octoprint).upload(tmp_path / "cube.gcode", start=True)
+
+    assert not result.print_started
+    assert "cube.gcode" in fake_octoprint.files
+
+
+def test_moonraker_address_is_not_octoprint(fake_moonraker: FakeMoonraker) -> None:
+    """An OctoPrint printer set to a Moonraker address says it is not OctoPrint."""
+    client = OctoPrintClient(PrinterHost("x", fake_moonraker.url, "k", OCTOPRINT), timeout_seconds=5)
+    with pytest.raises(PrinterError, match="no OctoPrint at that address"):
+        client.status()

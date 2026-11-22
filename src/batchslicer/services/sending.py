@@ -8,7 +8,8 @@ goes straight into the printer's G-code folder. Files already on the printer
 with the same name are replaced. A print is started only when asked for and
 only for a run that produced exactly one G-code file. One file failing to
 upload does not stop the others. This module does not parse options or
-prompt; the printer is reached through :mod:`batchslicer.infrastructure.moonraker`.
+prompt; the printer is reached through a client from
+:mod:`batchslicer.infrastructure.printer_clients` (Moonraker or OctoPrint).
 """
 
 import logging
@@ -17,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from batchslicer.domain.printers import PrinterHost
-from batchslicer.infrastructure.moonraker import MoonrakerClient, MoonrakerError
+from batchslicer.infrastructure.printer_api import PrinterClient, PrinterError, PrinterStatus
 from batchslicer.services.slicing import SliceOutcome
 
 
@@ -109,7 +110,7 @@ def plan_uploads(outcomes: Sequence[SliceOutcome], base: Path) -> list[Upload]:
 class SendingService:
     """Upload G-code files to one printer."""
 
-    def __init__(self, client: MoonrakerClient, *, logger: logging.Logger) -> None:
+    def __init__(self, client: PrinterClient, *, logger: logging.Logger) -> None:
         """Store the printer's client and the logger."""
         self._client = client
         self._logger = logger
@@ -119,15 +120,14 @@ class SendingService:
         """Return the printer files are sent to."""
         return self._client.host
 
-    def check(self) -> str:
-        """Return the printer's Klipper state (``ready``, ``startup``, ...).
+    def check(self) -> PrinterStatus:
+        """Return the printer's state.
 
-        Raises :class:`MoonrakerError` if the printer does not answer.
+        Raises :class:`PrinterError` if the printer does not answer.
         """
-        info = self._client.server_info()
-        state = str(info.get("klippy_state", "unknown"))
-        self._logger.info("Printer %s answers; Klipper is %s", self.host.describe(), state)
-        return state
+        status = self._client.status()
+        self._logger.info("Printer %s answers; %s", self.host.describe(), status.state)
+        return status
 
     def send(
         self,
@@ -149,7 +149,7 @@ class SendingService:
                     print_queued=answer.print_queued,
                 )
                 self._logger.info("Sent %s to %s as %s", upload.local, self.host.name, answer.remote_path)
-            except (MoonrakerError, OSError) as error:
+            except (PrinterError, OSError) as error:
                 result = SentFile(upload, error=str(error))
                 self._logger.error("Could not send %s to %s: %s", upload.local, self.host.name, error)
             results.append(result)

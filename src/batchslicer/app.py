@@ -51,7 +51,8 @@ from batchslicer.domain.options import COPYABLE_SUFFIXES, MAX_COPIES, SliceOptio
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.domain.printers import PrinterHost, host_from_address, printer_hosts
 from batchslicer.domain.profiles import LAST_RUN, Profile, Target, combine, is_valid_name
-from batchslicer.infrastructure.moonraker import MoonrakerClient, MoonrakerError
+from batchslicer.infrastructure.printer_api import PrinterError
+from batchslicer.infrastructure.printer_clients import client_for
 from batchslicer.infrastructure.profiles import ProfileError, ProfileStore
 from batchslicer.services.gcode_stats import GcodeStats, format_duration
 from batchslicer.services.report import write_report
@@ -193,7 +194,7 @@ def _run(options: RunOptions) -> int:
         SlicerSelectionError,
         PresetError,
         ProfileError,
-        MoonrakerError,
+        PrinterError,
         FileNotFoundError,
         KeyError,
         OSError,
@@ -537,9 +538,8 @@ def _check_printers(targets: list[_ResolvedTarget], logger: logging.Logger) -> N
         if target.host is None or target.host.name in checked:
             continue
         checked.add(target.host.name)
-        state = SendingService(MoonrakerClient(target.host), logger=logger).check()
-        note = "" if state == "ready" else f" (Klipper is {state}; it can still take files)"
-        print(f"Printer {target.host.describe()} answers{note}.")
+        status = SendingService(client_for(target.host), logger=logger).check()
+        print(f"Printer {target.host.describe()} answers{status.note()}.")
 
 
 def _remember_choices(
@@ -836,7 +836,7 @@ def _send(
         state = "sent" if result.success else f"FAILED: {result.error}"
         print(f"  [{number}/{count}] {result.upload.remote_path} ... {state}", flush=True)
 
-    service = SendingService(MoonrakerClient(target.host), logger=logger)
+    service = SendingService(client_for(target.host), logger=logger)
     outcome = service.send(uploads, start=start, on_result=on_result)
     _report_sending(outcome, start)
     return not outcome.failed

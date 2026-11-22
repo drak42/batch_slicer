@@ -11,7 +11,7 @@ you already have in those slicers. Run it interactively and answer a few
 questions, or pass everything on the command line for unattended, scripted runs.
 It can put a kit's parts together on plates, make several copies of a part,
 adds preview pictures for printer screens, and can send the G-code straight to
-a Klipper printer.
+a Klipper or OctoPrint printer.
 
 BatchSlicer exists to remove friction from the 3D printing workflow through
 reliable, maintainable automation. Batch slicing is the first step towards a
@@ -91,8 +91,8 @@ repeats the same run.
   for different printers, each with its own slicer and presets, into separate
   folders.
 - **Sends the G-code to your printer.** With `--send`, the G-code goes straight
-  to a Klipper printer over the network (Moonraker), keeping the folder
-  structure; `--start` starts printing a single model.
+  to a Klipper printer (Moonraker) or an OctoPrint server over the network,
+  keeping the folder structure; `--start` starts printing a single model.
 - **Remembers your choices.** Save a run as a named profile, or repeat the last
   run with `--last`.
 - **Runs unattended.** Every choice can be given as a command-line option or a
@@ -165,7 +165,7 @@ second.
   **opened at least once** so it has created its settings folder and you have
   added your printers in it
 - Optional, for sending G-code: a printer running Klipper with Moonraker (such
-  as the Creality K1 and K2 series) on your network
+  as the Creality K1 and K2 series), or OctoPrint, on your network
 
 ## Installation
 
@@ -291,6 +291,10 @@ printers:           # optional: printers for --send (see "Sending G-code to a pr
   k2plus:
     url: "http://192.168.1.50:7125"
     api_key: ""     # only if Moonraker asks for one
+  ender3:           # an OctoPrint server
+    type: octoprint
+    url: "http://octopi.local"
+    api_key: "..."  # OctoPrint always needs one
 ```
 
 Paths may start with `~` for your home folder. Relative paths are relative to
@@ -662,8 +666,9 @@ k2-and-ender:
 ## Sending G-code to a printer
 
 BatchSlicer can upload the G-code to a printer running Klipper with
-Moonraker, its web interface: the Creality K1 and K2 series, Voron and many
-others. Give the printer's address directly:
+Moonraker, its web interface (the Creality K1 and K2 series, Voron and many
+others), or to an OctoPrint server ([see below](#octoprint)). For a Klipper
+printer, give its address directly:
 
 ```bash
 batchslicer --profile k2-pla --input ~/BatchSlicer/incoming/kit --send 192.168.1.50
@@ -719,6 +724,40 @@ batchslicer --profile k2-pla --input bracket.stl --send k2plus --start
   printer's address. When a file is replaced under the same name, the screen
   may keep showing the old picture (or none); in testing, sending the file
   again fixed it.
+
+### OctoPrint
+
+OctoPrint always asks for an API key, so name the printer in the
+configuration with `type: octoprint`. Create the key in OctoPrint under
+**Settings > Application Keys** (or use the global key under **Settings >
+API**):
+
+```yaml
+printers:
+  ender3:
+    type: octoprint
+    url: "http://octopi.local"     # the address you open OctoPrint at
+    api_key: "paste the key here"
+```
+
+```bash
+batchslicer --profile ender-pla --input ~/BatchSlicer/incoming/kit --send ender3
+```
+
+Everything above applies, with these differences:
+
+- The files go into OctoPrint's uploads, in the same folders; missing folders
+  are created.
+- `--start` selects and prints the file when the printer is connected and
+  idle ("Operational"). Otherwise the file stays in OctoPrint without
+  starting. A file that is printing right now cannot be replaced; that upload
+  fails with OctoPrint's message.
+- An address given directly to `--send` (such as `--send 192.168.1.60`) is
+  always treated as Moonraker; use a configured name for OctoPrint.
+- OctoPrint shows the preview pictures only with a plugin that reads them
+  from the G-code, such as "Slicer Thumbnails".
+- Tested against a stand-in OctoPrint that follows its documented API; not
+  yet with a real OctoPrint server.
 
 ## Output
 
@@ -974,6 +1013,10 @@ Add this computer's address (or its network, such as `192.168.1.0/24`) to
 `trusted_clients` in the `[authorization]` section of the printer's
 `moonraker.conf`, or set `api_key` to Moonraker's API key.
 
+**"... refused access (HTTP 403); check its api_key ..."** (OctoPrint): the
+API key is wrong or was removed. Create a new one under **Settings >
+Application Keys** and put it in the printer's `api_key`.
+
 **"... cannot arrange models from its command line, so --plates cannot be
 used with it"** (or "**cannot make copies**", for `--copies`): Creality
 Print's command line has no arrange or copies. Use OrcaSlicer or Bambu Studio
@@ -1060,8 +1103,8 @@ the Actions tab ("Latest slicers").
   profiles.
 - **Copies are for single models.** `--copies` does not apply to folders
   (each part of a `--plates` folder is printed once).
-- **Sending needs Klipper with Moonraker.** Bambu Lab printers (LAN mode),
-  OctoPrint and Creality printers without Moonraker are not supported yet.
+- **Sending needs Klipper with Moonraker, or OctoPrint.** Bambu Lab printers
+  (LAN mode) and Creality printers without Moonraker are not supported yet.
 - **Flatpak installs are not detected** by `batchslicer setup`; configure them
   by hand.
 

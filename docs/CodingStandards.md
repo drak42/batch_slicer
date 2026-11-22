@@ -24,7 +24,8 @@ tools on every push (see "Checks").
 - The slicers' own folders are only read, never written.
 - Slicer processes run only through `backends/orca.py`, which applies the
   timeout and stops them on Ctrl+C.
-- Printers are contacted only through `infrastructure/moonraker.py`, with the
+- Printers are contacted only through the clients in `infrastructure/`
+  (`moonraker.py`, `octoprint.py`, chosen by `printer_clients.py`), with the
   Python standard library (no extra dependencies).
 - G-code files are changed after slicing only by `services/thumbnails.py`,
   which replaces a file in one step so it is never left half-written.
@@ -38,7 +39,7 @@ tools on every push (see "Checks").
   it.
 - Tests never touch the real home folder (`tests/conftest.py` redirects the
   standard locations to temporary folders) and never contact a real printer
-  (the `fake_moonraker` fixture runs a stand-in Moonraker on a local port).
+  (the `fake_moonraker` and `fake_octoprint` fixtures run stand-ins on a local port).
 - Tests that need a real slicer are skipped unless pointed at one (see the
   README's "Testing" section).
 

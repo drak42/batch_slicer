@@ -24,7 +24,8 @@ from batchslicer.backends.slicers import SLICERS, SlicerDefinition, is_configure
 from batchslicer.core.config import Config, find_config_file
 from batchslicer.core.locations import CONFIG_ENVIRONMENT_VARIABLE, default_paths
 from batchslicer.domain.printers import PrinterHostError, printer_hosts
-from batchslicer.infrastructure.moonraker import MoonrakerClient, MoonrakerError
+from batchslicer.infrastructure.printer_api import PrinterError
+from batchslicer.infrastructure.printer_clients import client_for
 from batchslicer.infrastructure.profiles import ProfileError, ProfileStore
 from batchslicer.version import get_version_string
 
@@ -240,16 +241,14 @@ def _check_printers(config: Config, report: _Report) -> None:
         report.line("  none configured")
     for host in hosts.values():
         try:
-            info = MoonrakerClient(host, timeout_seconds=5.0).server_info()
-        except MoonrakerError as error:
+            status = client_for(host, timeout_seconds=5.0).status()
+        except PrinterError as error:
             report.line(f"  {host.describe()}")
             report.problem(f"{error} (Is the printer on and on this network?)")
             continue
-        state = info.get("klippy_state", "unknown")
-        version = info.get("moonraker_version", "")
         report.line(
-            f"  {host.describe()}: answers, Klipper {state}"
-            + (f", Moonraker {version}" if version else "")
+            f"  {host.describe()}: answers, {status.state}"
+            + (f", {status.software}" if status.software else "")
         )
     report.line("")
 

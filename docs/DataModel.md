@@ -12,7 +12,7 @@ in `domain/` know nothing about files, slicers or the user interface.
 | `Target` | `domain/profiles.py` | one slicer and its preset names, possibly not chosen yet, and the printer its G-code is sent to (`send`) |
 | `Profile` | `domain/profiles.py` | a named run: one or more targets, input, output, and slicing settings (`orient`, `allow_newer_files`, `jobs`, `exclude`, `thumbnails`, `plates`, `copies`) |
 | `SliceOptions` | `domain/options.py` | how every model is sliced: auto-orient mode, newer-file handling, preview pictures, models together on plates, copies of a single model |
-| `PrinterHost` | `domain/printers.py` | a printer G-code can be sent to: name (or the address as given), Moonraker address, API key |
+| `PrinterHost` | `domain/printers.py` | a printer G-code can be sent to: name (or the address as given), API address, API key, and whether it is Moonraker or OctoPrint (`kind`) |
 
 A profile with one target is stored flat in `profiles.yaml`; one with several
 lists them under `targets` (`infrastructure/profiles.py`).
@@ -27,7 +27,8 @@ lists them under `targets` (`infrastructure/profiles.py`).
 | `ThumbnailResult` | `services/thumbnails.py` | the preview picture sizes added to one G-code file, or why none were |
 | `GcodeStats` | `services/gcode_stats.py` | print time, filament weight, length and cost read from G-code |
 | `Upload`, `SentFile`, `SendOutcome` | `services/sending.py` | sending: each file and its folder on the printer, whether it arrived (and started), per printer |
-| `UploadResult` | `infrastructure/moonraker.py` | what Moonraker did with one upload: its path, whether printing started or was queued |
+| `UploadResult` | `infrastructure/printer_api.py` | what the printer did with one upload: its path, whether printing started or was queued |
+| `PrinterStatus` | `infrastructure/printer_api.py` | whether a printer is ready to print, its own word for its state, and what answered (Moonraker or OctoPrint, with version) |
 | `OpcVendor`, `OpcPreset` | `backends/opc.py` | OrcaSlicer's packed built-in presets, as read from a `.opc` file |
 
 ## Files

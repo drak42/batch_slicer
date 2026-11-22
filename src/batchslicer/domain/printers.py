@@ -2,8 +2,8 @@
 
 A printer host is a networked printer named in the configuration's
 ``printers`` section, reached through Moonraker (the web API of Klipper
-printers such as the Creality K1 and K2 series). This module only describes
-them and checks the configured values; it does not contact printers.
+printers such as the Creality K1 and K2 series) or OctoPrint. This module only
+describes them and checks the configured values; it does not contact printers.
 """
 
 import re
@@ -16,6 +16,13 @@ _NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
 DEFAULT_PORT = 7125
 """Moonraker's usual port, used for an address given without one."""
+
+MOONRAKER = "moonraker"
+OCTOPRINT = "octoprint"
+PRINTER_TYPES = (MOONRAKER, OCTOPRINT)
+"""The kinds of printer connection, as written in the configuration's ``type``."""
+
+_TYPE_NAMES = {MOONRAKER: "Moonraker", OCTOPRINT: "OctoPrint"}
 
 
 class PrinterHostError(ValueError):
@@ -30,20 +37,25 @@ class PrinterHost:
     """The name used with --send, as written in the configuration."""
 
     url: str
-    """Moonraker's address, for example ``http://192.168.1.50:7125``, without a trailing ``/``."""
+    """The API's address, for example ``http://192.168.1.50:7125``, without a trailing ``/``."""
 
     api_key: str = ""
-    """Moonraker API key; empty when the printer does not ask for one."""
+    """API key; empty when the printer does not ask for one (OctoPrint always does)."""
+
+    kind: str = MOONRAKER
+    """How the printer is reached: :data:`MOONRAKER` or :data:`OCTOPRINT`."""
 
     def describe(self) -> str:
-        """Return the name and address as shown to the user."""
-        return f"{self.name} ({self.url})"
+        """Return the name and address as shown to the user (and the API, if not Moonraker)."""
+        if self.kind == MOONRAKER:
+            return f"{self.name} ({self.url})"
+        return f"{self.name} ({_TYPE_NAMES[self.kind]}, {self.url})"
 
 
 def printer_hosts(section: Any) -> dict[str, PrinterHost]:
     """Return the printers in a configuration ``printers`` section, by name.
 
-    ``section`` maps names to ``{url, api_key}``; an empty or missing section
+    ``section`` maps names to ``{url, api_key, type}``; an empty or missing section
     gives no printers. Raises :class:`PrinterHostError` for anything that
     cannot be used, naming the printer.
     """
@@ -61,7 +73,7 @@ def printer_hosts(section: Any) -> dict[str, PrinterHost]:
             )
         if not isinstance(values, Mapping):
             raise PrinterHostError(f"printers.{name} must have a url setting.")
-        unknown = set(map(str, values)) - {"url", "api_key"}
+        unknown = set(map(str, values)) - {"url", "api_key", "type"}
         if unknown:
             raise PrinterHostError(
                 f"printers.{name} has unknown settings: {', '.join(sorted(unknown))}"
@@ -70,7 +82,18 @@ def printer_hosts(section: Any) -> dict[str, PrinterHost]:
         api_key = values.get("api_key") or ""
         if not isinstance(api_key, str):
             raise PrinterHostError(f"printers.{name}.api_key must be text.")
-        hosts[name] = PrinterHost(name=name, url=url, api_key=api_key)
+        kind = values.get("type") or MOONRAKER
+        if not isinstance(kind, str) or kind.casefold() not in PRINTER_TYPES:
+            raise PrinterHostError(
+                f"printers.{name}.type must be {' or '.join(PRINTER_TYPES)}, not {kind}."
+            )
+        kind = kind.casefold()
+        if kind == OCTOPRINT and not api_key:
+            raise PrinterHostError(
+                f"printers.{name}: OctoPrint needs an api_key (create one in OctoPrint under "
+                "Settings > Application Keys)."
+            )
+        hosts[name] = PrinterHost(name=name, url=url, api_key=api_key, kind=kind)
     return hosts
 
 

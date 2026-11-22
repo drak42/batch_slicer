@@ -6,6 +6,14 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `--send` can upload to OctoPrint: name the printer in the configuration
+  with `type: octoprint`, its address and an API key. Folders are created as
+  needed, `--start` selects and prints a single file when the printer is
+  ready, and `batchslicer doctor` checks it. Tested against a stand-in
+  OctoPrint; not yet with a real server.
+
 ## [0.9.3] - 2026-11-22
 
 The repository is public. The program is unchanged from 0.9.2.

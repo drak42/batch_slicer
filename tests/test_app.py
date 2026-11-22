@@ -16,7 +16,7 @@ from batchslicer.cli.file_prompt import SliceInput
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.services.slicing import BatchOutcome, SliceOutcome
-from conftest import FakeMoonraker
+from conftest import FakeMoonraker, FakeOctoPrint
 
 
 def _all_output(capsys: pytest.CaptureFixture[str]) -> str:
@@ -1202,7 +1202,7 @@ def test_excluding_everything_stops_with_a_reason(
     app.SlicingService.return_value.slice_batch.assert_not_called()
 
 
-def _printer(monkeypatch: pytest.MonkeyPatch, fake: FakeMoonraker, tmp_path: Path) -> Path:
+def _printer(monkeypatch: pytest.MonkeyPatch, fake: FakeMoonraker | FakeOctoPrint, tmp_path: Path) -> Path:
     """Configure printer 'k2' at ``fake`` and make slicing give real G-code in ``tmp_path``."""
     config = app.get_config.return_value
     config.section.side_effect = lambda name: {"k2": {"url": fake.url}} if name == "printers" else None
@@ -1244,6 +1244,30 @@ def test_send_uploads_and_starts_a_single_model(
     assert last.targets[0].send == "k2"
     assert "start:" not in store.read_text(encoding="utf-8")
 
+
+
+def test_send_to_an_octoprint_printer(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_octoprint: FakeOctoPrint,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A printer configured with type: octoprint is checked and sent to through OctoPrint."""
+    _store_with(monkeypatch, tmp_path)
+    _printer(monkeypatch, fake_octoprint, tmp_path)
+    app.get_config.return_value.section.side_effect = lambda name: (
+        {"ender": {"type": "octoprint", "url": fake_octoprint.url, "api_key": fake_octoprint.api_key}}
+        if name == "printers"
+        else None
+    )
+
+    assert app.main(["--send", "ender", "--start"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"Printer ender (OctoPrint, {fake_octoprint.url}) answers." in out
+    assert "Printing cube.gcode on ender." in out
+    assert fake_octoprint.files == {"cube.gcode": b"G28\n"}
 
 def test_send_keeps_a_batchs_folders(
     startup_mocks: tuple[Mock, Mock, Mock, Mock],

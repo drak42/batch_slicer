@@ -52,7 +52,7 @@ not slice. Everything below describes a normal run.
    (`cli/send_prompt.py`), when a printer is configured or the last run sent
    to one. `--start` is refused here unless every target
    sends and a single model was chosen, and each printer to send to must
-   answer (`infrastructure/moonraker.py`), so nothing is sliced for a
+   answer (`infrastructure/printer_clients.py`), so nothing is sliced for a
    printer that is off.
 9. **Remember the run** as the profile `last`, and as `--save-profile` if given.
 10. **Check the slicing options** (`--orient`, `--allow-newer-files`,

@@ -227,6 +227,10 @@ def render_config(
             "#   k2plus:",
             '#     url: "http://192.168.1.50:7125"',
             '#     api_key: ""',
+            "#   ender3:",
+            '#     type: octoprint',
+            '#     url: "http://octopi.local"',
+            '#     api_key: "paste the key from OctoPrint here"',
             "",
         ]
     return "\n".join(lines)
@@ -234,7 +238,8 @@ def render_config(
 
 PRINTERS_COMMENT = (
     "# Printers to send G-code to with --send NAME (--send also takes an address",
-    "# such as 192.168.1.50 directly): Klipper printers running Moonraker. url is",
-    "# Moonraker's address (usually port 7125); api_key is only needed if",
-    "# Moonraker asks for one.",
+    "# such as 192.168.1.50 directly): Klipper printers running Moonraker, or",
+    "# OctoPrint with type: octoprint. url is the address (Moonraker usually uses",
+    "# port 7125); api_key is only needed if Moonraker asks for one, and OctoPrint",
+    "# always needs one (Settings > Application Keys).",
 )

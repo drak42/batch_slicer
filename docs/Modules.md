@@ -73,7 +73,10 @@ docstring says more, including what it intentionally does not do.
 |---|---|
 | `infrastructure/profiles.py` | read and write `profiles.yaml` atomically |
 | `infrastructure/moonraker.py` | talk to a Klipper printer's Moonraker: check it answers, upload (and start) G-code |
+| `infrastructure/printer_api.py` | what every printer connection offers (`PrinterClient`, `PrinterStatus`, `UploadResult`, `PrinterError`) and the streamed multipart upload they share |
 
+| `infrastructure/octoprint.py` | talk to OctoPrint: check it answers and the printer's state, create folders, upload (and start) G-code |
+| `infrastructure/printer_clients.py` | choose the Moonraker or OctoPrint client for a printer by its `type` |
 ## Reserved
 
 `application/`, `plugins/`, `web/` and `cli/commands/` are empty packages kept

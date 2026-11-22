@@ -80,7 +80,11 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 ## Next
 
-Nothing is scheduled: the next steps need the decisions below.
+- **Sending to OctoPrint** (built, unreleased): `type: octoprint` printers in
+  the configuration; tested against a stand-in OctoPrint, still to be tried
+  with a real server.
+- Windows and macOS work continues on the `feat/windows` and `feat/macos`
+  branches (draft pull requests), outside `main`.
 
 ## Then: decisions on reach
 
@@ -107,5 +111,5 @@ These need a decision from the project owner before work starts.
   presets without AppImages).
 - A standalone download that does not need Python.
 - A graphical or web interface (the architecture reserves a `web` layer).
-- Sending G-code to other printers (Bambu LAN, OctoPrint); Klipper/Moonraker
-  is done.
+- Sending G-code to Bambu Lab printers (LAN mode); Klipper/Moonraker and
+  OctoPrint are done.

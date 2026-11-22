@@ -99,7 +99,7 @@ BatchSlicer follows a layered architecture. As built today:
         │                 │                  │
   Core (core/)      Services (services/)   Infrastructure (infrastructure/)
   configuration,    slicing, reports,      saved profiles,
-  logging,          G-code statistics,     Moonraker (printers)
+  logging,          G-code statistics,     Moonraker, OctoPrint
                     sending
   environment checks      │
                           │
@@ -146,7 +146,7 @@ src/
     ├── domain/            # plain value objects: presets, profiles, slicing options
     ├── services/          # slicing jobs and batches, reports, G-code statistics, sending
     ├── backends/          # slicer CLI, presets, .opc reader, detection
-    ├── infrastructure/    # saved profiles (YAML), Moonraker client
+    ├── infrastructure/    # saved profiles (YAML), printer clients
     ├── application/       # reserved (planned)
     ├── plugins/           # reserved (planned)
     └── web/               # reserved (planned dashboard)
@@ -267,9 +267,10 @@ Responsible only for presentation.
 External integrations.
 
 Built: the saved-profiles store (`infrastructure/profiles.py`) and the
-Moonraker client that sends G-code to Klipper printers
-(`infrastructure/moonraker.py`, standard library only). Planned: SQLite,
-other external storage, and other printer connections (Bambu LAN, OctoPrint). (Slicer processes are run by the backends.)
+Moonraker and OctoPrint clients that send G-code to printers
+(`infrastructure/moonraker.py`, `infrastructure/octoprint.py`, sharing
+`infrastructure/printer_api.py`; standard library only). Planned: SQLite,
+other external storage, and other printer connections (Bambu LAN). (Slicer processes are run by the backends.)
 
 ---
 
@@ -314,7 +315,7 @@ G-code, named after each model (or folder), with preview pictures added
   ↓
 Report (report.csv / report.json) and summary
   ↓
-Sending service (--send): G-code to the printer through Moonraker
+Sending service (--send): G-code to the printer through Moonraker or OctoPrint
 ```
 
 Planned: a queue before slicing, and a database and history after it.
@@ -382,7 +383,7 @@ Examples include:
 
 - Multiple printers (built: several printers per run)
 - Multiple slicers (built: OrcaSlicer, Creality Print, Bambu Studio)
-- Sending to printers (built: Klipper/Moonraker; planned: Bambu LAN, OctoPrint)
+- Sending to printers (built: Klipper/Moonraker, OctoPrint; planned: Bambu LAN)
 - Arranging parts onto plates (built: `--plates` and `--copies`, by the slicer's own arrange)
 - Distributed workers
 - Remote dashboard
