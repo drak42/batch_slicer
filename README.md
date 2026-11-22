@@ -1260,7 +1260,9 @@ Shows the BatchSlicer and Python versions, which configuration file is used and
 how it was found, where BatchSlicer keeps its files, and for each configured
 slicer whether its program runs and accepts BatchSlicer's commands, whether its
 settings folder exists, and how many printers it offers. It also checks that
-each printer for `--send` answers, and that saved profiles can be read. It ends with "No problems found." or a list of
+each printer for `--send` answers, lists what is loaded in a Creality printer's
+CFS and external spool holder (what `--loaded-filaments` matches against), and
+checks that saved profiles can be read. It ends with "No problems found." or a list of
 problems and what to do about them, and exits with status 0 or 1.
 
 When reporting a problem, please include the output of `batchslicer doctor`

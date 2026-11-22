@@ -6,6 +6,11 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `batchslicer doctor` lists what is loaded in each Creality printer's CFS and
+  external spool holder.
+
 ### Changed
 
 - The roadmap moves the web interface to "Later".

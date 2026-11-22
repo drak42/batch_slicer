@@ -167,8 +167,35 @@ def test_printers_are_checked(
     assert problems == 1
     assert any(f"k2 ({fake_moonraker.url}): answers, Klipper is ready, Moonraker v0.9.3" in line for line in lines)
     assert any("PROBLEM: spare" in line and "refused access" in line for line in lines)
+    assert not any("loaded filaments" in line for line in lines)  # no CFS on this stand-in
     assert any(
         f"ender (OctoPrint, {fake_octoprint.url}): answers, printer is Operational, OctoPrint 1.10.3"
         in line
         for line in lines
     )
+
+
+def test_loaded_cfs_filaments_are_listed(tmp_path: Path, fake_moonraker: FakeMoonraker) -> None:
+    """A printer with a CFS shows what is loaded in each slot."""
+    from test_filaments import K2_STATUS
+
+    fake_moonraker.objects = K2_STATUS
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        yaml.safe_dump({
+            "creality_print": {
+                "executable": str(_program(tmp_path / "bin" / "creality")),
+                "datadir": str(_creality_data(tmp_path / "creality", printers=["K2 Plus"])),
+            },
+            "printers": {"k2": {"url": fake_moonraker.url}},
+        })
+    )
+
+    _, lines = _report(DoctorOptions(config=path))
+
+    start = lines.index("    loaded filaments (for --loaded-filaments):")
+    assert lines[start + 1 : start + 4] == [
+        "      CFS 1B dark blue PETG  (#1B04AE)",
+        "      CFS 1C light grey PETG  (#9EA7AE)",
+        "      external spool white PETG  (#FFFFFF)",
+    ]

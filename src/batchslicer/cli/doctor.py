@@ -229,7 +229,7 @@ def _check_slicer(
 
 
 def _check_printers(config: Config, report: _Report) -> None:
-    """Check that every printer G-code can be sent to answers."""
+    """Check that every printer G-code can be sent to answers, and show what is loaded in its CFS."""
     report.line("Printers (for --send):")
     try:
         hosts = printer_hosts(config.section("printers"))
@@ -240,8 +240,9 @@ def _check_printers(config: Config, report: _Report) -> None:
     if not hosts:
         report.line("  none configured")
     for host in hosts.values():
+        client = client_for(host, timeout_seconds=5.0)
         try:
-            status = client_for(host, timeout_seconds=5.0).status()
+            status = client.status()
         except PrinterError as error:
             report.line(f"  {host.describe()}")
             report.problem(f"{error} (Is the printer on and on this network?)")
@@ -250,6 +251,15 @@ def _check_printers(config: Config, report: _Report) -> None:
             f"  {host.describe()}: answers, {status.state}"
             + (f", {status.software}" if status.software else "")
         )
+        try:
+            loaded = client.loaded_filaments()
+        except PrinterError as error:
+            report.line(f"    loaded filaments: could not be read ({error})")
+            continue
+        if loaded:
+            report.line("    loaded filaments (for --loaded-filaments):")
+            for filament in loaded:
+                report.line(f"      {filament.describe()}  ({filament.colour})")
     report.line("")
 
 
