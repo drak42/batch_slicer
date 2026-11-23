@@ -6,6 +6,12 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- A request to terminate BatchSlicer (`kill`, `systemctl stop`) now stops it
+  like Ctrl+C: slicers are stopped, partial results removed, and a watch run
+  says "Stopped watching" instead of ending mid-run.
+
 ## [0.14.2] - 2026-11-23
 
 Documentation: a Buy Me a Coffee link. The program is unchanged from 0.14.1.

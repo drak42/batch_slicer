@@ -846,8 +846,9 @@ batchslicer --profile k2-pla --input ~/drop --plates --send k2plus --watch
   not used with `--watch` either; save the choices with `--save-profile` and
   watch with `--profile NAME --watch`. Watch runs are not remembered as the
   last run.
-- **Stop** with Ctrl+C. A drop being sliced at that moment stays in the
-  watched folder and is sliced next time.
+- **Stop** with Ctrl+C, or by asking the process to end (`kill`, stopping its
+  service). A drop being sliced at that moment stays in the watched folder
+  and is sliced next time.
 
 ### Running it in the background
 

@@ -1905,3 +1905,25 @@ def test_slots_are_checked_before_slicing() -> None:
         app._check_slots([target], SliceOptions(slots=(("a", "1B"),)), True)
     sending = replace(target, host=PrinterHost("k2", "http://k2:7125"))
     app._check_slots([sending], SliceOptions(slots=(("a", "1B"),)), True)
+
+
+@pytest.mark.skipif(not hasattr(app.signal, "SIGKILL"), reason="POSIX signals")
+def test_a_terminate_request_stops_like_ctrl_c(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """SIGTERM during a run ends it as Ctrl+C would; the previous handler comes back afterwards."""
+    import os
+    import time
+
+    before = app.signal.getsignal(app.signal.SIGTERM)
+
+    def run(options: object) -> int:
+        os.kill(os.getpid(), app.signal.SIGTERM)
+        time.sleep(5)  # interrupted by the signal long before this ends
+        return app.EXIT_SUCCESS
+
+    monkeypatch.setattr(app, "_run", run)
+
+    assert app.main(["--no-prompt"]) == app.EXIT_INTERRUPTED
+    assert "Cancelled." in capsys.readouterr().err
+    assert app.signal.getsignal(app.signal.SIGTERM) is before

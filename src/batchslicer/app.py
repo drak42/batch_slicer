@@ -17,6 +17,7 @@ one line with the full details written to the log. Exit statuses: 0 success,
 import logging
 import os
 import re
+import signal
 import sys
 import time
 import traceback
@@ -104,6 +105,7 @@ class _StartupFailed(Exception):
 def main(argv: Sequence[str] | None = None) -> int:
     """Run BatchSlicer with command-line ``argv`` and return a process exit status."""
     options = parse_arguments(argv)
+    previous = _stop_on_terminate()
     try:
         if isinstance(options, SetupOptions):
             return _setup(options)
@@ -118,6 +120,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         return EXIT_INTERRUPTED
     except Exception as error:  # noqa: BLE001 - last-resort report for any bug
         return _report_unexpected(error)
+    finally:
+        _restore_terminate(previous)
+
+
+def _stop_on_terminate() -> object:
+    """Treat a request to terminate (``kill``, ``systemctl stop``, launchd) like Ctrl+C.
+
+    Slicers are then stopped and partial results removed, as on Ctrl+C,
+    instead of the process ending mid-write. Returns the previous handler,
+    or None when it cannot be set (not the main thread, or no SIGTERM).
+    """
+    def interrupt(signum: int, frame: object) -> None:
+        raise KeyboardInterrupt
+
+    try:
+        return signal.signal(signal.SIGTERM, interrupt)
+    except (ValueError, OSError, AttributeError):
+        return None
+
+
+def _restore_terminate(previous: object) -> None:
+    """Put back the terminate handler that was there before :func:`_stop_on_terminate`."""
+    if previous is not None:
+        try:
+            signal.signal(signal.SIGTERM, previous)  # type: ignore[arg-type]
+        except (ValueError, OSError, AttributeError):
+            pass
 
 
 def _run(options: RunOptions) -> int:
