@@ -1566,9 +1566,9 @@ def _label(model: Path, root: Path) -> str:
     """Return a model (or a folder sliced together on plates) as shown in progress lines."""
     relative = model.relative_to(root)
     if model == root or model.is_dir():
-        name = model.name if model == root else str(relative)
+        name = model.name if model == root else relative.as_posix()
         return f"{name}/ (models together on plates)"
-    return str(relative)
+    return relative.as_posix()
 
 
 def _result_text(outcome: SliceOutcome) -> str:

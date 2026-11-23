@@ -4,7 +4,7 @@ On Linux, locations follow the XDG Base Directory conventions: settings under
 ``~/.config``, saved profiles under ``~/.local/share``, logs under
 ``~/.local/state`` and caches under ``~/.cache``, each honouring its ``XDG_*``
 environment variable. On Windows, settings and profiles go under
-``%APPDATA%\BatchSlicer`` and logs and caches under ``%LOCALAPPDATA%\BatchSlicer``
+``%APPDATA%\\BatchSlicer`` and logs and caches under ``%LOCALAPPDATA%\\BatchSlicer``
 (an ``XDG_*`` variable, when set, still wins). Models and results go in a
 visible ``~/BatchSlicer`` folder because users work with them directly. This
 module only names locations; it does not create folders or read configuration.
