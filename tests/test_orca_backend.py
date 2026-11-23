@@ -21,7 +21,7 @@ from batchslicer.backends.slicers import (
     SlicerDefinition,
 )
 from batchslicer.core.config import Config
-from conftest import write_config
+from conftest import fake_program, set_home, write_config
 
 
 def _popen(
@@ -97,6 +97,7 @@ def test_run_captures_success_and_exact_command(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        encoding="utf-8",
         errors="replace",
         cwd=None,
     )
@@ -301,9 +302,7 @@ def test_bare_executable_name_found_on_path_is_used(
     """A bare executable name found on PATH becomes its full path."""
     bin_directory = tmp_path / "bin"
     bin_directory.mkdir()
-    program = bin_directory / "orca-slicer"
-    program.write_text("#!/bin/sh\n")
-    program.chmod(0o755)
+    program = fake_program(bin_directory / "orca-slicer")
     monkeypatch.setenv("PATH", str(bin_directory))
     config = write_config(tmp_path, {"orca": {"executable": "orca-slicer", "datadir": "data"}})
 
@@ -312,7 +311,7 @@ def test_bare_executable_name_found_on_path_is_used(
 
 def test_home_folder_in_paths_is_expanded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Paths written with ~ point into the home folder."""
-    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    set_home(monkeypatch, tmp_path / "home")
     config = write_config(
         tmp_path,
         {"orca": {"executable": "~/Apps/Orca.AppImage", "datadir": "~/.config/OrcaSlicer"}},

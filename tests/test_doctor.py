@@ -7,17 +7,14 @@ import pytest
 import yaml
 
 from batchslicer.cli.doctor import DoctorOptions, run_doctor
-from conftest import FakeMoonraker, FakeOctoPrint, write_config
+from conftest import FakeMoonraker, FakeOctoPrint, fake_program, write_config
 
 HELP_TEXT = "Usage: slicer [ OPTIONS ]\n --slice option   Slice the plates\n"
 
 
 def _program(path: Path, *, output: str = HELP_TEXT, exit_code: int = 0) -> Path:
-    """Write a fake slicer program that prints ``output``."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(f"#!/bin/sh\ncat <<'TEXT'\n{output}TEXT\nexit {exit_code}\n")
-    path.chmod(0o755)
-    return path
+    """Write a fake slicer program that prints ``output`` (a ``.cmd`` file on Windows)."""
+    return fake_program(path, output, exit_code=exit_code)
 
 
 def _creality_data(path: Path, *, printers: list[str]) -> Path:
@@ -93,10 +90,9 @@ def test_slicer_problems_are_named(tmp_path: Path, setup: str, expected: str) ->
     program = tmp_path / "bin" / "creality"
     if setup != "missing-program":
         if setup == "program-fails":
-            _program(program, output="crashed\n", exit_code=3)
-            program.write_text("#!/bin/sh\necho crashed >&2\nexit 3\n")
+            program = fake_program(program, stderr="crashed\n", exit_code=3)
         else:
-            _program(program)
+            program = _program(program)
     data = tmp_path / "creality"
     if setup != "missing-settings":
         _creality_data(data, printers=[] if setup == "no-printers" else ["K2 Plus"])

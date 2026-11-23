@@ -25,6 +25,11 @@ def _all_output(capsys: pytest.CaptureFixture[str]) -> str:
     return captured.out + captured.err
 
 
+def _native(path: str) -> str:
+    """Return a path as this system prints it (with backslashes on Windows)."""
+    return str(Path(path))
+
+
 def _single_input() -> SliceInput:
     """Return a one-file slicing input."""
     return SliceInput(root=Path("/models"), models=(Path("/models/cube.stl"),), is_folder=False)
@@ -322,7 +327,7 @@ def test_model_is_chosen_from_incoming_and_sliced_into_output(
     )
     output = capsys.readouterr().out
     assert "Sliced cube.stl in 1.2s:" in output
-    assert "/out/cube-20261120-120000/plate_1.gcode" in output
+    assert _native("/out/cube-20261120-120000/plate_1.gcode") in output
 
 
 def test_presets_and_library_are_used_for_slicing(
@@ -355,7 +360,7 @@ def test_failed_slice_reports_the_slicers_reason(
     assert app.main([]) == 1
     output = _all_output(capsys)
     assert "Slicing cube.stl failed: The input model file to the slicer can not be parsed." in output
-    assert "Details: /out/cube-20261120-120000" in output
+    assert "Details: " + _native("/out/cube-20261120-120000") in output
 
 
 def test_cancelled_model_choice_stops_before_slicing(
@@ -401,12 +406,12 @@ def test_folder_is_sliced_as_a_batch_with_progress_and_summary(
     call = app.SlicingService.return_value.slice_batch.call_args
     assert call.args[:3] == (models, Path("/models"), Path("/out"))
     output = _all_output(capsys)
-    assert "Slicing 2 model files from /models..." in output
+    assert f"Slicing 2 model files from {_native('/models')}..." in output
     assert "[1/2] a.stl ... done (1.2s)" in output
     assert "[2/2] sub/b.stl ... FAILED: can not be parsed" in output
     assert "Sliced 1 of 2 model files in 2.5s." in output
-    assert "Output: /out/models-20261120-120000" in output
-    assert "/models/sub/b.stl: can not be parsed" in output
+    assert "Output: " + _native("/out/models-20261120-120000") in output
+    assert _native("/models/sub/b.stl") + ": can not be parsed" in output
 
 
 def test_successful_batch_exits_zero(
@@ -659,9 +664,9 @@ def test_interrupted_batch_reports_what_was_done(
     assert app.main([]) == 130
 
     captured = capsys.readouterr()
-    assert "Interrupted while slicing /models/b.stl; 2 model file(s) were not sliced." in captured.err
+    assert f"Interrupted while slicing {_native('/models/b.stl')}; 2 model file(s) were not sliced." in captured.err
     assert "Sliced 1 of 3 model files" in captured.out
-    assert "Output: /out/models-1" in captured.out
+    assert "Output: " + _native("/out/models-1") in captured.out
 
 
 def test_unexpected_error_is_summarised_with_details_in_the_log(
@@ -1074,7 +1079,7 @@ def test_options_reach_the_slicing_service_and_are_shown(
         "Options:  auto-orient models that fail, allow newer 3MF files, 2 models at a time"
         in output
     )
-    assert "Report: /out/report.csv" in output
+    assert "Report: " + _native("/out/report.csv") in output
 
 
 def test_orient_is_refused_for_creality_print(
@@ -1198,7 +1203,7 @@ def test_excluding_everything_stops_with_a_reason(
 
     assert app.main(["--exclude", "*.stl"]) == 1
 
-    assert "Every model file in /models matches --exclude *.stl" in capsys.readouterr().err
+    assert f"Every model file in {_native('/models')} matches --exclude *.stl" in capsys.readouterr().err
     app.SlicingService.return_value.slice_batch.assert_not_called()
 
 
@@ -1210,7 +1215,7 @@ def _printer(monkeypatch: pytest.MonkeyPatch, fake: FakeMoonraker | FakeOctoPrin
     monkeypatch.setattr(app, "prompt_for_output", Mock(return_value=output))
     job = output / "cube-20261122-073000"
     job.mkdir(parents=True)
-    (job / "cube.gcode").write_text("G28\n")
+    (job / "cube.gcode").write_bytes(b"G28\n")
     app.SlicingService.return_value.slice.return_value = SliceOutcome(
         success=True, model=Path("/models/cube.stl"), job_directory=job,
         gcode_files=(job / "cube.gcode",), message="", elapsed=1.0,
@@ -1281,7 +1286,7 @@ def test_send_keeps_a_batchs_folders(
     batch = output / "models-20261122-073000"
     job = batch / "kits" / "arm"
     job.mkdir(parents=True)
-    (job / "arm.gcode").write_text("G1\n")
+    (job / "arm.gcode").write_bytes(b"G1\n")
     good = SliceOutcome(True, Path("/models/kits/arm.stl"), job, (job / "arm.gcode",), "", 1.0)
     bad = SliceOutcome(False, Path("/models/x.stl"), batch / "x", (), "Failed", 1.0)
     _folder_batch(monkeypatch, good, bad)

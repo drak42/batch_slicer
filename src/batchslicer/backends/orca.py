@@ -105,6 +105,7 @@ class OrcaBackend:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                encoding="utf-8",  # not the Windows code page: slicers write UTF-8
                 errors="replace",
                 cwd=working_directory,
             )

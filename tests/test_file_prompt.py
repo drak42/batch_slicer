@@ -138,7 +138,7 @@ def tree(tmp_path: Path) -> Path:
 
 def test_recursive_find_includes_subfolders_and_skips_hidden(tree: Path) -> None:
     """Recursive search finds models at any depth but not in hidden folders."""
-    found = [str(path.relative_to(tree)) for path in find_models(tree, recursive=True)]
+    found = [path.relative_to(tree).as_posix() for path in find_models(tree, recursive=True)]
 
     assert found == ["brackets/left.stl", "brackets/old/v1.obj", "brackets/right.3MF", "top.stl"]
 
@@ -261,7 +261,7 @@ def test_exclude_patterns_leave_out_matching_models(tree: Path, patterns: list[s
 
     kept, skipped = exclude_models(chosen, patterns)
 
-    assert sorted(str(path.relative_to(tree.absolute())) for path in kept.models) == left
+    assert sorted(path.relative_to(tree.absolute()).as_posix() for path in kept.models) == left
     assert skipped == len(chosen.models) - len(left)
     assert kept.root == chosen.root and kept.is_folder
 

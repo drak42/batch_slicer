@@ -127,9 +127,9 @@ def _replace(path: Path, write: Any, *, newline: str | None = None) -> None:
 
 
 def _relative(path: Path, base: Path) -> str:
-    """Return ``path`` relative to ``base`` when it is inside it, else as given."""
+    """Return ``path`` relative to ``base`` when it is inside it (with ``/`` on every system), else as given."""
     try:
-        return str(path.relative_to(base))
+        return path.relative_to(base).as_posix()
     except ValueError:
         return str(path)
 

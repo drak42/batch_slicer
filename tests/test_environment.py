@@ -258,14 +258,14 @@ def _create_valid_config(
         "\n".join(
             (
                 "orca:",
-                f'  executable: "{executable_path}"',
-                f'  datadir: "{datadir_path}"',
+                f'  executable: "{Path(str(executable_path)).as_posix()}"',
+                f'  datadir: "{Path(str(datadir_path)).as_posix()}"',
                 *_slicer_sections(extra_sections or {}),
                 "paths:",
-                f'  incoming: "{paths["incoming"]}"',
-                f'  output: "{paths["output"]}"',
-                f'  logs: "{paths["logs"]}"',
-                f'  data: "{paths["data"]}"',
+                f'  incoming: "{Path(str(paths["incoming"])).as_posix()}"',
+                f'  output: "{Path(str(paths["output"])).as_posix()}"',
+                f'  logs: "{Path(str(paths["logs"])).as_posix()}"',
+                f'  data: "{Path(str(paths["data"])).as_posix()}"',
                 "",
             )
         ),
@@ -278,7 +278,7 @@ def _slicer_sections(sections: dict[str, tuple[Path, Path]]) -> list[str]:
     """Return YAML lines for additional slicer configuration sections."""
     lines: list[str] = []
     for key, (executable, datadir) in sections.items():
-        lines.extend((f"{key}:", f'  executable: "{executable}"', f'  datadir: "{datadir}"'))
+        lines.extend((f"{key}:", f'  executable: "{executable.as_posix()}"', f'  datadir: "{datadir.as_posix()}"'))
     return lines
 
 

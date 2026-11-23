@@ -1,6 +1,7 @@
 """Tests for drawing preview pictures from G-code and adding them to it."""
 
 import base64
+import os
 import re
 import struct
 import zlib
@@ -118,7 +119,8 @@ def test_pictures_are_inserted_after_the_header(tmp_path: Path) -> None:
     for width, height, png, lines in pictures:
         assert _png_size_and_pixels(png)[:2] == (width, height)
         assert all(len(line) <= 78 for line in lines)
-    assert path.stat().st_mode & 0o777 == 0o644
+    if os.name != "nt":  # Windows has no Unix permissions to keep
+        assert path.stat().st_mode & 0o777 == 0o644
     assert not list(tmp_path.glob(".*.tmp"))
 
 

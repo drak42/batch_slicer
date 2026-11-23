@@ -101,7 +101,7 @@ def test_upload_stores_the_file_in_its_folder(fake_moonraker: FakeMoonraker, tmp
 def test_upload_can_start_the_print(fake_moonraker: FakeMoonraker, tmp_path: Path) -> None:
     """With start the printer is asked to print the file."""
     gcode = tmp_path / "cube.gcode"
-    gcode.write_text("G28\n")
+    gcode.write_bytes(b"G28\n")
 
     result = _client(fake_moonraker).upload(gcode, start=True)
 
@@ -123,7 +123,7 @@ def test_refusals_use_moonrakers_message(fake_moonraker: FakeMoonraker, tmp_path
     """Moonraker's own reason is passed on."""
     fake_moonraker.fail_names = {"bad.gcode"}
     gcode = tmp_path / "bad.gcode"
-    gcode.write_text("G28\n")
+    gcode.write_bytes(b"G28\n")
 
     with pytest.raises(MoonrakerError, match=r"HTTP 400\): Bad file bad.gcode"):
         _client(fake_moonraker).upload(gcode)
@@ -198,7 +198,7 @@ def test_send_reports_each_file_and_carries_on_after_a_failure(
     fake_moonraker.fail_names = {"b.gcode"}
     uploads = []
     for name in ("a.gcode", "b.gcode", "c.gcode"):
-        (tmp_path / name).write_text("G28\n")
+        (tmp_path / name).write_bytes(b"G28\n")
         uploads.append(Upload(tmp_path / name, "batch"))
     seen: list[tuple[int, int, bool]] = []
 
@@ -215,7 +215,7 @@ def test_send_reports_each_file_and_carries_on_after_a_failure(
 
 def test_single_file_can_be_started(fake_moonraker: FakeMoonraker, tmp_path: Path) -> None:
     """One file with start is printed; a busy printer keeps it without starting."""
-    (tmp_path / "cube.gcode").write_text("G28\n")
+    (tmp_path / "cube.gcode").write_bytes(b"G28\n")
     service = SendingService(_client(fake_moonraker), logger=Mock())
 
     assert service.send([Upload(tmp_path / "cube.gcode", "")], start=True).sent[0].print_started
@@ -283,7 +283,7 @@ def test_octoprint_wrong_api_key_is_explained(fake_octoprint: FakeOctoPrint) -> 
 def test_octoprint_upload_creates_folders(fake_octoprint: FakeOctoPrint, tmp_path: Path) -> None:
     """Missing folders are created once, then files go into them; existing ones are fine."""
     for name in ("left.gcode", "right.gcode"):
-        (tmp_path / name).write_text(f"; {name}\n")
+        (tmp_path / name).write_bytes(f"; {name}\n".encode())
     fake_octoprint.folders.add("kits")
     client = _octoprint(fake_octoprint)
 
@@ -304,7 +304,7 @@ def test_octoprint_upload_creates_folders(fake_octoprint: FakeOctoPrint, tmp_pat
 
 def test_octoprint_start_and_busy_printer(fake_octoprint: FakeOctoPrint, tmp_path: Path) -> None:
     """A ready printer starts the file; one that is printing refuses to replace it."""
-    (tmp_path / "cube.gcode").write_text("G28\n")
+    (tmp_path / "cube.gcode").write_bytes(b"G28\n")
     service = SendingService(_octoprint(fake_octoprint), logger=Mock())
 
     started = service.send([Upload(tmp_path / "cube.gcode", "")], start=True)
@@ -321,7 +321,7 @@ def test_octoprint_not_ready_keeps_the_file_without_printing(
     fake_octoprint: FakeOctoPrint, tmp_path: Path
 ) -> None:
     """When the printer is not connected, the file is stored but not started."""
-    (tmp_path / "cube.gcode").write_text("G28\n")
+    (tmp_path / "cube.gcode").write_bytes(b"G28\n")
     fake_octoprint.printer_state = "Closed"
 
     result = _octoprint(fake_octoprint).upload(tmp_path / "cube.gcode", start=True)

@@ -7,6 +7,7 @@ import yaml
 
 from batchslicer.domain.profiles import LAST_RUN, Profile, is_valid_name
 from batchslicer.infrastructure.profiles import ProfileError, ProfileStore
+from conftest import set_home
 
 
 def _profile(name: str = "k2-petg", **choices: object) -> Profile:
@@ -106,7 +107,7 @@ def test_hand_edited_file_is_validated(tmp_path: Path) -> None:
 
 def test_paths_in_a_hand_edited_file_may_use_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """input and output written with ~ point into the home folder."""
-    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    set_home(monkeypatch, tmp_path / "home")
     path = tmp_path / "profiles.yaml"
     path.write_text("nightly:\n  input: ~/BatchSlicer/incoming\n")
 
@@ -117,7 +118,7 @@ def test_summary_describes_the_choices() -> None:
     """The summary lists what the profile sets."""
     assert _profile(output=Path("/out")).summary() == (
         "creality_print, Creality K2 Plus 0.4 nozzle, Generic PETG @Creality K2 Plus 0.4 nozzle, "
-        "0.20mm Standard @Creality K2 Plus 0.4 nozzle, output /out"
+        f"0.20mm Standard @Creality K2 Plus 0.4 nozzle, output {Path('/out')}"
     )
     assert Profile(name="empty").summary() == "no choices saved"
 
