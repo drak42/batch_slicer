@@ -118,6 +118,11 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 - A Buy Me a Coffee link and a Sponsor button.
 
+### 0.15.0 (2026-11-23): dry run
+
+- `--dry-run` shows what a run would do; a terminate request stops
+  BatchSlicer like Ctrl+C.
+
 ## Next
 
 - Multi-colour: the Bambu AMS.

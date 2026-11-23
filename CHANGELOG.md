@@ -6,6 +6,10 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-23
+
+A dry run, and a clean stop when BatchSlicer is asked to end.
+
 ### Added
 
 - `--dry-run` shows what a run would do (each model or plate group, copies,
@@ -467,7 +471,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.14.2...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/drak42/batch_slicer/compare/v0.14.2...v0.15.0
 [0.14.2]: https://github.com/drak42/batch_slicer/compare/v0.14.1...v0.14.2
 [0.14.1]: https://github.com/drak42/batch_slicer/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/drak42/batch_slicer/compare/v0.13.0...v0.14.0
