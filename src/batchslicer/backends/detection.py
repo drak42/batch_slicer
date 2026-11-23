@@ -26,7 +26,7 @@ from pathlib import Path, PureWindowsPath
 from typing import Any
 
 from batchslicer.backends.slicers import BAMBU_STUDIO, CREALITY_PRINT, ORCASLICER
-from batchslicer.core.locations import is_windows
+from batchslicer.core.locations import is_macos, is_windows
 
 SEARCH_FOLDERS = ("Apps", "Applications", "AppImages", "Downloads", "Desktop", ".local/bin")
 """Folders under the home folder searched for AppImages."""
@@ -328,11 +328,6 @@ def _file_version(program: Path) -> tuple[int, ...]:
         return (major, minor, patch, build) if build else (major, minor, patch)
     except (OSError, AttributeError, ValueError):
         return ()
-
-
-def is_macos() -> bool:
-    """Return whether BatchSlicer is running on macOS."""
-    return sys.platform == "darwin"
 
 
 def _app_bundles(folders: Iterable[Path]) -> Iterable[Path]:

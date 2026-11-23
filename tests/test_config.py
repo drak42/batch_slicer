@@ -226,3 +226,20 @@ def test_windows_paths_in_double_quotes_are_explained(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="forward slashes"):
         Config(path).load()
+
+
+@pytest.mark.usefixtures("macos")
+def test_macos_standard_locations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """On macOS, settings and profiles are in Application Support, logs and caches in their Library folders."""
+    from batchslicer.core.locations import default_paths, user_config_file
+
+    set_home(monkeypatch, tmp_path)
+    library = tmp_path / "Library"
+
+    assert user_config_file({}) == library / "Application Support" / "BatchSlicer" / "config.yaml"
+    paths = default_paths({})
+    assert paths["profiles"] == library / "Application Support" / "BatchSlicer" / "profiles.yaml"
+    assert paths["logs"] == library / "Logs" / "BatchSlicer"
+    assert paths["data"] == library / "Caches" / "BatchSlicer"
+    assert paths["incoming"] == tmp_path / "BatchSlicer" / "incoming"
+    assert default_paths({"XDG_CACHE_HOME": str(tmp_path / "xdg")})["data"] == tmp_path / "xdg" / "batchslicer"

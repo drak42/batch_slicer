@@ -320,6 +320,7 @@ def linux_layout(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(detection, "is_windows", lambda: False)
     monkeypatch.setattr(locations, "is_windows", lambda: False)
     monkeypatch.setattr(detection, "is_macos", lambda: False)
+    monkeypatch.setattr(locations, "is_macos", lambda: False)
 
 
 @pytest.fixture
@@ -331,5 +332,6 @@ def windows(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture
 def macos(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Detect slicers as on macOS."""
+    """Use the macOS layout: apps in /Applications, settings and BatchSlicer's own files in ~/Library."""
     monkeypatch.setattr(detection, "is_macos", lambda: True)
+    monkeypatch.setattr(locations, "is_macos", lambda: True)
