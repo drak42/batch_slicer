@@ -6,6 +6,11 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Documentation
+
+- A Buy Me a Coffee link (https://buymeacoffee.com/drak42) in the README, the
+  User Guide and the repository's Sponsor button (`.github/FUNDING.yml`).
+
 ## [0.14.1] - 2026-11-23
 
 Documentation: a User Guide, a banner, and OctoPrint confirmed on a real

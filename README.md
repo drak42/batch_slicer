@@ -6,6 +6,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/batchslicer)](https://pypi.org/project/batchslicer/)
 [![CI](https://github.com/drak42/batch_slicer/actions/workflows/ci.yml/badge.svg)](https://github.com/drak42/batch_slicer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/drak42/batch_slicer/blob/main/LICENSE)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/drak42)
 
 Slice one 3D model or whole folders of them with **OrcaSlicer**, **Creality
 Print** or **Bambu Studio**, using the printer, filament and process presets
@@ -60,6 +61,7 @@ This README is the full reference.
 - [Checking your setup: `batchslicer doctor`](#checking-your-setup-batchslicer-doctor)
 - [Testing](#testing)
 - [Current limitations](#current-limitations)
+- [Support](#support)
 
 ---
 
@@ -1398,3 +1400,9 @@ the Actions tab ("Latest slicers").
 
 See `docs/Roadmap.md` for planned features, `docs/Architecture.md` for the
 design, and `CHANGELOG.md` for what has changed.
+
+## Support
+
+BatchSlicer is free and open source. If it saves you time at the printer, you
+can [buy me a coffee](https://buymeacoffee.com/drak42) ☕. Bug reports, ideas and pull requests
+are just as welcome: see [CONTRIBUTING.md](https://github.com/drak42/batch_slicer/blob/main/CONTRIBUTING.md).

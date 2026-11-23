@@ -357,3 +357,8 @@ the grams of each filament and the number of filament changes.
 | Keep watching in the background | `batchslicer service install ...` |
 | See preset names for scripts | `batchslicer --slicer orca --list-presets` |
 | See every option | `batchslicer --help` |
+
+---
+
+BatchSlicer is free and open source. If it saves you time, you can
+[buy me a coffee](https://buymeacoffee.com/drak42) ☕.
