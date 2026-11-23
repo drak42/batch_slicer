@@ -149,7 +149,7 @@ src/
     ├── infrastructure/    # saved profiles (YAML), printer clients
     ├── application/       # reserved (planned)
     ├── plugins/           # reserved (planned)
-    └── web/               # reserved (planned dashboard)
+    └── web/               # reserved (planned web page, see WebPlan.md)
 ```
 
 Each package has a single responsibility. [Modules](Modules.md) lists every
@@ -257,7 +257,8 @@ Responsible only for user interaction.
 
 ## web
 
-Flask dashboard (planned).
+A web page served by Starlette (planned, to be done later; see
+[WebPlan](WebPlan.md)).
 
 Responsible only for presentation.
 

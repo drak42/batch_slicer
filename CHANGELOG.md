@@ -8,6 +8,12 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ### Documentation
 
+- A step-by-step User Guide (`docs/UserGuide.md`), linked from the README.
+- The README's interactive walkthrough now follows the real order of the
+  questions (the output folder comes last) and includes the multi-colour
+  question; the Profiles section lists every saved setting; Troubleshooting
+  covers the newer messages (Creality Print and 3MF projects, mixed filament
+  temperatures, `--slot`, "Line width too small").
 - Sending to OctoPrint is confirmed with a real server (OctoPrint 2.0.1):
   status, nested folders, names with spaces, replacing a file sent again, and
   `--start` printing a single file.

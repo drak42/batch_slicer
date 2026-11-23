@@ -30,10 +30,16 @@ batchslicer                                      # answer a few questions, get G
 Results appear in `~/BatchSlicer/output`. Next time, `batchslicer --last`
 repeats the same run.
 
+New to BatchSlicer? The **[User Guide](docs/UserGuide.md)** walks through
+everything step by step: installing, your first slice, profiles, folders and
+kits, sending to a printer, multi-colour and the CFS, and the watch folder.
+This README is the full reference.
+
 ---
 
 ## Contents
 
+- [User Guide](docs/UserGuide.md) (step by step, separate page)
 - [What it does](#what-it-does)
 - [How it works](#how-it-works)
 - [Requirements](#requirements)
@@ -72,7 +78,8 @@ repeats the same run.
 - **Makes copies.** Slicing a single part, ask for any number of copies; the
   slicer arranges them, adding plates when they don't fit on one.
 - **Keeps your file names.** `bracket.stl` becomes `bracket.gcode`, and a batch
-  mirrors your folder structure.
+  mirrors your folder structure (or, with `--flat`, puts all its G-code in one
+  folder).
 - **Never overwrites earlier results.** Every run gets its own time-stamped
   folder, which also records the exact presets that were used.
 - **Explains failures.** A model that fails does not stop the batch; the
@@ -87,7 +94,8 @@ repeats the same run.
   multi-colour print.
 - **Handles multi-colour projects.** A 3MF project painted in several colours
   is sliced with a filament for every colour: yours in every slot, one chosen
-  per slot, or matched to the filaments loaded in your Creality CFS.
+  per slot, or matched to the filaments loaded in your Creality CFS. STL kits
+  can print in several colours too, with `--slot`.
 - **Reports print time and filament.** Every run writes `report.csv` and
   `report.json` with each model's status, print time, filament weight, length
   and cost, and the summary shows the totals.
@@ -384,19 +392,6 @@ What would you like to slice?
   contains models, with a count for each. You can also type any folder path.
   BatchSlicer shows how many files it found and asks you to confirm.
 
-Finally, the output folder:
-
-```
-Select an output folder:
-  1) output  (default)
-  2) output/k2-batch
-Folder number, a new folder name or path, or Enter for the default:
-```
-
-Press Enter for the default, pick an existing folder by number, or type a new
-name (created inside the output folder) or a full path (used as typed). BatchSlicer asks
-before creating a folder.
-
 When you slice a folder whose subfolders hold several loose models (STL, OBJ
 or STEP files), BatchSlicer asks whether to put them together on plates (see
 [Several models per plate](#several-models-per-plate)):
@@ -419,7 +414,7 @@ How many copies of bracket.stl? (Enter for 1):
 It is skipped with `--copies`, for runs from a profile, for 3MF projects, and
 for Creality Print.
 
-Last, if you have a printer to send to (one in the configuration's `printers`
+Then, if you have a printer to send to (one in the configuration's `printers`
 section, or the one the last run sent to), BatchSlicer asks whether to send
 the G-code there (see [Sending G-code to a printer](#sending-g-code-to-a-printer)):
 
@@ -435,6 +430,38 @@ Enter keeps what the last run did. If you have never sent to a printer, this
 question is not asked. It is also skipped when the run comes from a profile
 or `--last` (the profile decides), with `--send` or `--no-send`, and for runs
 that slice for several printers.
+
+When what you chose to slice holds a multi-colour 3MF project, BatchSlicer
+then lists its filaments and asks how to fill them (see [Multi-colour
+projects](#multi-colour-projects)):
+
+```
+bumper.3mf lists 2 filaments:
+  slot 1: black PETG
+  slot 2: white PETG
+How should the filament slots be filled?
+  1) Match them to the filaments loaded in k2plus (CFS 1B dark blue PETG, CFS 1C light grey PETG, external spool white PETG)
+  2) Use Generic PETG @K2 Plus-all in every slot
+  3) Choose a filament for each slot
+Number:
+```
+
+The first way is offered only when the printer you send to reports loaded
+filaments. The question is skipped for runs from a profile, and with
+`--filament` or `--loaded-filaments` (or their `--no-` forms).
+
+Last, the output folder:
+
+```
+Select an output folder:
+  1) output  (default)
+  2) output/k2-batch
+Folder number, a new folder name or path, or Enter for the default:
+```
+
+Press Enter for the default, pick an existing folder by number, or type a new
+name (created inside the output folder) or a full path (used as typed). BatchSlicer asks
+before creating a folder.
 
 ## Using the command line
 
@@ -457,11 +484,11 @@ asking; anything you leave out is still asked for, unless you add
 | `--jobs N` | slice N models at the same time (default 1); see [Speed](#speed) |
 | `--plates` | when slicing a folder, put the loose models of each folder together on as few plates as fit (see [Several models per plate](#several-models-per-plate)); `--no-plates` slices each model on its own |
 | `--copies N` | slice N copies of a single STL, OBJ or STEP model, arranged on as many plates as needed (see [Copies](#copies)); not for folders or 3MF projects |
-| `--flat` | put all of a batch's G-code in one folder, here and on the printer (see [Output](#output)) |
+| `--flat` | put all of a batch's G-code in one folder, here and on the printer (see [Output](#output)); `--no-flat` turns it off over a profile |
 | `--no-thumbnails` | don't add preview pictures to the G-code (see [Output](#output)); `--thumbnails` turns them back on over a profile |
 | `--exclude PATTERN` | leave out folders or files matching PATTERN when slicing a folder; repeat for several (see [Leaving models out](#leaving-models-out)) |
 | `--send PRINTER` | after slicing, upload the G-code to PRINTER: its address (`192.168.1.50`, `k2.local:4408` or a full URL) or a name from the configuration's `printers` section (see [Sending G-code to a printer](#sending-g-code-to-a-printer)); `--no-send` turns off a profile's printer |
-| `--loaded-filaments` | match multi-colour projects (and `--slot` names such as `1B`) to the filaments loaded in the `--send` printer's CFS |
+| `--loaded-filaments` | match multi-colour projects (and `--slot` names such as `1B`) to the filaments loaded in the `--send` printer's CFS; `--no-loaded-filaments` turns it off over a profile |
 | `--watch` | keep running and slice every model or folder dropped into the input folder (see [Watch folder](#watch-folder)) |
 | `--start` | start printing once the G-code is on the printer; only for a single model that gives one G-code file |
 | `--list-presets` | list preset names, then exit (see below) |
@@ -582,10 +609,11 @@ configuration is not in `~/.config/batchslicer/`:
 
 ## Profiles
 
-A profile is a named set of choices (slicer, printer, filament, process, input
-and output, plus `--orient`, `--allow-newer-files`, `--jobs`, `--exclude`,
-`--plates`, `--copies`, `--thumbnails` and `--send` if you gave them; `--start`
-is never saved) that you can reuse instead of typing them again. Options you
+A profile is a named set of choices (slicer, printer, filament (or one per
+slot), process, input and output, plus `--orient`, `--allow-newer-files`,
+`--jobs`, `--exclude`, `--plates`, `--copies`, `--thumbnails`, `--flat`,
+`--slot`, `--loaded-filaments` and `--send` if you gave them; `--start` and
+`--watch` are never saved) that you can reuse instead of typing them again. Options you
 add override the profile's; for `--exclude`, the patterns you give replace the
 profile's list.
 
@@ -1266,6 +1294,27 @@ records the printer *models* you added (with their nozzle sizes), and
 BatchSlicer lists the shipped printers for those, plus printers you created
 yourself. Add the model in Bambu Studio (printer selection), close it, and
 run BatchSlicer again. Bambu Studio must have been opened and set up once.
+
+**"Creality Print cannot use your presets for a 3MF project"**: Creality
+Print's command line refuses presets for any 3MF project saved by a slicer.
+Slice projects with OrcaSlicer or Bambu Studio (`--slicer orca`); STL, OBJ and
+plain 3MF files work with Creality Print.
+
+**"The temperature difference of the filaments used is too large"**: a
+multi-colour print was given filaments that print at temperatures too far
+apart (such as PLA with PETG). Choose filaments of one kind for every slot.
+
+**"--slot N needs at least N filaments"** or **"... names a loaded filament,
+which needs --loaded-filaments"**: give `--filament` once per numbered slot
+(slot 1 first), or add `--loaded-filaments` and `--send PRINTER` for slots such
+as `1B`. **"the printer reports no filament loaded there"**: that CFS slot is
+empty; `batchslicer doctor` lists what is loaded.
+
+**"Line width too small"** (inside "There are some incorrect slicing
+parameters"): the slicer finds a line width in the chosen presets below what
+the printer's nozzle allows. It comes from the presets, not from BatchSlicer:
+open them in the slicer and check the line widths, or try another process or
+printer preset (for example a different nozzle size).
 
 ## Checking your setup: `batchslicer doctor`
 
