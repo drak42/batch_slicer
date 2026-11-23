@@ -128,6 +128,11 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - `--input kit.zip` and zips dropped into the watch folder are unpacked
   safely and sliced like a folder.
 
+### 0.16.1 (2026-11-24): fixes and docs
+
+- A zip file's name in messages; a demo script for recording; the step order
+  and newest features documented throughout.
+
 ## Next
 
 - Multi-colour: the Bambu AMS.

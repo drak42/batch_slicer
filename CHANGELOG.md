@@ -6,11 +6,9 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
-### Documentation
+## [0.16.1] - 2026-11-24
 
-- `docs/demo/demo.sh` runs a short, repeatable demo for recording (a dry run,
-  a multi-colour project matched to the CFS, a kit zip on one plate) in its
-  own `~/demo` folder, without touching your configuration.
+A zip file's name in messages, a demo script, and documentation brought up to date.
 
 ### Fixed
 
@@ -19,6 +17,9 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ### Documentation
 
+- `docs/demo/demo.sh` runs a short, repeatable demo for recording (a dry run,
+  a multi-colour project matched to the CFS, a kit zip on one plate) in its
+  own `~/demo` folder, without touching your configuration.
 - The README's "How it works" and the startup sequence (`docs/Startup.md`)
   follow the real order of the steps (the output folder comes last, after
   sending and the multi-colour question) and cover zip files, `--dry-run` and
@@ -510,7 +511,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.16.1...HEAD
+[0.16.1]: https://github.com/drak42/batch_slicer/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/drak42/batch_slicer/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/drak42/batch_slicer/compare/v0.14.2...v0.15.0
 [0.14.2]: https://github.com/drak42/batch_slicer/compare/v0.14.1...v0.14.2
