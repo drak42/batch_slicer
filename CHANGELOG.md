@@ -6,6 +6,15 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Documentation
+
+- The README's "How it works" and the startup sequence (`docs/Startup.md`)
+  follow the real order of the steps (the output folder comes last, after
+  sending and the multi-colour question) and cover zip files, `--dry-run` and
+  stopping on a terminate request; the README's feature list includes zip
+  files and `--dry-run`; the architecture, data model and coding standards
+  mention the zip unpacking and the dry run.
+
 ## [0.16.0] - 2026-11-24
 
 Zip files: slice a downloaded kit without unpacking it first.

@@ -14,6 +14,10 @@ the first argument; they do not slice. A service runs a normal watch run
 
 ## Sequence
 
+Throughout a run, a request to terminate (SIGTERM, from `kill` or
+`systemctl stop`) is handled like Ctrl+C: slicers are stopped and partial
+results removed, and the run ends with exit status 130 (0 for a watch run).
+
 1. **Parse options** (`cli/arguments.py`). Invalid options stop with exit
    status 2.
 2. **Show the banner**, except for listing commands (`--list-presets`,
@@ -41,9 +45,10 @@ the first argument; they do not slice. A service runs a normal watch run
    `--list-presets` stops here after printing names. A target with `--send`
    (or a profile's `send`) is given its printer from the configuration's
    `printers` section, or from the address given (`domain/printers.py`).
-8. **Choose what to slice** (`cli/file_prompt.py`), leave out models matching
-   `--exclude` (`exclude_models`), and **choose the output folder**
-   (`cli/output_prompt.py`). For a folder with loose models to share plates,
+8. **Choose what to slice** (`cli/file_prompt.py`; a zip file given with
+   `--input` is first unpacked into a temporary folder in the data folder by
+   `services/archives.py`, removed when the run ends) and leave out models
+   matching `--exclude` (`exclude_models`). For a folder with loose models to share plates,
    an interactive run without a profile, `--plates` or `--no-plates` asks
    whether to slice each folder's models together; `--plates` is refused for
    Creality Print. For a single STL, OBJ or STEP model it asks how many copies
@@ -54,10 +59,18 @@ the first argument; they do not slice. A service runs a normal watch run
    to one. When the input holds a multi-colour 3MF project and no filaments
    or `--loaded-filaments` were given, it asks how to fill the filament
    slots: matched to the filaments loaded in the printer it sends to, the
-   chosen filament in every slot, or one chosen per slot. `--start` is refused here unless every target
-   sends and a single model was chosen, and each printer to send to must
-   answer (`infrastructure/printer_clients.py`), so nothing is sliced for a
-   printer that is off.
+   chosen filament in every slot, or one chosen per slot. `--start` and
+   `--slot` are checked here: `--start` needs every target to send and a
+   single model, and each `--slot` must name a filament that will be there.
+   With `--dry-run`, the run stops at this point: it asks each printer
+   whether it answers and what is loaded (a printer that does not answer is
+   reported, not an error), lists each model or plate group, copies, `--slot`
+   filaments, how multi-colour projects would be filled, models that would
+   fail, and where results would go and be sent, then exits without creating
+   the output folder, slicing, sending or remembering the run. Otherwise
+   **the output folder** is chosen last (`cli/output_prompt.py`), and each
+   printer to send to must answer (`infrastructure/printer_clients.py`), so
+   nothing is sliced for a printer that is off.
 9. **Remember the run** as the profile `last`, and as `--save-profile` if given.
 10. **Check the slicing options** (`--orient`, `--allow-newer-files`,
     `--jobs`, possibly from a profile) against each chosen slicer, and show
@@ -104,8 +117,10 @@ Steps 1 to 7 and 10 are the same. Then, instead of steps 8 to 13 once:
   to must answer.
 - The run is not remembered as `last`; `--save-profile` saves the choices
   without an input.
-- `services/watching.py` looks at the folder every 5 seconds. Each model file
-  or folder that two looks in a row find unchanged runs steps 8 (input and
-  `--exclude` only) and 11 to 13 as a run of its own, then is moved to the
-  folder's `sliced` or `failed` subfolder. Ctrl+C stops watching with exit
-  status 0; a drop being sliced at that moment is left where it is.
+- `services/watching.py` looks at the folder every 5 seconds. Each model file,
+  zip file or folder that two looks in a row find unchanged runs steps 8
+  (input and `--exclude` only; a zip is unpacked into a temporary folder,
+  removed after the drop) and 11 to 13 as a run of its own, then is moved to
+  the folder's `sliced` or `failed` subfolder. Ctrl+C, or a request to
+  terminate (`kill`, `systemctl stop`), stops watching with exit status 0; a
+  drop being sliced at that moment is left where it is.

@@ -27,6 +27,8 @@ tools on every push (see "Checks").
 - Printers are contacted only through the clients in `infrastructure/`
   (`moonraker.py`, `octoprint.py`, chosen by `printer_clients.py`), with the
   Python standard library (no extra dependencies).
+- Archives from outside (zip files) are unpacked only by `services/archives.py`,
+  which checks every path and limits size; nothing else extracts files.
 - G-code files are changed after slicing only by `services/thumbnails.py`,
   which replaces a file in one step so it is never left half-written.
 - Expected problems raise a specific error (`PresetError`, `ProfileError`,

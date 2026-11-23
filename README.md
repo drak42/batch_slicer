@@ -86,6 +86,11 @@ This README is the full reference.
   folder).
 - **Never overwrites earlier results.** Every run gets its own time-stamped
   folder, which also records the exact presets that were used.
+- **Slices downloaded kits as they are.** A `.zip` from a model site can be
+  given with `--input` or dropped into the watch folder: its models are
+  unpacked safely and sliced like a folder.
+- **Shows what it will do first.** `--dry-run` lists every model, plate,
+  filament and destination without slicing or sending anything.
 - **Explains failures.** A model that fails does not stop the batch; the
   summary lists each failure with the slicer's own reason, and suggests an
   option when one may fix it.
@@ -145,19 +150,24 @@ profile if you gave it there, and is asked for otherwise.
      the slicer, so the lists match the slicer's own menus.
 5. **Add another printer (optional).** Repeat steps 2 to 4 for each extra
    printer to slice for.
-6. **Choose what to slice:** one model file, or every model in a folder and its
-   subfolders. For a folder whose subfolders hold several loose models,
-   BatchSlicer asks whether to put each folder's models together on plates;
-   for a single model, it asks how many copies to make.
-7. **Choose the output folder.**
-8. **Send to a printer (optional).** If a printer is configured or the last
+6. **Choose what to slice:** one model file, every model in a folder and its
+   subfolders, or (with `--input`) a zip file, whose models are unpacked first.
+   For a folder whose subfolders hold several loose models, BatchSlicer asks
+   whether to put each folder's models together on plates; for a single
+   model, it asks how many copies to make.
+7. **Send to a printer (optional).** If a printer is configured or the last
    run sent to one, BatchSlicer asks whether to send the G-code there. It
    checks that the printer answers before slicing anything.
-9. **Slice.** BatchSlicer runs the slicer's command-line mode for each model
+8. **Fill the filament slots (multi-colour projects only).** BatchSlicer asks
+   whether to match the colours to the filaments loaded in the printer's CFS,
+   use your filament in every slot, or choose one per slot.
+9. **Choose the output folder.** With `--dry-run`, BatchSlicer stops here and
+   shows what it would do.
+10. **Slice.** BatchSlicer runs the slicer's command-line mode for each model
    (or each folder of models on plates, and each printer), collects the
    G-code, and adds preview pictures to it. The run's choices are saved as the
    profile `last`.
-10. **Report and send.** The summary shows print time and filament, a report
+11. **Report and send.** The summary shows print time and filament, a report
     is written, and the G-code goes to the printer if you chose one.
 
 **Why preset files are prepared first.** Presets saved in a slicer usually store
@@ -1408,6 +1418,9 @@ the Actions tab ("Latest slicers").
   (LAN mode) and Creality printers without Moonraker are not supported yet.
 - **Flatpak installs are not detected** by `batchslicer setup`; configure them
   by hand.
+- **Zip files from the command line or the watch folder only.** The
+  interactive file menu lists models and folders, not zip files; give a zip
+  with `--input` or drop it into the watch folder.
 
 See `docs/Roadmap.md` for planned features, `docs/Architecture.md` for the
 design, and `CHANGELOG.md` for what has changed.

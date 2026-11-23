@@ -175,8 +175,12 @@ Implements reusable application services.
 Built: slicing one model or a batch (`services/slicing.py`), the run report
 (`services/report.py`), G-code statistics (`services/gcode_stats.py`),
 preview pictures drawn from the G-code (`services/thumbnails.py`) and sending
-G-code to printers (`services/sending.py`), and watching a folder for models
-to slice (`services/watching.py`).
+G-code to printers (`services/sending.py`), watching a folder for models
+to slice (`services/watching.py`), matching multi-colour projects to the
+filaments loaded in a printer (`services/filament_matching.py`) and unpacking
+zip files safely (`services/archives.py`). A dry run (`--dry-run`) goes
+through the same planning (`plan_work` in `services/slicing.py`) and stops
+before slicing.
 Configuration and logging live in `core/`.
 
 Planned: queue, database, history.

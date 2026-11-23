@@ -28,6 +28,7 @@ lists them under `targets` (`infrastructure/profiles.py`).
 | `SliceOutcome` | `services/slicing.py` | one model, or a folder's models sliced together on plates (`models`), or copies of one (`copies`): success, G-code files, the slicer's reason, time, whether auto-oriented, `GcodeStats` |
 | `BatchOutcome` | `services/slicing.py` | a batch: outcomes in model order, planned count, interruption, wall-clock time, totals |
 | `ThumbnailResult` | `services/thumbnails.py` | the preview picture sizes added to one G-code file, or why none were |
+| `Work` | `services/slicing.py` | one slicer job of a batch: a single model, or a folder's models sliced together on plates (`plan_work`); also what `--dry-run` lists |
 | `GcodeStats` | `services/gcode_stats.py` | print time, filament weight, length and cost read from G-code; for multi-colour prints, grams per filament slot and filament changes |
 | `FilamentMatcher` | `services/filament_matching.py` | the loaded filaments with the presets they are sliced as, and which loaded filament each multi-colour project's slots got |
 | `Upload`, `SentFile`, `SendOutcome` | `services/sending.py` | sending: each file and its folder on the printer, whether it arrived (and started), per printer |
