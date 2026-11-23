@@ -6,6 +6,11 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Documentation
+
+- A short terminal demo (`docs/images/demo.gif`, recorded with
+  `docs/demo/demo.sh`) in the README's "See it in action" and the User Guide.
+
 ## [0.16.1] - 2026-11-24
 
 A zip file's name in messages, a demo script, and documentation brought up to date.

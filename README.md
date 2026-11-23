@@ -38,6 +38,14 @@ everything step by step: installing, your first slice, profiles, folders and
 kits, sending to a printer, multi-colour and the CFS, and the watch folder.
 This README is the full reference.
 
+### See it in action
+
+![A 38-second terminal demo: a dry run, a two-colour 3MF matched to the spools in a Creality CFS and sent to the printer, and a kit zip unpacked onto one plate](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/demo.gif)
+
+A dry run, then a two-colour project matched to the spools loaded in a
+Creality CFS and sent to the printer, then a downloaded kit's zip unpacked
+onto one plate. Recorded with [`docs/demo/demo.sh`](https://github.com/drak42/batch_slicer/blob/main/docs/demo/demo.sh).
+
 ---
 
 ## Contents

@@ -7,6 +7,8 @@ printing in several colours and sending G-code to your printer, one step at a
 time. Every step builds on the one before, but you can stop after any of them.
 For every option and detail, see the [README](../README.md).
 
+![A 38-second terminal demo: a dry run, a two-colour 3MF matched to the spools in a Creality CFS and sent to the printer, and a kit zip unpacked onto one plate](images/demo.gif)
+
 **Contents**
 
 1. [Before you start](#1-before-you-start)
