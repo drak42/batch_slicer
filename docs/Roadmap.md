@@ -152,8 +152,12 @@ These need a decision from the project owner before work starts.
 
 ## Later: features
 
-The features planned here are built. New ones will come from what users ask
-for after the launch.
+Ideas from users, kept for a later release.
+
+| Feature | Why | Issue |
+|---|---|---|
+| API key from an environment variable (`api_key_env`) | the key need not be stored in the configuration file (systemd credentials, secret managers) | [#18](https://github.com/drak42/batch_slicer/issues/18) |
+| Printers-only check (`batchslicer doctor --printer NAME\|ADDRESS`) | check access and Moonraker's `trusted_clients` quickly, without checking the slicers, for any address | [#19](https://github.com/drak42/batch_slicer/issues/19) |
 
 ## Later: platform
 
