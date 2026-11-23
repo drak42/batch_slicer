@@ -110,6 +110,10 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - `--flat` puts a batch's G-code in one folder; `doctor` lists what is loaded
   in a Creality printer's CFS.
 
+### 0.14.1 (2026-11-23): documentation
+
+- A User Guide and a banner; OctoPrint confirmed with a real server.
+
 ## Next
 
 - Multi-colour: the Bambu AMS.
