@@ -6,6 +6,12 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Documentation
+
+- Confirmed on a Creality K2 Plus: a single-colour part sliced for one CFS
+  spool (`--loaded-filaments --slot "*=1B"`) has that spool already selected
+  on the printer's slot-mapping screen.
+
 ## [0.15.0] - 2026-11-23
 
 A dry run, and a clean stop when BatchSlicer is asked to end.

@@ -955,7 +955,9 @@ There are three ways to fill the slots:
    **Tested on a Creality K2 Plus with a CFS:** the touchscreen shows the
    file with its multi-colour preview picture, and when you print it, the
    slot-mapping screen already has each colour set to the matched CFS slot
-   or external spool.
+   or external spool. The same goes for a single-colour part sliced for one
+   spool (`--loaded-filaments --slot "*=1B"`): the screen has that spool
+   selected, so you only confirm it.
 
 ### Colours for STL files
 

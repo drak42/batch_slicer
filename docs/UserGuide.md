@@ -268,6 +268,10 @@ multi-colour project.
 Give parts their own colour with `--slot PATTERN=SLOT`; the first matching
 pattern wins and everything else uses slot 1:
 
+A single part can be sliced for one spool the same way: `--loaded-filaments
+--slot "*=1B"` slices it in that spool's material and colour, and a K2 Plus
+then has that spool selected on its slot-mapping screen.
+
 ```bash
 # lenses in slot 2, the rest in slot 1, all on one plate
 batchslicer --profile k2-petg --input ~/kits/jeep --plates \
