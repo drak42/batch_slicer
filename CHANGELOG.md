@@ -6,6 +6,10 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-11-23
+
+Documentation: a Buy Me a Coffee link. The program is unchanged from 0.14.1.
+
 ### Documentation
 
 - A Buy Me a Coffee link (https://buymeacoffee.com/drak42) in the README, the
@@ -450,7 +454,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.14.2...HEAD
+[0.14.2]: https://github.com/drak42/batch_slicer/compare/v0.14.1...v0.14.2
 [0.14.1]: https://github.com/drak42/batch_slicer/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/drak42/batch_slicer/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/drak42/batch_slicer/compare/v0.12.1...v0.13.0

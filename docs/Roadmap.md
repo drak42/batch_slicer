@@ -114,6 +114,10 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 - A User Guide and a banner; OctoPrint confirmed with a real server.
 
+### 0.14.2 (2026-11-23): support link
+
+- A Buy Me a Coffee link and a Sponsor button.
+
 ## Next
 
 - Multi-colour: the Bambu AMS.
