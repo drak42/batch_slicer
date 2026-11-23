@@ -12,7 +12,7 @@ import pytest
 from batchslicer.backends.orca import OrcaResult
 from batchslicer.domain.options import SliceOptions
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
-from batchslicer.services.slicing import SlicingService
+from batchslicer.services.slicing import SliceOutcome, SlicingService
 
 NOW = datetime(2026, 11, 20, 14, 45, 30)
 
@@ -459,13 +459,18 @@ def test_several_jobs_run_at_the_same_time_and_keep_model_order(tmp_path: Path) 
     lock = threading.Lock()
     active = 0
     most = 0
+    another_reported = threading.Event()
 
     def slice_(model: Path, job: Path, **kwargs: object) -> OrcaResult:
         nonlocal active, most
         with lock:
             active += 1
             most = max(most, active)
-        time.sleep(0.05 if model.stem != "a" else 0.15)
+        time.sleep(0.05)
+        if model.stem == "a":
+            # "a" finishes only after another model's result is reported, however
+            # busy the machine is (with a time limit, should that never happen).
+            another_reported.wait(timeout=10)
         (job / "plate_1.gcode").write_text("G1")
         with lock:
             active -= 1
@@ -476,13 +481,11 @@ def test_several_jobs_run_at_the_same_time_and_keep_model_order(tmp_path: Path) 
     models = [source / f"{name}.stl" for name in "abcdef"]
     finished: list[str] = []
 
-    batch = service.slice_batch(
-        models,
-        source,
-        tmp_path / "out",
-        jobs=3,
-        on_result=lambda number, total, outcome: finished.append(outcome.model.stem),
-    )
+    def on_result(number: int, total: int, outcome: SliceOutcome) -> None:
+        finished.append(outcome.model.stem)
+        another_reported.set()
+
+    batch = service.slice_batch(models, source, tmp_path / "out", jobs=3, on_result=on_result)
 
     assert most == 3
     assert [outcome.model.stem for outcome in batch.outcomes] == list("abcdef")
