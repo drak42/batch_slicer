@@ -201,7 +201,7 @@ def prompt_for_folder(
 
     def label(path: Path) -> str:
         count = counts[path]
-        name = incoming.name if path == incoming else f"{incoming.name}/{path.relative_to(incoming)}"
+        name = incoming.name if path == incoming else f"{incoming.name}/{path.relative_to(incoming).as_posix()}"
         return f"{name}  ({count} model{'s' if count != 1 else ''})"
 
     def accept_path(text: str) -> Path | None:

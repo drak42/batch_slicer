@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from batchslicer.core.config import Config, find_config_file, get_config
+from conftest import set_home
 
 
 def test_configuration_file_loads_successfully(tmp_path: Path) -> None:
@@ -89,7 +90,7 @@ def test_relative_paths_are_relative_to_the_config_file(
 
 def test_home_folder_is_expanded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A leading ~ in a path means the home folder."""
-    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    set_home(monkeypatch, tmp_path / "home")
     config = Config(_write_config(tmp_path, datadir="~/.config/OrcaSlicer"))
 
     assert config.get_path("orca", "datadir") == tmp_path / "home" / ".config" / "OrcaSlicer"
@@ -98,7 +99,7 @@ def test_home_folder_is_expanded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 def test_missing_paths_use_standard_locations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Without a paths section, standard per-user locations are used."""
     home = tmp_path / "home"
-    monkeypatch.setenv("HOME", str(home))
+    set_home(monkeypatch, home)
     for variable in ("XDG_STATE_HOME", "XDG_CACHE_HOME"):
         monkeypatch.delenv(variable, raising=False)
     path = tmp_path / "config.yaml"
@@ -186,8 +187,8 @@ def _write_config(
         "\n".join(
             (
                 "orca:",
-                f'  executable: "{executable_value}"',
-                f'  datadir: "{datadir_value}"',
+                f'  executable: "{Path(str(executable_value)).as_posix()}"',
+                f'  datadir: "{Path(str(datadir_value)).as_posix()}"',
                 "paths:",
                 '  incoming: "incoming"',
                 '  output: "output"',
@@ -198,3 +199,30 @@ def _write_config(
         )
     )
     return config_path
+
+
+@pytest.mark.usefixtures("windows")
+def test_windows_standard_locations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """On Windows, settings and profiles are in %APPDATA%, logs and caches in %LOCALAPPDATA%."""
+    from batchslicer.core.locations import default_paths, user_config_file
+
+    environ = {"APPDATA": str(tmp_path / "Roaming"), "LOCALAPPDATA": str(tmp_path / "Local")}
+    set_home(monkeypatch, tmp_path / "home")
+
+    assert user_config_file(environ) == tmp_path / "Roaming" / "BatchSlicer" / "config.yaml"
+    paths = default_paths(environ)
+    assert paths["profiles"] == tmp_path / "Roaming" / "BatchSlicer" / "profiles.yaml"
+    assert paths["logs"] == tmp_path / "Local" / "BatchSlicer" / "logs"
+    assert paths["data"] == tmp_path / "Local" / "BatchSlicer" / "cache"
+    assert paths["incoming"] == tmp_path / "home" / "BatchSlicer" / "incoming"
+    assert default_paths({"XDG_CACHE_HOME": str(tmp_path / "xdg")})["data"] == tmp_path / "xdg" / "batchslicer"
+    assert user_config_file({}) == tmp_path / "home" / "AppData" / "Roaming" / "BatchSlicer" / "config.yaml"
+
+
+def test_windows_paths_in_double_quotes_are_explained(tmp_path: Path) -> None:
+    """A backslash path in double quotes is a YAML escape error; the message says how to write it."""
+    path = tmp_path / "config.yaml"
+    path.write_text('orca:\n  executable: "C:\\Program Files\\OrcaSlicer\\orca-slicer.exe"\n', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="forward slashes"):
+        Config(path).load()

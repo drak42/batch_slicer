@@ -1,6 +1,8 @@
 """Shared test helpers."""
 
 import json
+import os
+import sys
 import threading
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -12,7 +14,39 @@ from pathlib import Path
 import pytest
 import yaml
 
+from batchslicer.backends import detection
+from batchslicer.core import locations
 from batchslicer.core.config import Config
+
+
+def set_home(monkeypatch: pytest.MonkeyPatch, home: Path) -> None:
+    """Make ``home`` the home folder: HOME on Linux and macOS, USERPROFILE on Windows."""
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+
+
+def fake_program(path: Path, output: str = "", *, exit_code: int = 0, stderr: str = "") -> Path:
+    """Write a stand-in program that prints ``output`` (and ``stderr``) and exits with ``exit_code``.
+
+    It is a small Python script: run directly on Linux and macOS, and through
+    a ``.cmd`` file on Windows (the path returned then ends in ``.cmd``).
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    code = (
+        "import sys\n"
+        f"sys.stdout.write({output!r})\n"
+        f"sys.stderr.write({stderr!r})\n"
+        f"sys.exit({exit_code})\n"
+    )
+    if os.name == "nt":
+        script = path.with_name(path.name + ".py")
+        script.write_text(code, encoding="utf-8")
+        program = path.with_name(path.name + ".cmd")
+        program.write_text(f'@"{sys.executable}" "{script}" %*\r\n', encoding="utf-8")
+        return program
+    path.write_text(f"#!{sys.executable}\n{code}", encoding="utf-8")
+    path.chmod(0o755)
+    return path
 
 
 def write_config(directory: Path, sections: dict[str, dict[str, object]]) -> Config:
@@ -274,3 +308,20 @@ def fake_octoprint() -> Iterator[FakeOctoPrint]:
     finally:
         server.shutdown()
         server.server_close()
+
+
+@pytest.fixture(autouse=True)
+def linux_layout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Use the Linux folder layout whatever system runs the tests.
+
+    Tests of the Windows layout switch it on with the ``windows`` fixture.
+    """
+    monkeypatch.setattr(detection, "is_windows", lambda: False)
+    monkeypatch.setattr(locations, "is_windows", lambda: False)
+
+
+@pytest.fixture
+def windows(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Use the Windows folder layout (Program Files, %APPDATA%, %LOCALAPPDATA%)."""
+    monkeypatch.setattr(detection, "is_windows", lambda: True)
+    monkeypatch.setattr(locations, "is_windows", lambda: True)

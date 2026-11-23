@@ -104,7 +104,7 @@ def _extract_from_appimage(
         for vendor in vendors:
             try:
                 subprocess.run(
-                    (str(executable), "--appimage-extract", f"{_BUNDLED_PROFILES}/{vendor}*"),
+                    (str(executable), "--appimage-extract", f"{_BUNDLED_PROFILES.as_posix()}/{vendor}*"),
                     cwd=scratch,
                     capture_output=True,
                     check=True,

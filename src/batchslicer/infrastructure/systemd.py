@@ -140,8 +140,9 @@ class Systemd:
         """Raise :class:`ServiceError` unless the user's systemd can be used."""
         if self._run(("systemctl", "--user", "--version")).returncode != 0:
             raise ServiceError(
-                "systemd's user services are not available here (systemctl --user does not "
-                "work). Run 'batchslicer --watch' in a terminal, tmux or screen instead."
+                "systemd's user services are not available here (they need Linux with "
+                "systemd; systemctl --user does not work). Run 'batchslicer --watch' in a "
+                "terminal window instead (on Linux, tmux or screen keep it running)."
             )
 
     def reload(self) -> None:
@@ -191,4 +192,7 @@ def _run(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
     """Run a program and return its result; a missing program gives exit status 127."""
     if shutil.which(command[0]) is None:
         return subprocess.CompletedProcess(list(command), 127, "", f"{command[0]} not found")
-    return subprocess.run(list(command), capture_output=True, text=True, timeout=60, check=False)
+    return subprocess.run(
+        list(command), capture_output=True, text=True, encoding="utf-8", errors="replace",
+        timeout=60, check=False,
+    )

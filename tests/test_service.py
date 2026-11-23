@@ -1,5 +1,6 @@
 """Tests for running the watch folder as a systemd user service."""
 
+import os
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
@@ -16,6 +17,10 @@ from batchslicer.infrastructure.systemd import (
     unquote_command,
 )
 from conftest import write_config
+
+pytestmark = pytest.mark.skipif(
+    os.name == "nt", reason="systemd user services exist only on Linux"
+)
 
 
 class FakeSystemctl:

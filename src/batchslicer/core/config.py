@@ -48,7 +48,13 @@ class Config:
             with self._path.open("r", encoding="utf-8") as configuration_file:
                 data = yaml.safe_load(configuration_file)
         except yaml.YAMLError as error:
-            raise ValueError(f"Invalid YAML configuration: {self._path}") from error
+            hint = ""
+            if "escape" in str(error):
+                hint = (
+                    " A backslash in double quotes starts an escape: write Windows paths "
+                    "with forward slashes (C:/Program Files/...) or in single quotes."
+                )
+            raise ValueError(f"Invalid YAML configuration: {self._path}.{hint}") from error
 
         if not isinstance(data, dict):
             raise ValueError(f"Configuration root must be a mapping: {self._path}")
@@ -185,10 +191,12 @@ def render_config(
     home = home or Path.home()
 
     def show(path: Path) -> str:
+        # Forward slashes on every system: Windows accepts them, and they need no
+        # escaping inside YAML's double quotes.
         try:
-            text = "~/" + str(path.relative_to(home))
+            text = "~/" + path.relative_to(home).as_posix()
         except ValueError:
-            text = str(path)
+            text = path.as_posix()
         return text.replace("\\", "\\\\").replace('"', '\\"')
 
     lines = [

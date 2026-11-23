@@ -8,6 +8,7 @@ import pytest
 from batchslicer.cli.setup import SetupOptions, run_setup
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
 from batchslicer.core.config import Config, render_config
+from conftest import set_home
 
 
 def _answers(*values: str) -> Callable[[str], str]:
@@ -38,7 +39,7 @@ def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         path.write_text("")
     (home / ".config" / "OrcaSlicer").mkdir(parents=True)
     (home / ".config" / "Creality" / "Creality Print" / "7.3").mkdir(parents=True)
-    monkeypatch.setenv("HOME", str(home))
+    set_home(monkeypatch, home)
     return home
 
 
