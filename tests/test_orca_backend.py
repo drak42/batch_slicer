@@ -306,7 +306,8 @@ def test_bare_executable_name_found_on_path_is_used(
     monkeypatch.setenv("PATH", str(bin_directory))
     config = write_config(tmp_path, {"orca": {"executable": "orca-slicer", "datadir": "data"}})
 
-    assert OrcaBackend(config=config, logger=Mock()).build_help_command()[0] == str(program)
+    found = OrcaBackend(config=config, logger=Mock()).build_help_command()[0]
+    assert os.path.normcase(found) == os.path.normcase(str(program))  # Windows may say .CMD
 
 
 def test_home_folder_in_paths_is_expanded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
