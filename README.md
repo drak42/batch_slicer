@@ -495,6 +495,7 @@ asking; anything you leave out is still asked for, unless you add
 | `--loaded-filaments` | match multi-colour projects (and `--slot` names such as `1B`) to the filaments loaded in the `--send` printer's CFS; `--no-loaded-filaments` turns it off over a profile |
 | `--watch` | keep running and slice every model or folder dropped into the input folder (see [Watch folder](#watch-folder)) |
 | `--start` | start printing once the G-code is on the printer; only for a single model that gives one G-code file |
+| `--dry-run` | show what the run would do (models, plates, copies, filament slots and CFS matches, where results would go and be sent) without slicing, writing or sending anything; choices are not remembered |
 | `--list-presets` | list preset names, then exit (see below) |
 | `--profile NAME` | start from a saved profile (see [Profiles](#profiles)); repeat it to slice for several printers |
 | `--last` | repeat the last run |

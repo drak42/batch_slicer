@@ -155,7 +155,7 @@ a batch is sliced, from the calling thread, in the order they finish."""
 
 
 @dataclass(frozen=True, slots=True)
-class _Work:
+class Work:
     """One slicer job in a batch: a single model, or a folder's models together."""
 
     models: tuple[Path, ...]
@@ -167,7 +167,7 @@ class _Work:
         return self.folder if self.folder is not None else self.models[0]
 
 
-def _plan_work(models: Sequence[Path], plates: bool) -> list[_Work]:
+def plan_work(models: Sequence[Path], plates: bool) -> list[Work]:
     """Return the jobs for a batch, in model order.
 
     With ``plates``, the loose models of each folder (two or more) become one
@@ -179,14 +179,14 @@ def _plan_work(models: Sequence[Path], plates: bool) -> list[_Work]:
         for model in models:
             if model.suffix.casefold() in _LOOSE_MODEL_SUFFIXES:
                 groups.setdefault(model.parent, []).append(model)
-    work: list[_Work] = []
+    work: list[Work] = []
     for model in models:
         group = groups.get(model.parent)
         if group is not None and len(group) > 1 and model in group:
             if model == group[0]:
-                work.append(_Work(tuple(group), model.parent))
+                work.append(Work(tuple(group), model.parent))
             continue
-        work.append(_Work((model,)))
+        work.append(Work((model,)))
     return work
 
 
@@ -268,7 +268,7 @@ class SlicingService:
         )
 
         started_at = time.perf_counter()
-        work = _plan_work(models, self._options.plates)
+        work = plan_work(models, self._options.plates)
         total = len(work)
         finished: dict[int, tuple[SliceOutcome, ...]] = {}
         running: dict[Future[tuple[SliceOutcome, ...]], int] = {}
@@ -363,7 +363,7 @@ class SlicingService:
 
     def _slice_together(
         self,
-        work: _Work,
+        work: Work,
         job_directory: Path,
         settings: list[Path],
         filaments: list[Path],

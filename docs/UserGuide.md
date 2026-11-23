@@ -174,6 +174,14 @@ A few more options for folders:
 A part that fails does not stop the others; the summary at the end says why it
 failed, and often which option may fix it.
 
+**Check before a big run.** Add `--dry-run` to see what would happen (which
+parts share plates, which filament each uses, where the results would go and
+which printer they would be sent to) without slicing anything:
+
+```bash
+batchslicer --profile k2-petg --input ~/BatchSlicer/incoming/rc-boat --plates --dry-run
+```
+
 ## 7. Send the G-code to your printer
 
 **Klipper printers** (Creality K1 and K2, Voron and many others) can be given
@@ -353,6 +361,7 @@ the grams of each filament and the number of filament changes.
 | Start printing one model | add `--start` |
 | Use the filaments in my CFS | add `--loaded-filaments` (with `--send`) |
 | Give parts their own colour | `--slot "PATTERN=SLOT"` |
+| See what a run would do, without doing it | add `--dry-run` |
 | Slice what I drop into a folder | `--watch` |
 | Keep watching in the background | `batchslicer service install ...` |
 | See preset names for scripts | `batchslicer --slicer orca --list-presets` |

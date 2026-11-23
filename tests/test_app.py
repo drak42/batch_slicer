@@ -1927,3 +1927,50 @@ def test_a_terminate_request_stops_like_ctrl_c(
     assert app.main(["--no-prompt"]) == app.EXIT_INTERRUPTED
     assert "Cancelled." in capsys.readouterr().err
     assert app.signal.getsignal(app.signal.SIGTERM) is before
+
+
+def test_dry_run_shows_the_plan_and_changes_nothing(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--dry-run lists what would happen, without slicing, creating the output folder or remembering the run."""
+    import json
+    import zipfile
+
+    root = tmp_path / "in"
+    for name in ("kit/a.stl", "kit/b.stl", "lens.stl"):
+        (root / name).parent.mkdir(parents=True, exist_ok=True)
+        (root / name).write_text("solid")
+    with zipfile.ZipFile(root / "bumper.3mf", "w") as archive:
+        archive.writestr("Metadata/project_settings.config",
+                         json.dumps({"filament_colour": ["#000000", "#FFFFFF"], "filament_type": ["PETG", "PETG"]}))
+    clear = Preset(name="Clear PETG", kind=PresetKind.FILAMENT, path=Path("clear"), is_user=False)
+    monkeypatch.setattr(app, "_select_presets", Mock(return_value=replace(_selection(), more_filaments=(clear,))))
+    monkeypatch.setattr(app, "_preset_library", Mock(return_value=Mock()))
+
+    result = app.main([
+        "--slicer", "bambu", "--input", str(root), "--output", str(tmp_path / "out"),
+        "--plates", "--slot", "lens.stl=2", "--filament", "Generic PETG", "--filament", "Clear PETG",
+        "--dry-run", "--no-prompt",
+    ])
+
+    assert result == 0
+    out = capsys.readouterr().out
+    assert "Dry run: nothing is sliced, written or sent." in out
+    assert "Would slice 4 model files from" in out
+    assert "  kit/ (models together on plates): 2 models (a.stl, b.stl)" in out
+    assert "  lens.stl: slot 2 (Clear PETG)" in out
+    assert "      slot 1 (black PETG) -> Generic PETG" in out
+    assert "Results would go to" in out
+    app.SlicingService.assert_not_called()
+    assert not (tmp_path / "out").exists()
+    app.ProfileStore.return_value.save.assert_not_called()  # type: ignore[attr-defined]
+
+
+def test_dry_run_cannot_watch(capsys: pytest.CaptureFixture[str]) -> None:
+    """A dry run shows one run, so it is refused with --watch."""
+    with pytest.raises(SystemExit):
+        app.main(["--dry-run", "--watch"])
+    assert "--dry-run shows one run" in capsys.readouterr().err

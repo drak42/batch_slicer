@@ -103,6 +103,9 @@ class RunOptions:
     loaded_filaments: bool | None = None
     """Match multi-colour projects to the filaments loaded in the --send printer (--loaded-filaments)."""
 
+    dry_run: bool = False
+    """Show what the run would do without slicing, writing or sending (--dry-run)."""
+
     watch: bool = False
     """Keep running and slice each model or folder put in the input folder (--watch)."""
 
@@ -145,6 +148,8 @@ def parse_arguments(
         return _parse_service(arguments[1:])
     parser = _parser()
     namespace = parser.parse_args(arguments)
+    if namespace.dry_run and namespace.watch:
+        parser.error("--dry-run shows one run; it cannot be combined with --watch.")
     if namespace.watch:
         if namespace.start:
             parser.error("--start cannot be used with --watch: prints are never started unattended.")
@@ -180,6 +185,7 @@ def parse_arguments(
         send=namespace.send,
         start=namespace.start,
         watch=namespace.watch,
+        dry_run=namespace.dry_run,
         loaded_filaments=namespace.loaded_filaments,
         slots=tuple(namespace.slot) if namespace.slot else None,
         flat=namespace.flat,
@@ -583,6 +589,15 @@ def _parser() -> argparse.ArgumentParser:
         "--delete-profile",
         metavar="NAME",
         help="delete a saved profile, then exit",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "show what this run would do (models, plates, copies, filament slots and CFS "
+            "matches, where results would go and where they would be sent) without "
+            "slicing, writing or sending anything"
+        ),
     )
     parser.add_argument(
         "--list-presets",

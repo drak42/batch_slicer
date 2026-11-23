@@ -6,6 +6,13 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `--dry-run` shows what a run would do (each model or plate group, copies,
+  `--slot` filaments, how multi-colour projects would be filled or matched to
+  the CFS, models that would fail, where results would go and which printer
+  they would be sent to) without slicing, writing or sending anything.
+
 ### Changed
 
 - A request to terminate BatchSlicer (`kill`, `systemctl stop`) now stops it

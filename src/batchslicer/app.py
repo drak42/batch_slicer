@@ -28,7 +28,7 @@ from pathlib import Path
 from batchslicer.backends.orca import OrcaBackend
 from batchslicer.backends.presets import PresetError, PresetLibrary
 from batchslicer.backends.profiles import find_system_profiles
-from batchslicer.backends.projects import project_filaments
+from batchslicer.backends.projects import is_project, project_filaments
 from batchslicer.backends.slicers import SLICERS, SlicerDefinition, get_slicer, is_configured
 from batchslicer.banner import get_banner
 from batchslicer.cli.arguments import RunOptions, parse_arguments
@@ -50,8 +50,19 @@ from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slice
 from batchslicer.core.config import Config, find_config_file, get_config
 from batchslicer.core.environment import EnvironmentService
 from batchslicer.core.logging import configure_logging, current_log_file
-from batchslicer.domain.filaments import LoadedFilament, ProjectFilament, describe_project_slot
-from batchslicer.domain.options import COPYABLE_SUFFIXES, MAX_COPIES, SliceOptions, is_loaded_slot
+from batchslicer.domain.filaments import (
+    LoadedFilament,
+    ProjectFilament,
+    describe_project_slot,
+    match_slots,
+)
+from batchslicer.domain.options import (
+    COPYABLE_SUFFIXES,
+    MAX_COPIES,
+    SliceOptions,
+    is_loaded_slot,
+    slot_for,
+)
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.domain.printers import PrinterHost, host_from_address, printer_hosts
 from batchslicer.domain.profiles import LAST_RUN, Profile, Target, combine, is_valid_name
@@ -62,7 +73,7 @@ from batchslicer.services.filament_matching import FilamentMatcher, build_matche
 from batchslicer.services.gcode_stats import GcodeStats, format_duration
 from batchslicer.services.report import write_report
 from batchslicer.services.sending import SendingService, SendOutcome, SentFile, plan_uploads
-from batchslicer.services.slicing import BatchOutcome, SliceOutcome, SlicingService
+from batchslicer.services.slicing import BatchOutcome, SliceOutcome, SlicingService, Work, plan_work
 from batchslicer.services.watching import DEFAULT_INTERVAL_SECONDS, WatchFolder, watch
 
 EXIT_SUCCESS = 0
@@ -235,6 +246,17 @@ def _run(options: RunOptions) -> int:
                 options = replace(options, loaded_filaments=True)
         _check_start(options.start, targets, slice_input)
         _check_slots(targets, slice_options, bool(options.loaded_filaments))
+        if options.dry_run:
+            planned_output = (options.output or config.get_path("paths", "output")).expanduser()
+            return _dry_run(
+                targets,
+                slice_input,
+                slice_options,
+                planned_output.absolute(),
+                logger,
+                loaded_filaments=bool(options.loaded_filaments),
+                start=options.start,
+            )
         output_directory = _select_output(options, config)
         _check_printers(targets, logger)
         logger.info(
@@ -1161,6 +1183,122 @@ def _fill_slots(
         print(f"Filament for slot {number} ({describe_project_slot(slot)}):")
         chosen.append(choose_preset(PresetKind.FILAMENT, compatible, input, print))
     return replace(target, selection=replace(target.selection, more_filaments=tuple(chosen)))
+
+
+def _dry_run(
+    targets: list[_ResolvedTarget],
+    slice_input: SliceInput,
+    options: SliceOptions,
+    output_directory: Path,
+    logger: logging.Logger,
+    *,
+    loaded_filaments: bool,
+    start: bool,
+) -> int:
+    """Show what the run would do, without slicing, writing or sending anything.
+
+    Printers are asked whether they answer and what is loaded (both only
+    read). Choices are not remembered.
+    """
+    logger.info("Dry run for %d model(s) from %s", len(slice_input.models), slice_input.root)
+    print("")
+    print("Dry run: nothing is sliced, written or sent.")
+    for number, target in enumerate(targets, start=1):
+        print("")
+        if len(targets) > 1:
+            print(f"=== Printer {number} of {len(targets)}: {target.describe()} ===")
+        loaded: list[LoadedFilament] = []
+        if target.host is not None:
+            client = client_for(target.host)
+            try:
+                status = client.status()
+                print(f"Printer {target.host.describe()} answers{status.note()}.")
+                if loaded_filaments or target.match_loaded:
+                    loaded = client.loaded_filaments()
+            except PrinterError as error:
+                print(f"Printer {target.host.describe()} does not answer now: {error}")
+        work = plan_work(slice_input.models, options.plates) if slice_input.is_folder else [
+            Work(slice_input.models)
+        ]
+        total = len(slice_input.models)
+        print(f"Would slice {total} model file{'s' if total != 1 else ''} from {slice_input.root}:")
+        for item in work:
+            for line in _planned(item, slice_input, target, options, loaded):
+                print(f"  {line}")
+        layout = (
+            "all G-code in that one folder" if options.flat and slice_input.is_folder
+            else "one folder per model, mirroring the input" if slice_input.is_folder
+            else "with the G-code inside"
+        )
+        name = slice_input.root.name if slice_input.is_folder else slice_input.models[0].stem
+        folder = output_directory / (_unique_folder_names(targets)[number - 1] if len(targets) > 1 else "")
+        print(f"Results would go to {folder / (name + '-<date>-<time>')} ({layout}).")
+        if target.host is not None:
+            starting = (
+                ", then start printing it" if start and not slice_input.is_folder else ""
+            )
+            print(f"Then the G-code would be sent to {target.host.describe()}{starting}.")
+    print("")
+    print("Run the same command without --dry-run to do it.")
+    return EXIT_SUCCESS
+
+
+def _planned(
+    item: Work,
+    slice_input: SliceInput,
+    target: _ResolvedTarget,
+    options: SliceOptions,
+    loaded: Sequence[LoadedFilament],
+) -> list[str]:
+    """Return what would happen to one job of a dry run, as lines."""
+    root = slice_input.root
+    if item.folder is not None:
+        names = ", ".join(model.name for model in item.models)
+        lines = [f"{_label(item.folder, root)}: {len(item.models)} models ({names})"]
+        if options.slots:
+            lines += [
+                f"    {model.name}: {_slot_text(slot_for(model, root, options.slots), target, loaded)}"
+                for model in item.models
+            ]
+        return lines
+    model = item.models[0]
+    label = _label(model, root)
+    if not target.slicer.presets_in_projects and target.selection is not None and is_project(model):
+        return [f"{label}: would fail ({target.slicer.display_name} cannot use your presets for a 3MF project)"]
+    notes = []
+    loose = model.suffix.casefold() in COPYABLE_SUFFIXES
+    if loose and options.copies > 1 and not slice_input.is_folder:
+        notes.append(f"{options.copies} copies")
+    if loose and options.slots:
+        notes.append(_slot_text(slot_for(model, root, options.slots), target, loaded))
+    lines = [label + (f": {', '.join(notes)}" if notes else "")]
+    slots = project_filaments(model)
+    if len(slots) > 1:
+        lines.append(f"    multi-colour project with {len(slots)} filaments:")
+        if loaded:
+            choice = match_slots(slots, loaded)
+            lines += [
+                f"      slot {n} ({describe_project_slot(slot)}) -> {loaded[i].describe()}"
+                for n, (slot, i) in enumerate(zip(slots, choice, strict=True), start=1)
+            ]
+        elif target.selection is not None:
+            chosen = target.selection.filaments
+            lines += [
+                f"      slot {n} ({describe_project_slot(slot)}) -> {chosen[min(n, len(chosen)) - 1].name}"
+                for n, slot in enumerate(slots, start=1)
+            ]
+    return lines
+
+
+def _slot_text(slot: str, target: _ResolvedTarget, loaded: Sequence[LoadedFilament]) -> str:
+    """Return a --slot slot as shown in a dry run: the filament it means, where known."""
+    if is_loaded_slot(slot):
+        match = next((item for item in loaded if item.slot.casefold() == slot.casefold()), None)
+        return match.describe() if match is not None else f"loaded filament {slot}"
+    filaments = target.selection.filaments if target.selection is not None else ()
+    if int(slot) <= len(filaments):
+        return f"slot {slot} ({filaments[int(slot) - 1].name})"
+    return f"slot {slot}"
 
 
 def _filament_matcher(target: _ResolvedTarget, logger: logging.Logger) -> FilamentMatcher | None:
