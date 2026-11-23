@@ -6,6 +6,11 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Documentation
+
+- Sending to OctoPrint is confirmed with a real server (OctoPrint 2.0.1):
+  status, nested folders, names with spaces, and replacing a file sent again.
+
 ## [0.14.0] - 2026-11-23
 
 Flat output, and the CFS in `doctor`.

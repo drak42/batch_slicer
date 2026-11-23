@@ -767,8 +767,10 @@ Everything above applies, with these differences:
   always treated as Moonraker; use a configured name for OctoPrint.
 - OctoPrint shows the preview pictures only with a plugin that reads them
   from the G-code, such as "Slicer Thumbnails".
-- Tested against a stand-in OctoPrint that follows its documented API; not
-  yet with a real OctoPrint server.
+- **Tested with OctoPrint 2.0.1** (a Creality Ender-3 V3 SE on a serial
+  port): `batchslicer doctor` reads its state, a batch's nested folders are
+  created, names with spaces come through, and sending a file again replaces
+  it. `--start` has not been tried on a real printer yet.
 
 ## Watch folder
 
