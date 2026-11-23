@@ -1,0 +1,787 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace">
+<title>BatchSlicer</title>
+<defs>
+  <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
+    <stop offset="55%" stop-color="#000" stop-opacity="0"/>
+    <stop offset="100%" stop-color="#000" stop-opacity="0.85"/>
+  </radialGradient>
+  <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#03140a"/>
+    <stop offset="1" stop-color="#010804"/>
+  </linearGradient>
+  <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+    <feGaussianBlur stdDeviation="2.2" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="bigglow" x="-30%" y="-60%" width="160%" height="220%">
+    <feGaussianBlur stdDeviation="7" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse">
+    <rect width="4" height="2" fill="#000" fill-opacity="0.28"/>
+  </pattern>
+  <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="28"/></filter>
+  <clipPath id="crt"><rect x="70" y="150" width="640" height="400" rx="26"/></clipPath>
+</defs>
+<rect width="1280" height="640" fill="#000"/>
+<g font-size="15">
+<text x="4" y="501" fill="#b8ffcf" fill-opacity="0.75">G2</text>
+<text x="4" y="483" fill="#00ff66" fill-opacity="0.39">M</text>
+<text x="4" y="465" fill="#00ff66" fill-opacity="0.30">Z</text>
+<text x="4" y="447" fill="#00ff66" fill-opacity="0.22">G</text>
+<text x="4" y="429" fill="#00ff66" fill-opacity="0.15">9</text>
+<text x="4" y="411" fill="#00ff66" fill-opacity="0.10">G</text>
+<text x="26" y="455" fill="#b8ffcf" fill-opacity="0.75">G1</text>
+<text x="26" y="437" fill="#00ff66" fill-opacity="0.41">X</text>
+<text x="26" y="419" fill="#00ff66" fill-opacity="0.33">F</text>
+<text x="26" y="401" fill="#00ff66" fill-opacity="0.25">M</text>
+<text x="26" y="383" fill="#00ff66" fill-opacity="0.19">5</text>
+<text x="26" y="365" fill="#00ff66" fill-opacity="0.14">F</text>
+<text x="26" y="347" fill="#00ff66" fill-opacity="0.10">.</text>
+<text x="48" y="511" fill="#b8ffcf" fill-opacity="0.75">1</text>
+<text x="48" y="493" fill="#00ff66" fill-opacity="0.47">M1</text>
+<text x="48" y="475" fill="#00ff66" fill-opacity="0.44">6</text>
+<text x="48" y="457" fill="#00ff66" fill-opacity="0.42">M</text>
+<text x="48" y="439" fill="#00ff66" fill-opacity="0.39">M</text>
+<text x="48" y="421" fill="#00ff66" fill-opacity="0.36">.</text>
+<text x="48" y="403" fill="#00ff66" fill-opacity="0.34">1</text>
+<text x="48" y="385" fill="#00ff66" fill-opacity="0.32">T1</text>
+<text x="48" y="367" fill="#00ff66" fill-opacity="0.29">M</text>
+<text x="48" y="349" fill="#00ff66" fill-opacity="0.27">F</text>
+<text x="48" y="331" fill="#00ff66" fill-opacity="0.25">M1</text>
+<text x="48" y="313" fill="#00ff66" fill-opacity="0.23">Y</text>
+<text x="48" y="295" fill="#00ff66" fill-opacity="0.21">X</text>
+<text x="48" y="277" fill="#00ff66" fill-opacity="0.19">0</text>
+<text x="48" y="259" fill="#00ff66" fill-opacity="0.17">Y</text>
+<text x="48" y="241" fill="#00ff66" fill-opacity="0.16">;</text>
+<text x="48" y="223" fill="#00ff66" fill-opacity="0.14">;</text>
+<text x="48" y="205" fill="#00ff66" fill-opacity="0.13">7</text>
+<text x="48" y="187" fill="#00ff66" fill-opacity="0.12">M</text>
+<text x="48" y="169" fill="#00ff66" fill-opacity="0.11">G2</text>
+<text x="48" y="151" fill="#00ff66" fill-opacity="0.10">5</text>
+<text x="48" y="133" fill="#00ff66" fill-opacity="0.09">Y</text>
+<text x="48" y="115" fill="#00ff66" fill-opacity="0.08">0</text>
+<text x="92" y="644" fill="#00ff66" fill-opacity="0.45">;</text>
+<text x="92" y="626" fill="#00ff66" fill-opacity="0.42">6</text>
+<text x="92" y="608" fill="#00ff66" fill-opacity="0.40">F</text>
+<text x="92" y="590" fill="#00ff66" fill-opacity="0.37">.</text>
+<text x="92" y="572" fill="#00ff66" fill-opacity="0.35">X</text>
+<text x="92" y="554" fill="#00ff66" fill-opacity="0.33">G0</text>
+<text x="92" y="536" fill="#00ff66" fill-opacity="0.31">9</text>
+<text x="92" y="518" fill="#00ff66" fill-opacity="0.29">M1</text>
+<text x="92" y="500" fill="#00ff66" fill-opacity="0.27">X</text>
+<text x="92" y="482" fill="#00ff66" fill-opacity="0.25">M</text>
+<text x="92" y="464" fill="#00ff66" fill-opacity="0.23">0</text>
+<text x="92" y="446" fill="#00ff66" fill-opacity="0.21">M1</text>
+<text x="92" y="428" fill="#00ff66" fill-opacity="0.19">8</text>
+<text x="92" y="410" fill="#00ff66" fill-opacity="0.18">;</text>
+<text x="92" y="392" fill="#00ff66" fill-opacity="0.16">E</text>
+<text x="92" y="374" fill="#00ff66" fill-opacity="0.15">;</text>
+<text x="92" y="356" fill="#00ff66" fill-opacity="0.13">;</text>
+<text x="92" y="338" fill="#00ff66" fill-opacity="0.12">F</text>
+<text x="92" y="320" fill="#00ff66" fill-opacity="0.11">9</text>
+<text x="92" y="302" fill="#00ff66" fill-opacity="0.10">M</text>
+<text x="92" y="284" fill="#00ff66" fill-opacity="0.09">7</text>
+<text x="92" y="266" fill="#00ff66" fill-opacity="0.09">8</text>
+<text x="92" y="248" fill="#00ff66" fill-opacity="0.08">E</text>
+<text x="114" y="402" fill="#b8ffcf" fill-opacity="0.75">E</text>
+<text x="114" y="384" fill="#00ff66" fill-opacity="0.45">2</text>
+<text x="114" y="366" fill="#00ff66" fill-opacity="0.40">0</text>
+<text x="114" y="348" fill="#00ff66" fill-opacity="0.36">M</text>
+<text x="114" y="330" fill="#00ff66" fill-opacity="0.31">9</text>
+<text x="114" y="312" fill="#00ff66" fill-opacity="0.27">T1</text>
+<text x="114" y="294" fill="#00ff66" fill-opacity="0.24">M</text>
+<text x="114" y="276" fill="#00ff66" fill-opacity="0.20">M</text>
+<text x="114" y="258" fill="#00ff66" fill-opacity="0.17">G9</text>
+<text x="114" y="240" fill="#00ff66" fill-opacity="0.14">0</text>
+<text x="114" y="222" fill="#00ff66" fill-opacity="0.12">M</text>
+<text x="114" y="204" fill="#00ff66" fill-opacity="0.10">F</text>
+<text x="114" y="186" fill="#00ff66" fill-opacity="0.09">6</text>
+<text x="136" y="652" fill="#00ff66" fill-opacity="0.35">F</text>
+<text x="136" y="634" fill="#00ff66" fill-opacity="0.31">8</text>
+<text x="136" y="616" fill="#00ff66" fill-opacity="0.28">3</text>
+<text x="136" y="598" fill="#00ff66" fill-opacity="0.25">0</text>
+<text x="136" y="580" fill="#00ff66" fill-opacity="0.22">8</text>
+<text x="136" y="562" fill="#00ff66" fill-opacity="0.19">2</text>
+<text x="136" y="544" fill="#00ff66" fill-opacity="0.17">Z</text>
+<text x="136" y="526" fill="#00ff66" fill-opacity="0.15">M</text>
+<text x="136" y="508" fill="#00ff66" fill-opacity="0.13">M1</text>
+<text x="136" y="490" fill="#00ff66" fill-opacity="0.11">G2</text>
+<text x="136" y="472" fill="#00ff66" fill-opacity="0.10">6</text>
+<text x="136" y="454" fill="#00ff66" fill-opacity="0.08">0</text>
+<text x="158" y="240" fill="#b8ffcf" fill-opacity="0.75">4</text>
+<text x="158" y="222" fill="#00ff66" fill-opacity="0.43">3</text>
+<text x="158" y="204" fill="#00ff66" fill-opacity="0.37">X</text>
+<text x="158" y="186" fill="#00ff66" fill-opacity="0.32">M</text>
+<text x="158" y="168" fill="#00ff66" fill-opacity="0.27">Y</text>
+<text x="158" y="150" fill="#00ff66" fill-opacity="0.22">Z</text>
+<text x="158" y="132" fill="#00ff66" fill-opacity="0.18">8</text>
+<text x="158" y="114" fill="#00ff66" fill-opacity="0.14">E</text>
+<text x="158" y="96" fill="#00ff66" fill-opacity="0.11">G9</text>
+<text x="158" y="78" fill="#00ff66" fill-opacity="0.09">7</text>
+<text x="202" y="460" fill="#b8ffcf" fill-opacity="0.75">4</text>
+<text x="202" y="442" fill="#00ff66" fill-opacity="0.47">M</text>
+<text x="202" y="424" fill="#00ff66" fill-opacity="0.43">9</text>
+<text x="202" y="406" fill="#00ff66" fill-opacity="0.40">G</text>
+<text x="202" y="388" fill="#00ff66" fill-opacity="0.37">9</text>
+<text x="202" y="370" fill="#00ff66" fill-opacity="0.35">5</text>
+<text x="202" y="352" fill="#00ff66" fill-opacity="0.32">M1</text>
+<text x="202" y="334" fill="#00ff66" fill-opacity="0.29">M1</text>
+<text x="202" y="316" fill="#00ff66" fill-opacity="0.27">Y</text>
+<text x="202" y="298" fill="#00ff66" fill-opacity="0.24">T0</text>
+<text x="202" y="280" fill="#00ff66" fill-opacity="0.22">1</text>
+<text x="202" y="262" fill="#00ff66" fill-opacity="0.20">E</text>
+<text x="202" y="244" fill="#00ff66" fill-opacity="0.18">2</text>
+<text x="202" y="226" fill="#00ff66" fill-opacity="0.16">G1</text>
+<text x="202" y="208" fill="#00ff66" fill-opacity="0.14">G2</text>
+<text x="202" y="190" fill="#00ff66" fill-opacity="0.13">4</text>
+<text x="202" y="172" fill="#00ff66" fill-opacity="0.11">M</text>
+<text x="202" y="154" fill="#00ff66" fill-opacity="0.10">4</text>
+<text x="202" y="136" fill="#00ff66" fill-opacity="0.09">Y</text>
+<text x="202" y="118" fill="#00ff66" fill-opacity="0.08">8</text>
+<text x="224" y="181" fill="#b8ffcf" fill-opacity="0.75">4</text>
+<text x="224" y="163" fill="#00ff66" fill-opacity="0.47">7</text>
+<text x="224" y="145" fill="#00ff66" fill-opacity="0.45">F</text>
+<text x="224" y="127" fill="#00ff66" fill-opacity="0.43">Z</text>
+<text x="224" y="109" fill="#00ff66" fill-opacity="0.40">;</text>
+<text x="224" y="91" fill="#00ff66" fill-opacity="0.38">M</text>
+<text x="224" y="73" fill="#00ff66" fill-opacity="0.36">5</text>
+<text x="224" y="55" fill="#00ff66" fill-opacity="0.33">M</text>
+<text x="224" y="37" fill="#00ff66" fill-opacity="0.31">7</text>
+<text x="224" y="19" fill="#00ff66" fill-opacity="0.29">T1</text>
+<text x="224" y="1" fill="#00ff66" fill-opacity="0.27">3</text>
+<text x="224" y="-17" fill="#00ff66" fill-opacity="0.25">G1</text>
+<text x="246" y="5" fill="#b8ffcf" fill-opacity="0.75">G9</text>
+<text x="246" y="-13" fill="#00ff66" fill-opacity="0.46">M</text>
+<text x="268" y="126" fill="#b8ffcf" fill-opacity="0.75">X</text>
+<text x="268" y="108" fill="#00ff66" fill-opacity="0.47">X</text>
+<text x="268" y="90" fill="#00ff66" fill-opacity="0.45">G2</text>
+<text x="268" y="72" fill="#00ff66" fill-opacity="0.42">X</text>
+<text x="268" y="54" fill="#00ff66" fill-opacity="0.39">M</text>
+<text x="268" y="36" fill="#00ff66" fill-opacity="0.37">Z</text>
+<text x="268" y="18" fill="#00ff66" fill-opacity="0.35">9</text>
+<text x="268" y="0" fill="#00ff66" fill-opacity="0.32">3</text>
+<text x="268" y="-18" fill="#00ff66" fill-opacity="0.30">5</text>
+<text x="290" y="55" fill="#b8ffcf" fill-opacity="0.75">7</text>
+<text x="290" y="37" fill="#00ff66" fill-opacity="0.47">1</text>
+<text x="290" y="19" fill="#00ff66" fill-opacity="0.44">F</text>
+<text x="290" y="1" fill="#00ff66" fill-opacity="0.41">5</text>
+<text x="290" y="-17" fill="#00ff66" fill-opacity="0.38">M</text>
+<text x="312" y="570" fill="#b8ffcf" fill-opacity="0.75">9</text>
+<text x="312" y="552" fill="#00ff66" fill-opacity="0.46">8</text>
+<text x="312" y="534" fill="#00ff66" fill-opacity="0.43">;</text>
+<text x="312" y="516" fill="#00ff66" fill-opacity="0.39">2</text>
+<text x="312" y="498" fill="#00ff66" fill-opacity="0.36">4</text>
+<text x="312" y="480" fill="#00ff66" fill-opacity="0.33">2</text>
+<text x="312" y="462" fill="#00ff66" fill-opacity="0.30">Y</text>
+<text x="312" y="444" fill="#00ff66" fill-opacity="0.27">M</text>
+<text x="312" y="426" fill="#00ff66" fill-opacity="0.24">X</text>
+<text x="312" y="408" fill="#00ff66" fill-opacity="0.22">T1</text>
+<text x="312" y="390" fill="#00ff66" fill-opacity="0.19">G1</text>
+<text x="312" y="372" fill="#00ff66" fill-opacity="0.17">6</text>
+<text x="312" y="354" fill="#00ff66" fill-opacity="0.15">5</text>
+<text x="312" y="336" fill="#00ff66" fill-opacity="0.13">M</text>
+<text x="312" y="318" fill="#00ff66" fill-opacity="0.12">G1</text>
+<text x="312" y="300" fill="#00ff66" fill-opacity="0.10">X</text>
+<text x="312" y="282" fill="#00ff66" fill-opacity="0.09">.</text>
+<text x="312" y="264" fill="#00ff66" fill-opacity="0.08">8</text>
+<text x="356" y="643" fill="#00ff66" fill-opacity="0.28">X</text>
+<text x="356" y="625" fill="#00ff66" fill-opacity="0.25">4</text>
+<text x="356" y="607" fill="#00ff66" fill-opacity="0.22">M1</text>
+<text x="356" y="589" fill="#00ff66" fill-opacity="0.19">9</text>
+<text x="356" y="571" fill="#00ff66" fill-opacity="0.17">3</text>
+<text x="356" y="553" fill="#00ff66" fill-opacity="0.15">F</text>
+<text x="356" y="535" fill="#00ff66" fill-opacity="0.13">5</text>
+<text x="356" y="517" fill="#00ff66" fill-opacity="0.11">Z</text>
+<text x="356" y="499" fill="#00ff66" fill-opacity="0.10">G2</text>
+<text x="356" y="481" fill="#00ff66" fill-opacity="0.08">M1</text>
+<text x="378" y="659" fill="#b8ffcf" fill-opacity="0.75">Y</text>
+<text x="378" y="641" fill="#00ff66" fill-opacity="0.45">Y</text>
+<text x="378" y="623" fill="#00ff66" fill-opacity="0.39">9</text>
+<text x="378" y="605" fill="#00ff66" fill-opacity="0.35">1</text>
+<text x="378" y="587" fill="#00ff66" fill-opacity="0.30">;</text>
+<text x="378" y="569" fill="#00ff66" fill-opacity="0.26">1</text>
+<text x="378" y="551" fill="#00ff66" fill-opacity="0.22">1</text>
+<text x="378" y="533" fill="#00ff66" fill-opacity="0.18">2</text>
+<text x="378" y="515" fill="#00ff66" fill-opacity="0.15">G</text>
+<text x="378" y="497" fill="#00ff66" fill-opacity="0.13">9</text>
+<text x="378" y="479" fill="#00ff66" fill-opacity="0.10">8</text>
+<text x="378" y="461" fill="#00ff66" fill-opacity="0.09">8</text>
+<text x="400" y="-7" fill="#b8ffcf" fill-opacity="0.75">G2</text>
+<text x="422" y="653" fill="#b8ffcf" fill-opacity="0.75">M</text>
+<text x="422" y="635" fill="#00ff66" fill-opacity="0.43">F</text>
+<text x="422" y="617" fill="#00ff66" fill-opacity="0.36">5</text>
+<text x="422" y="599" fill="#00ff66" fill-opacity="0.30">2</text>
+<text x="422" y="581" fill="#00ff66" fill-opacity="0.24">Z</text>
+<text x="422" y="563" fill="#00ff66" fill-opacity="0.19">1</text>
+<text x="422" y="545" fill="#00ff66" fill-opacity="0.15">E</text>
+<text x="422" y="527" fill="#00ff66" fill-opacity="0.12">M1</text>
+<text x="422" y="509" fill="#00ff66" fill-opacity="0.09">M</text>
+<text x="444" y="317" fill="#b8ffcf" fill-opacity="0.75">Y</text>
+<text x="444" y="299" fill="#00ff66" fill-opacity="0.47">G0</text>
+<text x="444" y="281" fill="#00ff66" fill-opacity="0.44">8</text>
+<text x="444" y="263" fill="#00ff66" fill-opacity="0.42">5</text>
+<text x="444" y="245" fill="#00ff66" fill-opacity="0.39">G1</text>
+<text x="444" y="227" fill="#00ff66" fill-opacity="0.36">X</text>
+<text x="444" y="209" fill="#00ff66" fill-opacity="0.34">M</text>
+<text x="444" y="191" fill="#00ff66" fill-opacity="0.32">E</text>
+<text x="444" y="173" fill="#00ff66" fill-opacity="0.29">1</text>
+<text x="444" y="155" fill="#00ff66" fill-opacity="0.27">3</text>
+<text x="444" y="137" fill="#00ff66" fill-opacity="0.25">3</text>
+<text x="444" y="119" fill="#00ff66" fill-opacity="0.23">F</text>
+<text x="444" y="101" fill="#00ff66" fill-opacity="0.21">0</text>
+<text x="444" y="83" fill="#00ff66" fill-opacity="0.19">G0</text>
+<text x="444" y="65" fill="#00ff66" fill-opacity="0.17">E</text>
+<text x="444" y="47" fill="#00ff66" fill-opacity="0.16">0</text>
+<text x="444" y="29" fill="#00ff66" fill-opacity="0.14">G1</text>
+<text x="444" y="11" fill="#00ff66" fill-opacity="0.13">0</text>
+<text x="444" y="-7" fill="#00ff66" fill-opacity="0.12">M1</text>
+<text x="466" y="168" fill="#b8ffcf" fill-opacity="0.75">9</text>
+<text x="466" y="150" fill="#00ff66" fill-opacity="0.47">.</text>
+<text x="466" y="132" fill="#00ff66" fill-opacity="0.44">3</text>
+<text x="466" y="114" fill="#00ff66" fill-opacity="0.42">Z</text>
+<text x="466" y="96" fill="#00ff66" fill-opacity="0.39">F</text>
+<text x="466" y="78" fill="#00ff66" fill-opacity="0.36">T0</text>
+<text x="466" y="60" fill="#00ff66" fill-opacity="0.34">F</text>
+<text x="466" y="42" fill="#00ff66" fill-opacity="0.32">G0</text>
+<text x="466" y="24" fill="#00ff66" fill-opacity="0.29">6</text>
+<text x="466" y="6" fill="#00ff66" fill-opacity="0.27">G</text>
+<text x="466" y="-12" fill="#00ff66" fill-opacity="0.25">G2</text>
+<text x="510" y="348" fill="#b8ffcf" fill-opacity="0.75">E</text>
+<text x="510" y="330" fill="#00ff66" fill-opacity="0.47">G0</text>
+<text x="510" y="312" fill="#00ff66" fill-opacity="0.44">4</text>
+<text x="510" y="294" fill="#00ff66" fill-opacity="0.41">X</text>
+<text x="510" y="276" fill="#00ff66" fill-opacity="0.38">E</text>
+<text x="510" y="258" fill="#00ff66" fill-opacity="0.36">X</text>
+<text x="510" y="240" fill="#00ff66" fill-opacity="0.33">7</text>
+<text x="510" y="222" fill="#00ff66" fill-opacity="0.31">X</text>
+<text x="510" y="204" fill="#00ff66" fill-opacity="0.28">9</text>
+<text x="510" y="186" fill="#00ff66" fill-opacity="0.26">M1</text>
+<text x="510" y="168" fill="#00ff66" fill-opacity="0.24">Y</text>
+<text x="510" y="150" fill="#00ff66" fill-opacity="0.22">6</text>
+<text x="510" y="132" fill="#00ff66" fill-opacity="0.20">M</text>
+<text x="510" y="114" fill="#00ff66" fill-opacity="0.18">7</text>
+<text x="510" y="96" fill="#00ff66" fill-opacity="0.16">X</text>
+<text x="510" y="78" fill="#00ff66" fill-opacity="0.15">1</text>
+<text x="510" y="60" fill="#00ff66" fill-opacity="0.13">9</text>
+<text x="510" y="42" fill="#00ff66" fill-opacity="0.12">6</text>
+<text x="510" y="24" fill="#00ff66" fill-opacity="0.11">6</text>
+<text x="510" y="6" fill="#00ff66" fill-opacity="0.10">4</text>
+<text x="510" y="-12" fill="#00ff66" fill-opacity="0.09">T1</text>
+<text x="532" y="653" fill="#00ff66" fill-opacity="0.18">9</text>
+<text x="532" y="635" fill="#00ff66" fill-opacity="0.15">.</text>
+<text x="532" y="617" fill="#00ff66" fill-opacity="0.13">T1</text>
+<text x="532" y="599" fill="#00ff66" fill-opacity="0.10">M1</text>
+<text x="532" y="581" fill="#00ff66" fill-opacity="0.09">0</text>
+<text x="554" y="23" fill="#b8ffcf" fill-opacity="0.75">T0</text>
+<text x="554" y="5" fill="#00ff66" fill-opacity="0.47">2</text>
+<text x="554" y="-13" fill="#00ff66" fill-opacity="0.45">T1</text>
+<text x="576" y="647" fill="#00ff66" fill-opacity="0.10">G1</text>
+<text x="598" y="331" fill="#b8ffcf" fill-opacity="0.75">Y</text>
+<text x="598" y="313" fill="#00ff66" fill-opacity="0.47">X</text>
+<text x="598" y="295" fill="#00ff66" fill-opacity="0.45">5</text>
+<text x="598" y="277" fill="#00ff66" fill-opacity="0.42">F</text>
+<text x="598" y="259" fill="#00ff66" fill-opacity="0.39">4</text>
+<text x="598" y="241" fill="#00ff66" fill-opacity="0.37">M</text>
+<text x="598" y="223" fill="#00ff66" fill-opacity="0.35">;</text>
+<text x="598" y="205" fill="#00ff66" fill-opacity="0.32">X</text>
+<text x="598" y="187" fill="#00ff66" fill-opacity="0.30">M1</text>
+<text x="598" y="169" fill="#00ff66" fill-opacity="0.28">T0</text>
+<text x="598" y="151" fill="#00ff66" fill-opacity="0.26">E</text>
+<text x="598" y="133" fill="#00ff66" fill-opacity="0.24">2</text>
+<text x="598" y="115" fill="#00ff66" fill-opacity="0.22">5</text>
+<text x="598" y="97" fill="#00ff66" fill-opacity="0.20">.</text>
+<text x="598" y="79" fill="#00ff66" fill-opacity="0.18">T0</text>
+<text x="598" y="61" fill="#00ff66" fill-opacity="0.17">7</text>
+<text x="598" y="43" fill="#00ff66" fill-opacity="0.15">G</text>
+<text x="598" y="25" fill="#00ff66" fill-opacity="0.14">9</text>
+<text x="598" y="7" fill="#00ff66" fill-opacity="0.13">5</text>
+<text x="598" y="-11" fill="#00ff66" fill-opacity="0.11">T0</text>
+<text x="620" y="650" fill="#00ff66" fill-opacity="0.12">Z</text>
+<text x="620" y="632" fill="#00ff66" fill-opacity="0.09">M</text>
+<text x="642" y="646" fill="#00ff66" fill-opacity="0.36">Z</text>
+<text x="642" y="628" fill="#00ff66" fill-opacity="0.34">M1</text>
+<text x="642" y="610" fill="#00ff66" fill-opacity="0.32">7</text>
+<text x="642" y="592" fill="#00ff66" fill-opacity="0.29">F</text>
+<text x="642" y="574" fill="#00ff66" fill-opacity="0.27">.</text>
+<text x="642" y="556" fill="#00ff66" fill-opacity="0.25">T1</text>
+<text x="642" y="538" fill="#00ff66" fill-opacity="0.23">F</text>
+<text x="642" y="520" fill="#00ff66" fill-opacity="0.21">9</text>
+<text x="642" y="502" fill="#00ff66" fill-opacity="0.19">8</text>
+<text x="642" y="484" fill="#00ff66" fill-opacity="0.17">M1</text>
+<text x="642" y="466" fill="#00ff66" fill-opacity="0.16">M</text>
+<text x="642" y="448" fill="#00ff66" fill-opacity="0.14">X</text>
+<text x="642" y="430" fill="#00ff66" fill-opacity="0.13">8</text>
+<text x="642" y="412" fill="#00ff66" fill-opacity="0.12">1</text>
+<text x="642" y="394" fill="#00ff66" fill-opacity="0.11">M</text>
+<text x="642" y="376" fill="#00ff66" fill-opacity="0.10">G1</text>
+<text x="642" y="358" fill="#00ff66" fill-opacity="0.09">T1</text>
+<text x="642" y="340" fill="#00ff66" fill-opacity="0.08">M</text>
+<text x="664" y="499" fill="#b8ffcf" fill-opacity="0.75">E</text>
+<text x="664" y="481" fill="#00ff66" fill-opacity="0.45">G2</text>
+<text x="664" y="463" fill="#00ff66" fill-opacity="0.41">5</text>
+<text x="664" y="445" fill="#00ff66" fill-opacity="0.37">.</text>
+<text x="664" y="427" fill="#00ff66" fill-opacity="0.33">1</text>
+<text x="664" y="409" fill="#00ff66" fill-opacity="0.29">5</text>
+<text x="664" y="391" fill="#00ff66" fill-opacity="0.25">G1</text>
+<text x="664" y="373" fill="#00ff66" fill-opacity="0.22">Y</text>
+<text x="664" y="355" fill="#00ff66" fill-opacity="0.19">X</text>
+<text x="664" y="337" fill="#00ff66" fill-opacity="0.16">.</text>
+<text x="664" y="319" fill="#00ff66" fill-opacity="0.14">Z</text>
+<text x="664" y="301" fill="#00ff66" fill-opacity="0.12">5</text>
+<text x="664" y="283" fill="#00ff66" fill-opacity="0.10">G0</text>
+<text x="664" y="265" fill="#00ff66" fill-opacity="0.09">;</text>
+<text x="686" y="448" fill="#b8ffcf" fill-opacity="0.75">1</text>
+<text x="686" y="430" fill="#00ff66" fill-opacity="0.43">Z</text>
+<text x="686" y="412" fill="#00ff66" fill-opacity="0.37">G0</text>
+<text x="686" y="394" fill="#00ff66" fill-opacity="0.32">T0</text>
+<text x="686" y="376" fill="#00ff66" fill-opacity="0.27">;</text>
+<text x="686" y="358" fill="#00ff66" fill-opacity="0.22">G</text>
+<text x="686" y="340" fill="#00ff66" fill-opacity="0.18">;</text>
+<text x="686" y="322" fill="#00ff66" fill-opacity="0.14">F</text>
+<text x="686" y="304" fill="#00ff66" fill-opacity="0.11">9</text>
+<text x="686" y="286" fill="#00ff66" fill-opacity="0.09">M</text>
+<text x="708" y="232" fill="#b8ffcf" fill-opacity="0.75">1</text>
+<text x="708" y="214" fill="#00ff66" fill-opacity="0.47">7</text>
+<text x="708" y="196" fill="#00ff66" fill-opacity="0.44">G</text>
+<text x="708" y="178" fill="#00ff66" fill-opacity="0.42">M</text>
+<text x="708" y="160" fill="#00ff66" fill-opacity="0.39">G</text>
+<text x="708" y="142" fill="#00ff66" fill-opacity="0.36">1</text>
+<text x="708" y="124" fill="#00ff66" fill-opacity="0.34">G1</text>
+<text x="708" y="106" fill="#00ff66" fill-opacity="0.32">E</text>
+<text x="708" y="88" fill="#00ff66" fill-opacity="0.29">G2</text>
+<text x="708" y="70" fill="#00ff66" fill-opacity="0.27">G9</text>
+<text x="708" y="52" fill="#00ff66" fill-opacity="0.25">G</text>
+<text x="708" y="34" fill="#00ff66" fill-opacity="0.23">M</text>
+<text x="708" y="16" fill="#00ff66" fill-opacity="0.21">G</text>
+<text x="708" y="-2" fill="#00ff66" fill-opacity="0.19">0</text>
+<text x="708" y="-20" fill="#00ff66" fill-opacity="0.17">G0</text>
+<text x="730" y="653" fill="#00ff66" fill-opacity="0.36">F</text>
+<text x="730" y="635" fill="#00ff66" fill-opacity="0.31">2</text>
+<text x="730" y="617" fill="#00ff66" fill-opacity="0.27">;</text>
+<text x="730" y="599" fill="#00ff66" fill-opacity="0.24">T0</text>
+<text x="730" y="581" fill="#00ff66" fill-opacity="0.20">G</text>
+<text x="730" y="563" fill="#00ff66" fill-opacity="0.17">M</text>
+<text x="730" y="545" fill="#00ff66" fill-opacity="0.14">9</text>
+<text x="730" y="527" fill="#00ff66" fill-opacity="0.12">F</text>
+<text x="730" y="509" fill="#00ff66" fill-opacity="0.10">0</text>
+<text x="730" y="491" fill="#00ff66" fill-opacity="0.09">T1</text>
+<text x="752" y="162" fill="#b8ffcf" fill-opacity="0.75">M1</text>
+<text x="752" y="144" fill="#00ff66" fill-opacity="0.42">;</text>
+<text x="752" y="126" fill="#00ff66" fill-opacity="0.35">8</text>
+<text x="752" y="108" fill="#00ff66" fill-opacity="0.28">4</text>
+<text x="752" y="90" fill="#00ff66" fill-opacity="0.22">0</text>
+<text x="752" y="72" fill="#00ff66" fill-opacity="0.17">9</text>
+<text x="752" y="54" fill="#00ff66" fill-opacity="0.13">5</text>
+<text x="752" y="36" fill="#00ff66" fill-opacity="0.10">T1</text>
+<text x="774" y="657" fill="#00ff66" fill-opacity="0.12">M</text>
+<text x="774" y="639" fill="#00ff66" fill-opacity="0.09">6</text>
+<text x="796" y="643" fill="#00ff66" fill-opacity="0.16">G0</text>
+<text x="796" y="625" fill="#00ff66" fill-opacity="0.14">Y</text>
+<text x="796" y="607" fill="#00ff66" fill-opacity="0.12">7</text>
+<text x="796" y="589" fill="#00ff66" fill-opacity="0.10">1</text>
+<text x="796" y="571" fill="#00ff66" fill-opacity="0.09">;</text>
+<text x="818" y="585" fill="#b8ffcf" fill-opacity="0.75">1</text>
+<text x="818" y="567" fill="#00ff66" fill-opacity="0.46">7</text>
+<text x="818" y="549" fill="#00ff66" fill-opacity="0.42">4</text>
+<text x="818" y="531" fill="#00ff66" fill-opacity="0.38">Y</text>
+<text x="818" y="513" fill="#00ff66" fill-opacity="0.35">0</text>
+<text x="818" y="495" fill="#00ff66" fill-opacity="0.31">6</text>
+<text x="818" y="477" fill="#00ff66" fill-opacity="0.28">F</text>
+<text x="818" y="459" fill="#00ff66" fill-opacity="0.25">M</text>
+<text x="818" y="441" fill="#00ff66" fill-opacity="0.22">.</text>
+<text x="818" y="423" fill="#00ff66" fill-opacity="0.19">1</text>
+<text x="818" y="405" fill="#00ff66" fill-opacity="0.17">G1</text>
+<text x="818" y="387" fill="#00ff66" fill-opacity="0.15">4</text>
+<text x="818" y="369" fill="#00ff66" fill-opacity="0.13">G</text>
+<text x="818" y="351" fill="#00ff66" fill-opacity="0.11">;</text>
+<text x="818" y="333" fill="#00ff66" fill-opacity="0.10">1</text>
+<text x="818" y="315" fill="#00ff66" fill-opacity="0.08">X</text>
+<text x="840" y="648" fill="#00ff66" fill-opacity="0.22">7</text>
+<text x="840" y="630" fill="#00ff66" fill-opacity="0.19">T1</text>
+<text x="840" y="612" fill="#00ff66" fill-opacity="0.17">9</text>
+<text x="840" y="594" fill="#00ff66" fill-opacity="0.15">Y</text>
+<text x="840" y="576" fill="#00ff66" fill-opacity="0.13">G2</text>
+<text x="840" y="558" fill="#00ff66" fill-opacity="0.11">4</text>
+<text x="840" y="540" fill="#00ff66" fill-opacity="0.10">T0</text>
+<text x="840" y="522" fill="#00ff66" fill-opacity="0.08">9</text>
+<text x="862" y="284" fill="#b8ffcf" fill-opacity="0.75">.</text>
+<text x="862" y="266" fill="#00ff66" fill-opacity="0.46">T0</text>
+<text x="862" y="248" fill="#00ff66" fill-opacity="0.43">5</text>
+<text x="862" y="230" fill="#00ff66" fill-opacity="0.39">Z</text>
+<text x="862" y="212" fill="#00ff66" fill-opacity="0.36">F</text>
+<text x="862" y="194" fill="#00ff66" fill-opacity="0.33">1</text>
+<text x="862" y="176" fill="#00ff66" fill-opacity="0.30">9</text>
+<text x="862" y="158" fill="#00ff66" fill-opacity="0.27">0</text>
+<text x="862" y="140" fill="#00ff66" fill-opacity="0.24">9</text>
+<text x="862" y="122" fill="#00ff66" fill-opacity="0.22">G</text>
+<text x="862" y="104" fill="#00ff66" fill-opacity="0.19">7</text>
+<text x="862" y="86" fill="#00ff66" fill-opacity="0.17">6</text>
+<text x="862" y="68" fill="#00ff66" fill-opacity="0.15">T0</text>
+<text x="862" y="50" fill="#00ff66" fill-opacity="0.13">0</text>
+<text x="862" y="32" fill="#00ff66" fill-opacity="0.12">5</text>
+<text x="862" y="14" fill="#00ff66" fill-opacity="0.10">G1</text>
+<text x="862" y="-4" fill="#00ff66" fill-opacity="0.09">T0</text>
+<text x="884" y="170" fill="#b8ffcf" fill-opacity="0.75">G9</text>
+<text x="884" y="152" fill="#00ff66" fill-opacity="0.47">2</text>
+<text x="884" y="134" fill="#00ff66" fill-opacity="0.43">2</text>
+<text x="884" y="116" fill="#00ff66" fill-opacity="0.40">2</text>
+<text x="884" y="98" fill="#00ff66" fill-opacity="0.37">9</text>
+<text x="884" y="80" fill="#00ff66" fill-opacity="0.34">F</text>
+<text x="884" y="62" fill="#00ff66" fill-opacity="0.31">4</text>
+<text x="884" y="44" fill="#00ff66" fill-opacity="0.28">3</text>
+<text x="884" y="26" fill="#00ff66" fill-opacity="0.26">G</text>
+<text x="884" y="8" fill="#00ff66" fill-opacity="0.23">9</text>
+<text x="884" y="-10" fill="#00ff66" fill-opacity="0.21">X</text>
+<text x="906" y="167" fill="#b8ffcf" fill-opacity="0.75">7</text>
+<text x="906" y="149" fill="#00ff66" fill-opacity="0.47">T1</text>
+<text x="906" y="131" fill="#00ff66" fill-opacity="0.45">X</text>
+<text x="906" y="113" fill="#00ff66" fill-opacity="0.43">M</text>
+<text x="906" y="95" fill="#00ff66" fill-opacity="0.40">9</text>
+<text x="906" y="77" fill="#00ff66" fill-opacity="0.38">T0</text>
+<text x="906" y="59" fill="#00ff66" fill-opacity="0.36">M</text>
+<text x="906" y="41" fill="#00ff66" fill-opacity="0.33">Z</text>
+<text x="906" y="23" fill="#00ff66" fill-opacity="0.31">G1</text>
+<text x="906" y="5" fill="#00ff66" fill-opacity="0.29">G0</text>
+<text x="906" y="-13" fill="#00ff66" fill-opacity="0.27">M1</text>
+<text x="928" y="475" fill="#b8ffcf" fill-opacity="0.75">2</text>
+<text x="928" y="457" fill="#00ff66" fill-opacity="0.42">1</text>
+<text x="928" y="439" fill="#00ff66" fill-opacity="0.35">8</text>
+<text x="928" y="421" fill="#00ff66" fill-opacity="0.28">6</text>
+<text x="928" y="403" fill="#00ff66" fill-opacity="0.22">F</text>
+<text x="928" y="385" fill="#00ff66" fill-opacity="0.17">.</text>
+<text x="928" y="367" fill="#00ff66" fill-opacity="0.13">.</text>
+<text x="928" y="349" fill="#00ff66" fill-opacity="0.10">0</text>
+<text x="950" y="365" fill="#b8ffcf" fill-opacity="0.75">Z</text>
+<text x="950" y="347" fill="#00ff66" fill-opacity="0.45">8</text>
+<text x="950" y="329" fill="#00ff66" fill-opacity="0.40">.</text>
+<text x="950" y="311" fill="#00ff66" fill-opacity="0.36">G1</text>
+<text x="950" y="293" fill="#00ff66" fill-opacity="0.31">M</text>
+<text x="950" y="275" fill="#00ff66" fill-opacity="0.27">M1</text>
+<text x="950" y="257" fill="#00ff66" fill-opacity="0.24">M</text>
+<text x="950" y="239" fill="#00ff66" fill-opacity="0.20">G9</text>
+<text x="950" y="221" fill="#00ff66" fill-opacity="0.17">G0</text>
+<text x="950" y="203" fill="#00ff66" fill-opacity="0.14">5</text>
+<text x="950" y="185" fill="#00ff66" fill-opacity="0.12">M</text>
+<text x="950" y="167" fill="#00ff66" fill-opacity="0.10">2</text>
+<text x="950" y="149" fill="#00ff66" fill-opacity="0.09">Z</text>
+<text x="972" y="653" fill="#b8ffcf" fill-opacity="0.75">5</text>
+<text x="972" y="635" fill="#00ff66" fill-opacity="0.47">7</text>
+<text x="972" y="617" fill="#00ff66" fill-opacity="0.44">T1</text>
+<text x="972" y="599" fill="#00ff66" fill-opacity="0.41">M1</text>
+<text x="972" y="581" fill="#00ff66" fill-opacity="0.38">7</text>
+<text x="972" y="563" fill="#00ff66" fill-opacity="0.36">G2</text>
+<text x="972" y="545" fill="#00ff66" fill-opacity="0.33">5</text>
+<text x="972" y="527" fill="#00ff66" fill-opacity="0.31">2</text>
+<text x="972" y="509" fill="#00ff66" fill-opacity="0.28">E</text>
+<text x="972" y="491" fill="#00ff66" fill-opacity="0.26">G2</text>
+<text x="972" y="473" fill="#00ff66" fill-opacity="0.24">2</text>
+<text x="972" y="455" fill="#00ff66" fill-opacity="0.22">M</text>
+<text x="972" y="437" fill="#00ff66" fill-opacity="0.20">8</text>
+<text x="972" y="419" fill="#00ff66" fill-opacity="0.18">M1</text>
+<text x="972" y="401" fill="#00ff66" fill-opacity="0.16">8</text>
+<text x="972" y="383" fill="#00ff66" fill-opacity="0.15">M1</text>
+<text x="972" y="365" fill="#00ff66" fill-opacity="0.13">2</text>
+<text x="972" y="347" fill="#00ff66" fill-opacity="0.12">X</text>
+<text x="972" y="329" fill="#00ff66" fill-opacity="0.11">.</text>
+<text x="972" y="311" fill="#00ff66" fill-opacity="0.10">T0</text>
+<text x="972" y="293" fill="#00ff66" fill-opacity="0.09">M1</text>
+<text x="972" y="275" fill="#00ff66" fill-opacity="0.08">T1</text>
+<text x="994" y="201" fill="#b8ffcf" fill-opacity="0.75">X</text>
+<text x="994" y="183" fill="#00ff66" fill-opacity="0.47">Z</text>
+<text x="994" y="165" fill="#00ff66" fill-opacity="0.44">Z</text>
+<text x="994" y="147" fill="#00ff66" fill-opacity="0.42">M1</text>
+<text x="994" y="129" fill="#00ff66" fill-opacity="0.39">.</text>
+<text x="994" y="111" fill="#00ff66" fill-opacity="0.36">Z</text>
+<text x="994" y="93" fill="#00ff66" fill-opacity="0.34">.</text>
+<text x="994" y="75" fill="#00ff66" fill-opacity="0.32">F</text>
+<text x="994" y="57" fill="#00ff66" fill-opacity="0.29">X</text>
+<text x="994" y="39" fill="#00ff66" fill-opacity="0.27">1</text>
+<text x="994" y="21" fill="#00ff66" fill-opacity="0.25">1</text>
+<text x="994" y="3" fill="#00ff66" fill-opacity="0.23">T1</text>
+<text x="994" y="-15" fill="#00ff66" fill-opacity="0.21">5</text>
+<text x="1016" y="338" fill="#b8ffcf" fill-opacity="0.75">F</text>
+<text x="1016" y="320" fill="#00ff66" fill-opacity="0.41">1</text>
+<text x="1016" y="302" fill="#00ff66" fill-opacity="0.33">0</text>
+<text x="1016" y="284" fill="#00ff66" fill-opacity="0.25">M</text>
+<text x="1016" y="266" fill="#00ff66" fill-opacity="0.19">M1</text>
+<text x="1016" y="248" fill="#00ff66" fill-opacity="0.14">3</text>
+<text x="1016" y="230" fill="#00ff66" fill-opacity="0.10">G1</text>
+<text x="1038" y="642" fill="#00ff66" fill-opacity="0.20">M1</text>
+<text x="1038" y="624" fill="#00ff66" fill-opacity="0.18">1</text>
+<text x="1038" y="606" fill="#00ff66" fill-opacity="0.15">5</text>
+<text x="1038" y="588" fill="#00ff66" fill-opacity="0.13">G</text>
+<text x="1038" y="570" fill="#00ff66" fill-opacity="0.11">3</text>
+<text x="1038" y="552" fill="#00ff66" fill-opacity="0.10">M1</text>
+<text x="1038" y="534" fill="#00ff66" fill-opacity="0.09">1</text>
+<text x="1060" y="357" fill="#b8ffcf" fill-opacity="0.75">T1</text>
+<text x="1060" y="339" fill="#00ff66" fill-opacity="0.46">9</text>
+<text x="1060" y="321" fill="#00ff66" fill-opacity="0.43">9</text>
+<text x="1060" y="303" fill="#00ff66" fill-opacity="0.39">G9</text>
+<text x="1060" y="285" fill="#00ff66" fill-opacity="0.36">G</text>
+<text x="1060" y="267" fill="#00ff66" fill-opacity="0.33">2</text>
+<text x="1060" y="249" fill="#00ff66" fill-opacity="0.30">Z</text>
+<text x="1060" y="231" fill="#00ff66" fill-opacity="0.27">7</text>
+<text x="1060" y="213" fill="#00ff66" fill-opacity="0.24">5</text>
+<text x="1060" y="195" fill="#00ff66" fill-opacity="0.22">G1</text>
+<text x="1060" y="177" fill="#00ff66" fill-opacity="0.19">0</text>
+<text x="1060" y="159" fill="#00ff66" fill-opacity="0.17">6</text>
+<text x="1060" y="141" fill="#00ff66" fill-opacity="0.15">6</text>
+<text x="1060" y="123" fill="#00ff66" fill-opacity="0.13">9</text>
+<text x="1060" y="105" fill="#00ff66" fill-opacity="0.12">G1</text>
+<text x="1060" y="87" fill="#00ff66" fill-opacity="0.10">X</text>
+<text x="1060" y="69" fill="#00ff66" fill-opacity="0.09">8</text>
+<text x="1060" y="51" fill="#00ff66" fill-opacity="0.08">1</text>
+<text x="1082" y="28" fill="#b8ffcf" fill-opacity="0.75">E</text>
+<text x="1082" y="10" fill="#00ff66" fill-opacity="0.47">G0</text>
+<text x="1082" y="-8" fill="#00ff66" fill-opacity="0.43">M1</text>
+<text x="1104" y="208" fill="#b8ffcf" fill-opacity="0.75">T1</text>
+<text x="1104" y="190" fill="#00ff66" fill-opacity="0.47">T1</text>
+<text x="1104" y="172" fill="#00ff66" fill-opacity="0.43">M1</text>
+<text x="1104" y="154" fill="#00ff66" fill-opacity="0.40">M1</text>
+<text x="1104" y="136" fill="#00ff66" fill-opacity="0.37">M</text>
+<text x="1104" y="118" fill="#00ff66" fill-opacity="0.35">3</text>
+<text x="1104" y="100" fill="#00ff66" fill-opacity="0.32">G1</text>
+<text x="1104" y="82" fill="#00ff66" fill-opacity="0.29">G</text>
+<text x="1104" y="64" fill="#00ff66" fill-opacity="0.27">;</text>
+<text x="1104" y="46" fill="#00ff66" fill-opacity="0.24">M</text>
+<text x="1104" y="28" fill="#00ff66" fill-opacity="0.22">M</text>
+<text x="1104" y="10" fill="#00ff66" fill-opacity="0.20">M</text>
+<text x="1104" y="-8" fill="#00ff66" fill-opacity="0.18">M</text>
+<text x="1126" y="653" fill="#00ff66" fill-opacity="0.45">Z</text>
+<text x="1126" y="635" fill="#00ff66" fill-opacity="0.42">M</text>
+<text x="1126" y="617" fill="#00ff66" fill-opacity="0.40">3</text>
+<text x="1126" y="599" fill="#00ff66" fill-opacity="0.37">9</text>
+<text x="1126" y="581" fill="#00ff66" fill-opacity="0.35">Y</text>
+<text x="1126" y="563" fill="#00ff66" fill-opacity="0.33">6</text>
+<text x="1126" y="545" fill="#00ff66" fill-opacity="0.31">F</text>
+<text x="1126" y="527" fill="#00ff66" fill-opacity="0.29">2</text>
+<text x="1126" y="509" fill="#00ff66" fill-opacity="0.27">.</text>
+<text x="1126" y="491" fill="#00ff66" fill-opacity="0.25">M1</text>
+<text x="1126" y="473" fill="#00ff66" fill-opacity="0.23">E</text>
+<text x="1126" y="455" fill="#00ff66" fill-opacity="0.21">7</text>
+<text x="1126" y="437" fill="#00ff66" fill-opacity="0.19">7</text>
+<text x="1126" y="419" fill="#00ff66" fill-opacity="0.18">G</text>
+<text x="1126" y="401" fill="#00ff66" fill-opacity="0.16">M</text>
+<text x="1126" y="383" fill="#00ff66" fill-opacity="0.15">T0</text>
+<text x="1126" y="365" fill="#00ff66" fill-opacity="0.13">Y</text>
+<text x="1126" y="347" fill="#00ff66" fill-opacity="0.12">6</text>
+<text x="1126" y="329" fill="#00ff66" fill-opacity="0.11">G1</text>
+<text x="1126" y="311" fill="#00ff66" fill-opacity="0.10">T0</text>
+<text x="1126" y="293" fill="#00ff66" fill-opacity="0.09">6</text>
+<text x="1126" y="275" fill="#00ff66" fill-opacity="0.09">9</text>
+<text x="1126" y="257" fill="#00ff66" fill-opacity="0.08">0</text>
+<text x="1148" y="273" fill="#b8ffcf" fill-opacity="0.75">X</text>
+<text x="1148" y="255" fill="#00ff66" fill-opacity="0.45">6</text>
+<text x="1148" y="237" fill="#00ff66" fill-opacity="0.39">.</text>
+<text x="1148" y="219" fill="#00ff66" fill-opacity="0.35">8</text>
+<text x="1148" y="201" fill="#00ff66" fill-opacity="0.30">M</text>
+<text x="1148" y="183" fill="#00ff66" fill-opacity="0.26">.</text>
+<text x="1148" y="165" fill="#00ff66" fill-opacity="0.22">M1</text>
+<text x="1148" y="147" fill="#00ff66" fill-opacity="0.18">9</text>
+<text x="1148" y="129" fill="#00ff66" fill-opacity="0.15">7</text>
+<text x="1148" y="111" fill="#00ff66" fill-opacity="0.13">G</text>
+<text x="1148" y="93" fill="#00ff66" fill-opacity="0.10">G</text>
+<text x="1148" y="75" fill="#00ff66" fill-opacity="0.09">;</text>
+<text x="1170" y="401" fill="#b8ffcf" fill-opacity="0.75">X</text>
+<text x="1170" y="383" fill="#00ff66" fill-opacity="0.46">4</text>
+<text x="1170" y="365" fill="#00ff66" fill-opacity="0.42">8</text>
+<text x="1170" y="347" fill="#00ff66" fill-opacity="0.39">T1</text>
+<text x="1170" y="329" fill="#00ff66" fill-opacity="0.35">G1</text>
+<text x="1170" y="311" fill="#00ff66" fill-opacity="0.32">1</text>
+<text x="1170" y="293" fill="#00ff66" fill-opacity="0.29">3</text>
+<text x="1170" y="275" fill="#00ff66" fill-opacity="0.26">Y</text>
+<text x="1170" y="257" fill="#00ff66" fill-opacity="0.23">1</text>
+<text x="1170" y="239" fill="#00ff66" fill-opacity="0.21">;</text>
+<text x="1170" y="221" fill="#00ff66" fill-opacity="0.18">8</text>
+<text x="1170" y="203" fill="#00ff66" fill-opacity="0.16">2</text>
+<text x="1170" y="185" fill="#00ff66" fill-opacity="0.14">.</text>
+<text x="1170" y="167" fill="#00ff66" fill-opacity="0.12">Z</text>
+<text x="1170" y="149" fill="#00ff66" fill-opacity="0.11">1</text>
+<text x="1170" y="131" fill="#00ff66" fill-opacity="0.09">E</text>
+<text x="1170" y="113" fill="#00ff66" fill-opacity="0.08">G2</text>
+<text x="1192" y="479" fill="#b8ffcf" fill-opacity="0.75">M1</text>
+<text x="1192" y="461" fill="#00ff66" fill-opacity="0.47">2</text>
+<text x="1192" y="443" fill="#00ff66" fill-opacity="0.44">1</text>
+<text x="1192" y="425" fill="#00ff66" fill-opacity="0.42">G2</text>
+<text x="1192" y="407" fill="#00ff66" fill-opacity="0.39">T1</text>
+<text x="1192" y="389" fill="#00ff66" fill-opacity="0.36">M</text>
+<text x="1192" y="371" fill="#00ff66" fill-opacity="0.34">M1</text>
+<text x="1192" y="353" fill="#00ff66" fill-opacity="0.32">M1</text>
+<text x="1192" y="335" fill="#00ff66" fill-opacity="0.29">6</text>
+<text x="1192" y="317" fill="#00ff66" fill-opacity="0.27">7</text>
+<text x="1192" y="299" fill="#00ff66" fill-opacity="0.25">9</text>
+<text x="1192" y="281" fill="#00ff66" fill-opacity="0.23">0</text>
+<text x="1192" y="263" fill="#00ff66" fill-opacity="0.21">T1</text>
+<text x="1192" y="245" fill="#00ff66" fill-opacity="0.19">G1</text>
+<text x="1192" y="227" fill="#00ff66" fill-opacity="0.17">3</text>
+<text x="1192" y="209" fill="#00ff66" fill-opacity="0.16">T1</text>
+<text x="1192" y="191" fill="#00ff66" fill-opacity="0.14">E</text>
+<text x="1192" y="173" fill="#00ff66" fill-opacity="0.13">3</text>
+<text x="1192" y="155" fill="#00ff66" fill-opacity="0.12">F</text>
+<text x="1192" y="137" fill="#00ff66" fill-opacity="0.11">;</text>
+<text x="1192" y="119" fill="#00ff66" fill-opacity="0.10">G9</text>
+<text x="1192" y="101" fill="#00ff66" fill-opacity="0.09">T1</text>
+<text x="1192" y="83" fill="#00ff66" fill-opacity="0.08">M1</text>
+<text x="1214" y="422" fill="#b8ffcf" fill-opacity="0.75">F</text>
+<text x="1214" y="404" fill="#00ff66" fill-opacity="0.47">X</text>
+<text x="1214" y="386" fill="#00ff66" fill-opacity="0.44">M1</text>
+<text x="1214" y="368" fill="#00ff66" fill-opacity="0.41">3</text>
+<text x="1214" y="350" fill="#00ff66" fill-opacity="0.38">5</text>
+<text x="1214" y="332" fill="#00ff66" fill-opacity="0.36">M</text>
+<text x="1214" y="314" fill="#00ff66" fill-opacity="0.33">.</text>
+<text x="1214" y="296" fill="#00ff66" fill-opacity="0.31">3</text>
+<text x="1214" y="278" fill="#00ff66" fill-opacity="0.28">8</text>
+<text x="1214" y="260" fill="#00ff66" fill-opacity="0.26">.</text>
+<text x="1214" y="242" fill="#00ff66" fill-opacity="0.24">3</text>
+<text x="1214" y="224" fill="#00ff66" fill-opacity="0.22">2</text>
+<text x="1214" y="206" fill="#00ff66" fill-opacity="0.20">G</text>
+<text x="1214" y="188" fill="#00ff66" fill-opacity="0.18">X</text>
+<text x="1214" y="170" fill="#00ff66" fill-opacity="0.16">T0</text>
+<text x="1214" y="152" fill="#00ff66" fill-opacity="0.15">M1</text>
+<text x="1214" y="134" fill="#00ff66" fill-opacity="0.13">.</text>
+<text x="1214" y="116" fill="#00ff66" fill-opacity="0.12">M1</text>
+<text x="1214" y="98" fill="#00ff66" fill-opacity="0.11">9</text>
+<text x="1214" y="80" fill="#00ff66" fill-opacity="0.10">6</text>
+<text x="1214" y="62" fill="#00ff66" fill-opacity="0.09">;</text>
+<text x="1214" y="44" fill="#00ff66" fill-opacity="0.08">3</text>
+<text x="1236" y="420" fill="#b8ffcf" fill-opacity="0.75">1</text>
+<text x="1236" y="402" fill="#00ff66" fill-opacity="0.46">G2</text>
+<text x="1236" y="384" fill="#00ff66" fill-opacity="0.42">;</text>
+<text x="1236" y="366" fill="#00ff66" fill-opacity="0.39">.</text>
+<text x="1236" y="348" fill="#00ff66" fill-opacity="0.35">2</text>
+<text x="1236" y="330" fill="#00ff66" fill-opacity="0.32">M1</text>
+<text x="1236" y="312" fill="#00ff66" fill-opacity="0.29">M</text>
+<text x="1236" y="294" fill="#00ff66" fill-opacity="0.26">Y</text>
+<text x="1236" y="276" fill="#00ff66" fill-opacity="0.23">G</text>
+<text x="1236" y="258" fill="#00ff66" fill-opacity="0.21">T1</text>
+<text x="1236" y="240" fill="#00ff66" fill-opacity="0.18">Y</text>
+<text x="1236" y="222" fill="#00ff66" fill-opacity="0.16">G</text>
+<text x="1236" y="204" fill="#00ff66" fill-opacity="0.14">F</text>
+<text x="1236" y="186" fill="#00ff66" fill-opacity="0.12">F</text>
+<text x="1236" y="168" fill="#00ff66" fill-opacity="0.11">G2</text>
+<text x="1236" y="150" fill="#00ff66" fill-opacity="0.09">M1</text>
+<text x="1236" y="132" fill="#00ff66" fill-opacity="0.08">Y</text>
+<text x="1258" y="647" fill="#00ff66" fill-opacity="0.41">M1</text>
+<text x="1258" y="629" fill="#00ff66" fill-opacity="0.37">E</text>
+<text x="1258" y="611" fill="#00ff66" fill-opacity="0.34">T0</text>
+<text x="1258" y="593" fill="#00ff66" fill-opacity="0.30">G1</text>
+<text x="1258" y="575" fill="#00ff66" fill-opacity="0.27">.</text>
+<text x="1258" y="557" fill="#00ff66" fill-opacity="0.23">5</text>
+<text x="1258" y="539" fill="#00ff66" fill-opacity="0.20">Z</text>
+<text x="1258" y="521" fill="#00ff66" fill-opacity="0.18">M</text>
+<text x="1258" y="503" fill="#00ff66" fill-opacity="0.15">G0</text>
+<text x="1258" y="485" fill="#00ff66" fill-opacity="0.13">5</text>
+<text x="1258" y="467" fill="#00ff66" fill-opacity="0.11">T0</text>
+<text x="1258" y="449" fill="#00ff66" fill-opacity="0.10">.</text>
+<text x="1258" y="431" fill="#00ff66" fill-opacity="0.09">Z</text>
+<text x="1280" y="500" fill="#b8ffcf" fill-opacity="0.75">Y</text>
+<text x="1280" y="482" fill="#00ff66" fill-opacity="0.47">G1</text>
+<text x="1280" y="464" fill="#00ff66" fill-opacity="0.44">6</text>
+<text x="1280" y="446" fill="#00ff66" fill-opacity="0.41">T0</text>
+<text x="1280" y="428" fill="#00ff66" fill-opacity="0.38">3</text>
+<text x="1280" y="410" fill="#00ff66" fill-opacity="0.35">3</text>
+<text x="1280" y="392" fill="#00ff66" fill-opacity="0.33">2</text>
+<text x="1280" y="374" fill="#00ff66" fill-opacity="0.30">T1</text>
+<text x="1280" y="356" fill="#00ff66" fill-opacity="0.27">E</text>
+<text x="1280" y="338" fill="#00ff66" fill-opacity="0.25">G0</text>
+<text x="1280" y="320" fill="#00ff66" fill-opacity="0.23">M1</text>
+<text x="1280" y="302" fill="#00ff66" fill-opacity="0.21">Y</text>
+<text x="1280" y="284" fill="#00ff66" fill-opacity="0.19">X</text>
+<text x="1280" y="266" fill="#00ff66" fill-opacity="0.17">0</text>
+<text x="1280" y="248" fill="#00ff66" fill-opacity="0.15">3</text>
+<text x="1280" y="230" fill="#00ff66" fill-opacity="0.14">X</text>
+<text x="1280" y="212" fill="#00ff66" fill-opacity="0.12">6</text>
+<text x="1280" y="194" fill="#00ff66" fill-opacity="0.11">8</text>
+<text x="1280" y="176" fill="#00ff66" fill-opacity="0.10">9</text>
+<text x="1280" y="158" fill="#00ff66" fill-opacity="0.09">G0</text>
+<text x="1280" y="140" fill="#00ff66" fill-opacity="0.08">Z</text>
+</g>
+<ellipse cx="640" cy="98" rx="470" ry="70" fill="#000" fill-opacity="0.92" filter="url(#soft)"/>
+<ellipse cx="1000" cy="380" rx="230" ry="250" fill="#000" fill-opacity="0.9" filter="url(#soft)"/>
+<g filter="url(#bigglow)">
+<text x="640" y="92" text-anchor="middle" font-size="76" font-weight="bold" letter-spacing="10" fill="#39ff7a">BATCHSLICER</text>
+</g>
+<text x="640" y="126" text-anchor="middle" font-size="17" letter-spacing="5" fill="#7dffaa" fill-opacity="0.85">MODELS IN &#183; G-CODE OUT &#183; STRAIGHT TO THE PRINTER</text>
+<rect x="58" y="138" width="664" height="424" rx="34" fill="#0a0f0b" stroke="#1f3a28" stroke-width="3"/>
+<rect x="70" y="150" width="640" height="400" rx="26" fill="url(#screen)"/>
+<g clip-path="url(#crt)" filter="url(#glow)" font-size="18">
+<text x="98" y="196" fill="#b6ffcc" xml:space="preserve">$ batchslicer --input ~/kits/boat --plates \</text>
+<text x="98" y="222" fill="#b6ffcc" xml:space="preserve">      --send k2plus --loaded-filaments</text>
+<text x="98" y="274" fill="#39ff7a" xml:space="preserve">Filaments loaded in k2plus:</text>
+<text x="98" y="300" fill="#39ff7a" xml:space="preserve">  CFS 1B dark blue PETG</text>
+<text x="98" y="326" fill="#39ff7a" xml:space="preserve">  external spool white PETG</text>
+<text x="98" y="352" fill="#39ff7a" xml:space="preserve">Slicing 3 model files ...</text>
+<text x="98" y="378" fill="#39ff7a" xml:space="preserve">  [1/1] boat/ (on plates) ... done (2.1s)</text>
+<text x="98" y="404" fill="#39ff7a" xml:space="preserve">Sliced 3 of 3 model files in 2.9s.</text>
+<text x="98" y="430" fill="#39ff7a" xml:space="preserve">  To print: 1h 29m, 30 g filament</text>
+<text x="98" y="456" fill="#39ff7a" xml:space="preserve">  [1/1] boat.gcode ... sent</text>
+<text x="98" y="482" fill="#9dffbd" xml:space="preserve">Sent 1 of 1 file to k2plus.</text>
+<text x="98" y="508" fill="#b6ffcc" xml:space="preserve">$ █</text>
+</g>
+<rect x="70" y="150" width="640" height="400" rx="26" fill="url(#scan)"/>
+<rect x="70" y="150" width="640" height="400" rx="26" fill="none" stroke="#39ff7a" stroke-opacity="0.25" stroke-width="2"/>
+<path d="M96 162 Q 380 150 690 170 L 690 196 Q 380 178 96 192 Z" fill="#fff" fill-opacity="0.035"/>
+<g filter="url(#glow)" fill="none">
+<polygon points="810,540 1000,470 1190,540 1000,610" stroke="#1d6b3c" stroke-width="2" fill="#03140a" fill-opacity="0.8"/>
+<line x1="834" y1="531" x2="1024" y2="601" stroke="#0f3d22" stroke-width="1"/>
+<line x1="834" y1="549" x2="1024" y2="479" stroke="#0f3d22" stroke-width="1"/>
+<line x1="858" y1="522" x2="1048" y2="592" stroke="#0f3d22" stroke-width="1"/>
+<line x1="858" y1="558" x2="1048" y2="488" stroke="#0f3d22" stroke-width="1"/>
+<line x1="881" y1="514" x2="1071" y2="584" stroke="#0f3d22" stroke-width="1"/>
+<line x1="881" y1="566" x2="1071" y2="496" stroke="#0f3d22" stroke-width="1"/>
+<line x1="905" y1="505" x2="1095" y2="575" stroke="#0f3d22" stroke-width="1"/>
+<line x1="905" y1="575" x2="1095" y2="505" stroke="#0f3d22" stroke-width="1"/>
+<line x1="929" y1="496" x2="1119" y2="566" stroke="#0f3d22" stroke-width="1"/>
+<line x1="929" y1="584" x2="1119" y2="514" stroke="#0f3d22" stroke-width="1"/>
+<line x1="952" y1="488" x2="1142" y2="558" stroke="#0f3d22" stroke-width="1"/>
+<line x1="952" y1="592" x2="1142" y2="522" stroke="#0f3d22" stroke-width="1"/>
+<line x1="976" y1="479" x2="1166" y2="549" stroke="#0f3d22" stroke-width="1"/>
+<line x1="976" y1="601" x2="1166" y2="531" stroke="#0f3d22" stroke-width="1"/>
+<polygon points="1077.0,520.0 1072.4,525.4 1062.5,529.6 1054.6,533.2 1050.9,538.0 1047.2,543.6 1038.5,548.0 1025.1,549.0 1011.5,547.5 1000.0,546.5 988.5,547.5 974.9,549.0 961.5,548.0 952.8,543.6 949.1,538.0 945.4,533.2 937.5,529.6 927.6,525.4 923.0,520.0 927.6,514.6 937.5,510.4 945.4,506.8 949.1,502.0 952.8,496.4 961.5,492.0 974.9,491.0 988.5,492.5 1000.0,493.5 1011.5,492.5 1025.1,491.0 1038.5,492.0 1047.2,496.4 1050.9,502.0 1054.6,506.8 1062.5,510.4 1072.4,514.6" stroke="#39ff7a" stroke-opacity="0.35" stroke-width="1.6"/>
+<polygon points="1079.8,512.8 1073.8,518.3 1063.8,522.5 1056.7,526.6 1053.8,531.8 1049.8,537.7 1039.9,541.8 1025.6,542.4 1011.8,540.9 1000.0,540.3 987.8,541.9 973.5,543.3 960.1,541.8 951.8,536.9 948.0,531.1 943.3,526.6 934.0,522.9 923.8,518.4 920.2,512.8 926.2,507.3 936.2,503.1 943.3,499.0 946.2,493.8 950.2,487.9 960.1,483.8 974.4,483.2 988.2,484.7 1000.0,485.3 1012.2,483.7 1026.5,482.3 1039.9,483.8 1048.2,488.7 1052.0,494.5 1056.7,499.0 1066.0,502.7 1076.2,507.2" stroke="#39ff7a" stroke-opacity="0.38" stroke-width="1.6"/>
+<polygon points="1082.2,505.6 1075.1,511.2 1065.1,515.6 1059.1,519.9 1056.9,525.6 1052.2,531.7 1041.1,535.5 1026.1,535.7 1012.0,534.3 1000.0,534.3 987.1,536.3 972.2,537.6 958.9,535.5 951.0,530.1 946.9,524.3 940.9,519.9 930.3,516.3 920.1,511.5 917.8,505.6 924.9,500.0 934.9,495.6 940.9,491.3 943.1,485.6 947.8,479.5 958.9,475.7 973.9,475.5 988.0,476.9 1000.0,476.9 1012.9,474.9 1027.8,473.6 1041.1,475.7 1049.0,481.1 1053.1,486.9 1059.1,491.3 1069.7,494.9 1079.9,499.7" stroke="#39ff7a" stroke-opacity="0.40" stroke-width="1.6"/>
+<polygon points="1084.3,498.4 1076.2,504.0 1066.6,508.6 1061.7,513.4 1059.9,519.5 1054.5,525.7 1042.1,529.1 1026.5,528.9 1012.3,527.7 1000.0,528.3 986.4,530.8 971.0,531.8 957.9,529.1 950.3,523.3 945.7,517.5 938.3,513.4 926.5,509.6 916.5,504.6 915.7,498.4 923.8,492.8 933.4,488.2 938.3,483.4 940.1,477.3 945.5,471.1 957.9,467.7 973.5,467.9 987.7,469.1 1000.0,468.5 1013.6,466.0 1029.0,465.0 1042.1,467.7 1049.7,473.5 1054.3,479.3 1061.7,483.4 1073.5,487.2 1083.5,492.2" stroke="#39ff7a" stroke-opacity="0.42" stroke-width="1.6"/>
+<polygon points="1086.0,491.2 1077.1,496.9 1068.2,501.6 1064.6,506.9 1063.0,513.4 1056.6,519.5 1043.0,522.5 1026.8,522.1 1012.6,521.2 1000.0,522.5 985.7,525.2 969.9,525.9 957.0,522.5 949.7,516.4 944.4,510.8 935.4,506.9 922.7,503.0 913.3,497.6 914.0,491.2 922.9,485.5 931.8,480.8 935.4,475.5 937.0,469.0 943.4,462.9 957.0,459.9 973.2,460.3 987.4,461.2 1000.0,459.9 1014.3,457.2 1030.1,456.5 1043.0,459.9 1050.3,466.0 1055.6,471.6 1064.6,475.5 1077.3,479.4 1086.7,484.8" stroke="#39ff7a" stroke-opacity="0.45" stroke-width="1.6"/>
+<polygon points="1087.4,484.0 1077.9,489.8 1070.0,494.7 1067.6,500.4 1066.1,507.3 1058.5,513.3 1043.7,515.8 1027.1,515.2 1012.9,514.8 1000.0,516.8 985.0,519.7 968.9,519.9 956.3,515.8 949.1,509.5 943.0,504.1 932.4,500.4 918.9,496.4 910.4,490.6 912.6,484.0 922.1,478.2 930.0,473.3 932.4,467.6 933.9,460.7 941.5,454.7 956.3,452.2 972.9,452.8 987.1,453.2 1000.0,451.2 1015.0,448.3 1031.1,448.1 1043.7,452.2 1050.9,458.5 1057.0,463.9 1067.6,467.6 1081.1,471.6 1089.6,477.4" stroke="#39ff7a" stroke-opacity="0.47" stroke-width="1.6"/>
+<polygon points="1088.4,476.8 1078.7,482.6 1071.9,487.8 1070.7,493.9 1069.0,501.1 1060.1,506.9 1044.2,508.9 1027.3,508.3 1013.3,508.5 1000.0,511.1 984.4,514.1 968.0,513.7 955.8,508.9 948.6,502.5 941.3,497.5 929.3,493.9 915.3,489.7 908.0,483.6 911.6,476.8 921.3,471.0 928.1,465.8 929.3,459.7 931.0,452.5 939.9,446.7 955.8,444.7 972.7,445.3 986.7,445.1 1000.0,442.5 1015.6,439.5 1032.0,439.9 1044.2,444.7 1051.4,451.1 1058.7,456.1 1070.7,459.7 1084.7,463.9 1092.0,470.0" stroke="#39ff7a" stroke-opacity="0.50" stroke-width="1.6"/>
+<polygon points="1089.0,469.6 1079.5,475.5 1074.1,480.9 1073.9,487.5 1071.7,494.9 1061.4,500.3 1044.5,502.0 1027.6,501.5 1013.7,502.2 1000.0,505.4 983.7,508.3 967.3,507.3 955.5,502.0 948.1,495.6 939.6,490.9 926.1,487.5 912.0,483.1 906.0,476.6 911.0,469.6 920.5,463.7 925.9,458.3 926.1,451.7 928.3,444.3 938.6,438.9 955.5,437.2 972.4,437.7 986.3,437.0 1000.0,433.8 1016.3,430.9 1032.7,431.9 1044.5,437.2 1051.9,443.6 1060.4,448.3 1073.9,451.7 1088.0,456.1 1094.0,462.6" stroke="#39ff7a" stroke-opacity="0.52" stroke-width="1.6"/>
+<polygon points="1089.4,462.4 1080.3,468.3 1076.5,474.1 1077.1,481.1 1074.2,488.6 1062.4,493.6 1044.7,494.9 1027.9,494.6 1014.1,496.1 1000.0,499.8 983.2,502.5 966.8,500.7 955.3,494.9 947.6,488.6 937.6,484.4 922.9,481.1 909.0,476.3 904.4,469.5 910.6,462.4 919.7,456.5 923.5,450.7 922.9,443.7 925.8,436.2 937.6,431.2 955.3,429.9 972.1,430.2 985.9,428.7 1000.0,425.0 1016.8,422.3 1033.2,424.1 1044.7,429.9 1052.4,436.2 1062.4,440.4 1077.1,443.7 1091.0,448.5 1095.6,455.3" stroke="#39ff7a" stroke-opacity="0.55" stroke-width="1.6"/>
+<polygon points="1089.5,455.2 1081.3,461.2 1079.1,467.3 1080.3,474.7 1076.3,482.1 1063.0,486.8 1044.7,487.8 1028.2,487.8 1014.6,490.0 1000.0,494.1 982.7,496.4 966.5,493.9 955.3,487.8 947.0,481.8 935.6,477.9 919.7,474.7 906.4,469.5 903.4,462.4 910.5,455.2 918.7,449.2 920.9,443.1 919.7,435.7 923.7,428.3 937.0,423.6 955.3,422.6 971.8,422.6 985.4,420.4 1000.0,416.3 1017.3,414.0 1033.5,416.5 1044.7,422.6 1053.0,428.6 1064.4,432.5 1080.3,435.7 1093.6,440.9 1096.6,448.0" stroke="#2fd8ff" stroke-opacity="0.57" stroke-width="1.6"/>
+<polygon points="1089.4,448.0 1082.3,454.1 1081.7,460.5 1083.3,468.2 1078.1,475.5 1063.4,479.7 1044.7,480.5 1028.6,481.0 1015.1,484.0 1000.0,488.4 982.3,490.2 966.3,486.9 955.3,480.5 946.3,474.9 933.4,471.5 916.7,468.2 904.2,462.6 902.9,455.2 910.6,448.0 917.7,441.9 918.3,435.5 916.7,427.8 921.9,420.5 936.6,416.3 955.3,415.5 971.4,415.0 984.9,412.0 1000.0,407.6 1017.7,405.8 1033.7,409.1 1044.7,415.5 1053.7,421.1 1066.6,424.5 1083.3,427.8 1095.8,433.4 1097.1,440.8" stroke="#2fd8ff" stroke-opacity="0.60" stroke-width="1.6"/>
+<polygon points="1089.2,440.8 1083.6,447.0 1084.5,453.7 1086.0,461.7 1079.4,468.8 1063.4,472.5 1044.6,473.3 1029.0,474.3 1015.6,478.0 1000.0,482.5 982.0,483.7 966.3,479.7 955.4,473.3 945.4,468.1 931.1,465.1 914.0,461.7 902.5,455.7 902.8,448.0 910.8,440.8 916.4,434.6 915.5,427.9 914.0,419.9 920.6,412.8 936.6,409.1 955.4,408.3 971.0,407.3 984.4,403.6 1000.0,399.1 1018.0,397.9 1033.7,401.9 1044.6,408.3 1054.6,413.5 1068.9,416.5 1086.0,419.9 1097.5,425.9 1097.2,433.6" stroke="#2fd8ff" stroke-opacity="0.62" stroke-width="1.6"/>
+<polygon points="1089.0,433.6 1085.0,439.9 1087.3,446.9 1088.5,455.1 1080.3,461.9 1063.2,465.2 1044.5,466.0 1029.5,467.7 1016.1,472.0 1000.0,476.5 981.8,477.0 966.4,472.4 955.5,466.0 944.5,461.4 928.9,458.7 911.5,455.1 901.4,448.7 903.2,440.8 911.0,433.6 915.0,427.3 912.7,420.3 911.5,412.1 919.7,405.3 936.8,402.0 955.5,401.2 970.5,399.5 983.9,395.2 1000.0,390.7 1018.2,390.2 1033.6,394.8 1044.5,401.2 1055.5,405.8 1071.1,408.5 1088.5,412.1 1098.6,418.5 1096.8,426.4" stroke="#2fd8ff" stroke-opacity="0.65" stroke-width="1.6"/>
+<polygon points="1088.8,426.4 1086.5,432.8 1090.0,440.2 1090.5,448.4 1080.8,454.9 1062.7,457.8 1044.4,458.7 1030.1,461.1 1016.6,466.0 1000.0,470.3 981.7,470.0 966.6,464.9 955.6,458.7 943.5,454.7 926.7,452.2 909.5,448.4 900.9,441.5 903.9,433.5 911.2,426.4 913.5,420.0 910.0,412.6 909.5,404.4 919.2,397.9 937.3,395.0 955.6,394.1 969.9,391.7 983.4,386.8 1000.0,382.5 1018.3,382.8 1033.4,387.9 1044.4,394.1 1056.5,398.1 1073.3,400.6 1090.5,404.4 1099.1,411.3 1096.1,419.3" stroke="#2fd8ff" stroke-opacity="0.68" stroke-width="1.6"/>
+<polygon points="1088.6,419.2 1088.2,425.7 1092.5,433.3 1092.1,441.5 1080.7,447.7 1062.0,450.3 1044.3,451.4 1030.6,454.6 1017.1,459.9 1000.0,463.9 981.7,462.8 967.0,457.3 955.7,451.4 942.4,448.0 924.6,445.8 907.9,441.5 900.9,434.3 904.9,426.2 911.4,419.2 911.8,412.7 907.5,405.1 907.9,396.9 919.3,390.7 938.0,388.1 955.7,387.0 969.4,383.8 982.9,378.5 1000.0,374.5 1018.3,375.6 1033.0,381.1 1044.3,387.0 1057.6,390.4 1075.4,392.6 1092.1,396.9 1099.1,404.1 1095.1,412.2" stroke="#2fd8ff" stroke-opacity="0.70" stroke-width="1.6"/>
+<polygon points="1088.5,412.0 1090.0,418.7 1094.8,426.5 1093.2,434.6 1080.3,440.3 1061.2,442.6 1044.3,444.2 1031.3,448.1 1017.5,453.7 1000.0,457.2 981.8,455.3 967.4,449.6 955.7,444.2 941.3,441.4 922.7,439.2 906.8,434.6 901.5,427.1 906.2,418.9 911.5,412.0 910.0,405.3 905.2,397.5 906.8,389.4 919.7,383.7 938.8,381.4 955.7,379.8 968.7,375.9 982.5,370.3 1000.0,366.8 1018.2,368.7 1032.6,374.4 1044.3,379.8 1058.7,382.6 1077.3,384.8 1093.2,389.4 1098.5,396.9 1093.8,405.1" stroke="#39ff7a" stroke-opacity="0.72" stroke-width="1.6"/>
+<polygon points="1088.6,404.8 1091.8,411.6 1096.8,419.6 1093.8,427.5 1079.4,432.8 1060.3,435.0 1044.3,437.0 1031.9,441.6 1017.9,447.4 1000.0,450.3 982.0,447.7 967.9,441.8 955.7,437.0 940.1,434.8 921.1,432.6 906.2,427.5 902.6,419.7 907.6,411.6 911.4,404.8 908.2,398.0 903.2,390.0 906.2,382.1 920.6,376.8 939.7,374.6 955.7,372.6 968.1,368.0 982.1,362.2 1000.0,359.3 1018.0,361.9 1032.1,367.8 1044.3,372.6 1059.9,374.8 1078.9,377.0 1093.8,382.1 1097.4,389.9 1092.4,398.0" stroke="#39ff7a" stroke-opacity="0.75" stroke-width="1.6"/>
+<polygon points="1088.8,397.6 1093.6,404.5 1098.4,412.6 1093.8,420.3 1078.2,425.2 1059.3,427.3 1044.4,429.9 1032.5,435.1 1018.2,440.9 1000.0,443.1 982.3,439.8 968.4,434.0 955.6,429.9 938.9,428.2 919.8,425.9 906.2,420.3 904.1,412.3 909.1,404.3 911.2,397.6 906.4,390.7 901.6,382.6 906.2,374.9 921.8,370.0 940.7,367.9 955.6,365.3 967.5,360.1 981.8,354.3 1000.0,352.1 1017.7,355.4 1031.6,361.2 1044.4,365.3 1061.1,367.0 1080.2,369.3 1093.8,374.9 1095.9,382.9 1090.9,390.9" stroke="#39ff7a" stroke-opacity="0.78" stroke-width="1.6"/>
+<polygon points="1089.1,390.4 1095.2,397.5 1099.5,405.6 1093.2,413.0 1076.6,417.4 1058.4,419.6 1044.6,422.8 1033.1,428.6 1018.4,434.2 1000.0,435.6 982.6,431.8 968.9,426.2 955.4,422.8 937.8,421.5 918.9,419.0 906.8,413.0 906.0,404.8 910.6,397.0 910.9,390.4 904.8,383.3 900.5,375.2 906.8,367.8 923.4,363.4 941.6,361.2 955.4,358.0 966.9,352.2 981.6,346.6 1000.0,345.2 1017.4,349.0 1031.1,354.6 1044.6,358.0 1062.2,359.3 1081.1,361.8 1093.2,367.8 1094.0,376.0 1089.4,383.8" stroke="#39ff7a" stroke-opacity="0.80" stroke-width="1.6"/>
+<polygon points="1089.6,383.2 1096.7,390.4 1100.1,398.5 1092.1,405.5 1074.9,409.6 1057.4,411.9 1044.8,415.8 1033.6,421.9 1018.5,427.3 1000.0,427.8 983.0,423.6 969.4,418.5 955.2,415.8 936.9,414.8 918.4,412.0 907.9,405.5 908.2,397.2 912.0,389.7 910.4,383.2 903.3,376.0 899.9,367.9 907.9,360.9 925.1,356.8 942.6,354.5 955.2,350.6 966.4,344.5 981.5,339.1 1000.0,338.6 1017.0,342.8 1030.6,347.9 1044.8,350.6 1063.1,351.6 1081.6,354.4 1092.1,360.9 1091.8,369.2 1088.0,376.7" stroke="#39ff7a" stroke-opacity="0.82" stroke-width="1.6"/>
+<polygon points="1090.1,376.0 1097.8,383.2 1100.1,391.3 1090.4,397.9 1072.9,401.7 1056.6,404.3 1045.0,408.8 1034.0,415.2 1018.5,420.1 1000.0,419.9 983.5,415.4 969.9,410.7 955.0,408.8 936.1,408.0 918.4,404.8 909.6,397.9 910.6,389.7 913.4,382.4 909.9,376.0 902.2,368.8 899.9,360.7 909.6,354.1 927.1,350.3 943.4,347.7 955.0,343.2 966.0,336.8 981.5,331.9 1000.0,332.1 1016.5,336.6 1030.1,341.3 1045.0,343.2 1063.9,344.0 1081.6,347.2 1090.4,354.1 1089.4,362.3 1086.6,369.6" stroke="#39ff7a" stroke-opacity="0.85" stroke-width="1.6"/>
+<polygon points="1090.6,368.8 1098.6,376.1 1099.5,384.0 1088.3,390.2 1070.8,393.8 1055.7,396.7 1045.3,401.7 1034.3,408.3 1018.4,412.6 1000.0,411.6 983.9,407.0 970.3,403.0 954.7,401.7 935.6,401.0 918.9,397.4 911.7,390.2 913.1,382.1 914.6,375.1 909.4,368.8 901.4,361.5 900.5,353.6 911.7,347.4 929.2,343.8 944.3,340.9 954.7,335.9 965.7,329.3 981.6,325.0 1000.0,326.0 1016.1,330.6 1029.7,334.6 1045.3,335.9 1064.4,336.6 1081.1,340.2 1088.3,347.4 1086.9,355.5 1085.4,362.5" stroke="#39ff7a" stroke-opacity="0.88" stroke-width="1.6"/>
+<polygon points="1091.0,361.6 1099.0,368.9 1098.3,376.6 1085.9,382.4 1068.7,385.8 1055.0,389.1 1045.5,394.7 1034.4,401.3 1018.2,404.9 1000.0,403.2 984.4,398.7 970.7,395.4 954.5,394.7 935.4,393.9 919.9,389.8 914.1,382.4 915.7,374.5 915.7,367.8 909.0,361.6 901.0,354.3 901.7,346.6 914.1,340.8 931.3,337.4 945.0,334.1 954.5,328.5 965.6,321.9 981.8,318.3 1000.0,320.0 1015.6,324.5 1029.3,327.8 1045.5,328.5 1064.6,329.3 1080.1,333.4 1085.9,340.8 1084.3,348.7 1084.3,355.4" stroke="#39ff7a" stroke-opacity="0.90" stroke-width="1.6"/>
+<polygon points="1091.3,354.4 1098.8,361.7 1096.4,369.1 1083.1,374.5 1066.6,377.9 1054.4,381.6 1045.7,387.6 1034.3,394.0 1017.8,396.9 1000.0,394.7 984.9,390.3 971.1,387.8 954.3,387.6 935.5,386.7 921.4,382.1 916.9,374.5 918.3,366.9 916.7,360.6 908.7,354.4 901.2,347.1 903.6,339.7 916.9,334.3 933.4,330.9 945.6,327.2 954.3,321.2 965.7,314.8 982.2,311.9 1000.0,314.1 1015.1,318.5 1028.9,321.0 1045.7,321.2 1064.5,322.1 1078.6,326.7 1083.1,334.3 1081.7,341.9 1083.3,348.2" stroke="#39ff7a" stroke-opacity="0.92" stroke-width="1.6"/>
+<polygon points="1091.4,347.2 1098.1,354.5 1094.1,361.6 1080.0,366.6 1064.5,369.9 1053.8,374.1 1045.7,380.5 1034.1,386.5 1017.4,388.6 1000.0,386.0 985.4,382.0 971.4,380.2 954.3,380.5 936.0,379.3 923.3,374.2 920.0,366.6 920.9,359.3 917.6,353.3 908.6,347.2 901.9,339.9 905.9,332.8 920.0,327.8 935.5,324.5 946.2,320.3 954.3,313.9 965.9,307.9 982.6,305.8 1000.0,308.4 1014.6,312.4 1028.6,314.2 1045.7,313.9 1064.0,315.1 1076.7,320.2 1080.0,327.8 1079.1,335.1 1082.4,341.1" stroke="#39ff7a" stroke-opacity="0.95" stroke-width="1.6"/>
+<polygon points="1091.2,340.0 1096.8,347.2 1091.2,353.9 1076.8,358.6 1062.5,362.0 1053.3,366.7 1045.6,373.2 1033.6,378.8 1016.9,380.1 1000.0,377.3 985.8,373.8 971.7,372.7 954.4,373.2 936.8,371.6 925.7,366.2 923.2,358.6 923.3,351.7 918.4,346.0 908.8,340.0 903.2,332.8 908.8,326.1 923.2,321.4 937.5,318.0 946.7,313.3 954.4,306.8 966.4,301.2 983.1,299.9 1000.0,302.7 1014.2,306.2 1028.3,307.3 1045.6,306.8 1063.2,308.4 1074.3,313.8 1076.8,321.4 1076.7,328.3 1081.6,334.0" stroke="#39ff7a" stroke-opacity="0.97" stroke-width="1.6"/>
+<polyline points="1090.7,332.8 1094.9,339.8 1087.9,346.2 1073.5,350.6 1060.6,354.2 1052.7,359.2 1045.3,365.8 1033.0,370.8 1016.2,371.5 1000.0,368.5 986.3,365.5 971.9,365.2 954.7,365.8 938.0,363.8 928.4,358.0 926.5,350.6 925.6,344.2 919.2,338.8 909.3,332.8 905.1,325.8 912.1,319.4 926.5,315.0 939.4,311.4" stroke="#d8ffe4" stroke-width="2.4"/>
+<polyline points="939.4,311.4 947.3,306.4 954.7,299.8 967.0,294.8 983.8,294.1 1000.0,297.1 1013.7,300.1 1028.1,300.4 1045.3,299.8 1062.0,301.8 1071.6,307.6 1073.5,315.0 1074.4,321.4 1080.8,326.8 1090.7,332.8" stroke="#39ff7a" stroke-opacity="0.35" stroke-width="1.4" stroke-dasharray="4 5"/>
+<polygon points="1089.7,325.6 1092.5,332.4 1084.2,338.5 1070.2,342.6 1058.9,346.3 1052.2,351.7 1044.8,358.2 1032.1,362.7 1015.6,362.7 1000.0,359.7 986.7,357.4 972.2,357.6 955.2,358.2 939.6,355.8 931.4,349.8 929.8,342.6 927.8,336.6 920.1,331.5 910.3,325.6 907.5,318.8 915.8,312.7 929.8,308.6 941.1,304.9 947.8,299.5 955.2,293.0 967.9,288.5 984.4,288.5 1000.0,291.5 1013.3,293.8 1027.8,293.6 1044.8,293.0 1060.4,295.4 1068.6,301.4 1070.2,308.6 1072.2,314.6 1079.9,319.7" stroke="#39ff7a" stroke-opacity="0.07" stroke-width="1"/>
+<polygon points="1088.3,318.4 1089.5,325.0 1080.3,330.7 1066.9,334.6 1057.2,338.6 1051.5,344.2 1044.1,350.5 1031.1,354.3 1014.8,353.7 1000.0,350.9 987.0,349.3 972.6,350.0 955.9,350.5 941.6,347.6 934.6,341.5 933.1,334.6 929.8,329.1 921.1,324.2 911.7,318.4 910.5,311.8 919.7,306.1 933.1,302.2 942.8,298.2 948.5,292.6 955.9,286.3 968.9,282.5 985.2,283.1 1000.0,285.9 1013.0,287.5 1027.4,286.8 1044.1,286.3 1058.4,289.2 1065.4,295.3 1066.9,302.2 1070.2,307.7 1078.9,312.6" stroke="#39ff7a" stroke-opacity="0.07" stroke-width="1"/>
+<polygon points="1086.3,311.2 1086.0,317.6 1076.1,322.8 1063.8,326.7 1055.6,330.8 1050.7,336.6 1043.2,342.6 1029.9,345.7 1014.1,344.7 1000.0,342.1 987.4,341.2 973.0,342.4 956.8,342.6 943.8,339.3 937.9,333.1 936.2,326.7 931.8,321.6 922.3,317.0 913.7,311.2 914.0,304.8 923.9,299.6 936.2,295.7 944.4,291.6 949.3,285.8 956.8,279.8 970.1,276.7 985.9,277.7 1000.0,280.3 1012.6,281.2 1027.0,280.0 1043.2,279.8 1056.2,283.1 1062.1,289.3 1063.8,295.7 1068.2,300.8 1077.7,305.4" stroke="#39ff7a" stroke-opacity="0.07" stroke-width="1"/>
+<polygon points="1083.9,304.0 1082.2,310.1 1071.9,315.0 1060.7,318.7 1054.1,323.1 1049.8,328.9 1042.0,334.5 1028.5,336.9 1013.3,335.7 1000.0,333.4 987.7,333.2 973.5,334.6 958.0,334.5 946.4,330.8 941.4,324.7 939.3,318.7 933.7,314.1 923.7,309.7 916.1,304.0 917.8,297.9 928.1,293.0 939.3,289.3 945.9,284.9 950.2,279.1 958.0,273.5 971.5,271.1 986.7,272.3 1000.0,274.6 1012.3,274.8 1026.5,273.4 1042.0,273.5 1053.6,277.2 1058.6,283.3 1060.7,289.3 1066.3,293.9 1076.3,298.3" stroke="#39ff7a" stroke-opacity="0.07" stroke-width="1"/>
+<polygon points="1081.0,296.8 1077.9,302.6 1067.7,307.1 1057.8,310.8 1052.6,315.3 1048.7,321.2 1040.5,326.3 1027.1,328.0 1012.5,326.6 1000.0,324.8 988.1,325.2 974.1,326.7 959.5,326.3 949.1,322.3 944.8,316.2 942.2,310.8 935.5,306.7 925.4,302.3 919.0,296.8 922.1,291.0 932.3,286.5 942.2,282.8 947.4,278.3 951.3,272.4 959.5,267.3 972.9,265.6 987.5,267.0 1000.0,268.8 1011.9,268.4 1025.9,266.9 1040.5,267.3 1050.9,271.3 1055.2,277.4 1057.8,282.8 1064.5,286.9 1074.6,291.3" stroke="#39ff7a" stroke-opacity="0.07" stroke-width="1"/>
+<polygon points="1077.7,289.6 1073.4,295.0 1063.5,299.3 1055.1,303.0 1051.1,307.6 1047.4,313.3 1038.8,317.8 1025.5,319.0 1011.7,317.5 1000.0,316.3 988.4,317.2 974.8,318.7 961.2,317.8 952.1,313.6 948.3,307.8 944.9,303.0 937.4,299.2 927.4,295.0 922.3,289.6 926.6,284.2 936.5,279.9 944.9,276.2 948.9,271.6 952.6,265.9 961.2,261.4 974.5,260.2 988.3,261.7 1000.0,262.9 1011.6,262.0 1025.2,260.5 1038.8,261.4 1047.9,265.6 1051.7,271.4 1055.1,276.2 1062.6,280.0 1072.6,284.2" stroke="#39ff7a" stroke-opacity="0.07" stroke-width="1"/>
+<polygon points="1073.9,282.4 1068.8,287.5 1059.4,291.5 1052.4,295.1 1049.5,299.8 1045.8,305.3 1037.0,309.3 1023.9,310.0 1011.0,308.5 1000.0,307.8 988.8,309.1 975.6,310.5 963.0,309.3 955.1,304.9 951.6,299.5 947.6,295.1 939.3,291.7 929.8,287.6 926.1,282.4 931.2,277.3 940.6,273.3 947.6,269.7 950.5,265.0 954.2,259.5 963.0,255.5 976.1,254.8 989.0,256.3 1000.0,257.0 1011.2,255.7 1024.4,254.3 1037.0,255.5 1044.9,259.9 1048.4,265.3 1052.4,269.7 1060.7,273.1 1070.2,277.2" stroke="#39ff7a" stroke-opacity="0.07" stroke-width="1"/>
+</g>
+<g filter="url(#glow)">
+<line x1="939" y1="241" x2="939" y2="161" stroke="#1d6b3c" stroke-width="6"/>
+<rect x="909" y="241" width="60" height="40" rx="5" fill="#04170c" stroke="#39ff7a" stroke-width="2"/>
+<rect x="925" y="281" width="28" height="12" fill="#04170c" stroke="#39ff7a" stroke-width="2"/>
+<polygon points="930,293 948,293 939,307" fill="#39ff7a"/>
+</g>
+<circle cx="939" cy="311" r="9" fill="#e8fff0" filter="url(#bigglow)"/>
+<text x="979" y="267" font-size="14" fill="#7dffaa" fill-opacity="0.9" filter="url(#glow)">LAYER 27/34</text>
+<rect width="1280" height="640" fill="url(#vignette)"/>
+<rect width="1280" height="640" fill="url(#scan)" fill-opacity="0.35"/>
+</svg>

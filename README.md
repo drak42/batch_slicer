@@ -1,5 +1,7 @@
 # BatchSlicer
 
+![BatchSlicer: G-code rain, a green-screen console slicing a kit and sending it to the printer, and a part printing layer by layer](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/banner.png)
+
 [![PyPI](https://img.shields.io/pypi/v/batchslicer)](https://pypi.org/project/batchslicer/)
 [![Python](https://img.shields.io/pypi/pyversions/batchslicer)](https://pypi.org/project/batchslicer/)
 [![CI](https://github.com/drak42/batch_slicer/actions/workflows/ci.yml/badge.svg)](https://github.com/drak42/batch_slicer/actions/workflows/ci.yml)

@@ -8,6 +8,9 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ### Documentation
 
+- A retro banner (G-code rain, a green-screen console, a part printing) at the
+  top of the README and the User Guide; its source and generator are in
+  `docs/images/`.
 - A step-by-step User Guide (`docs/UserGuide.md`), linked from the README.
 - The README's interactive walkthrough now follows the real order of the
   questions (the output folder comes last) and includes the multi-colour

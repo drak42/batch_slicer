@@ -1,5 +1,7 @@
 # BatchSlicer User Guide
 
+![BatchSlicer: G-code rain, a green-screen console slicing a kit and sending it to the printer, and a part printing layer by layer](images/banner.png)
+
 This guide takes you from installing BatchSlicer to slicing whole folders,
 printing in several colours and sending G-code to your printer, one step at a
 time. Every step builds on the one before, but you can stop after any of them.
