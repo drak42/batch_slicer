@@ -6,6 +6,11 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A zip file's name is shown in progress and dry-run messages ("Slicing 3
+  model files from boat-kit.zip"), not its temporary folder.
+
 ### Documentation
 
 - The README's "How it works" and the startup sequence (`docs/Startup.md`)

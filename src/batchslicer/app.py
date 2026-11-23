@@ -1228,7 +1228,7 @@ def _dry_run(
             Work(slice_input.models)
         ]
         total = len(slice_input.models)
-        print(f"Would slice {total} model file{'s' if total != 1 else ''} from {slice_input.root}:")
+        print(f"Would slice {total} model file{'s' if total != 1 else ''} from {_shown(slice_input.root)}:")
         for item in work:
             for line in _planned(item, slice_input, target, options, loaded):
                 print(f"  {line}")
@@ -1445,6 +1445,12 @@ def _input_from(path: Path, config: Config, logger: logging.Logger) -> SliceInpu
     return input_from_path(folder)
 
 
+def _shown(root: Path) -> Path | str:
+    """Return the input as shown to the user: the zip's name, not its temporary folder."""
+    archive = _UNPACKED.get(root)
+    return archive.name if archive is not None else root
+
+
 def _remove_unpacked(folder: Path | None = None) -> None:
     """Remove the temporary folder of one unpacked zip, or of all of them."""
     for unpacked in [folder] if folder is not None else list(_UNPACKED):
@@ -1503,7 +1509,7 @@ def _slice_folder(
     each model is shown as it finishes. The batch report is kept up to date.
     """
     total = len(slice_input.models)
-    print(f"Slicing {total} model file{'s' if total != 1 else ''} from {slice_input.root}...")
+    print(f"Slicing {total} model file{'s' if total != 1 else ''} from {_shown(slice_input.root)}...")
     finished: list[SliceOutcome] = []
     last_report = time.monotonic()
 

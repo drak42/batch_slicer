@@ -2001,6 +2001,7 @@ def test_a_zip_input_is_unpacked_sliced_and_cleaned_up(
 
     def slice_folder(service: object, slice_input: object, *args: object) -> BatchOutcome:
         seen.append(sorted(model.name for model in slice_input.models))  # type: ignore[attr-defined]
+        print(f"Slicing from {app._shown(slice_input.root)}")  # type: ignore[attr-defined]
         return BatchOutcome(batch_directory=tmp_path / "out" / "kit", outcomes=(), planned=2)
 
     monkeypatch.setattr(app, "_slice_folder", slice_folder)
@@ -2009,6 +2010,8 @@ def test_a_zip_input_is_unpacked_sliced_and_cleaned_up(
     assert app.main(["--slicer", "bambu", "--input", str(kit), "--output", str(tmp_path / "out"), "--no-prompt"]) == 0
 
     assert seen == [["a.stl", "b.stl"]]
-    assert "Unpacked kit.zip." in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "Unpacked kit.zip." in out
+    assert "unzipped" not in out  # the temporary folder is never shown
     assert ProfileStore(store).get("last").input == kit
     assert not any((data / "unzipped").iterdir())
