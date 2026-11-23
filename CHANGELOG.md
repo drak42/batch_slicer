@@ -6,6 +6,12 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Documentation
+
+- `docs/demo/demo.sh` runs a short, repeatable demo for recording (a dry run,
+  a multi-colour project matched to the CFS, a kit zip on one plate) in its
+  own `~/demo` folder, without touching your configuration.
+
 ### Fixed
 
 - A zip file's name is shown in progress and dry-run messages ("Slicing 3
