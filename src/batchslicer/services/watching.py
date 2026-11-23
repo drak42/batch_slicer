@@ -1,6 +1,6 @@
 """Watch a folder for models to slice.
 
-Each model file or folder put directly in the watched folder is one drop. A
+Each model file, zip file or folder put directly in the watched folder is one drop. A
 drop is ready once it has stopped changing between two looks, so a file still
 being copied or downloaded is left alone until it is complete. After slicing,
 the drop is moved into the watched folder's ``sliced`` or ``failed``
@@ -22,6 +22,9 @@ DEFAULT_INTERVAL_SECONDS = 5.0
 
 MODEL_SUFFIXES = frozenset({".stl", ".3mf", ".obj"})
 """File types that make a drop worth slicing; the same as ``cli.file_prompt.MODEL_SUFFIXES``."""
+
+_ARCHIVE_SUFFIXES = frozenset({".zip"})
+"""Archives (a downloaded kit) are drops too; whoever slices them unpacks them."""
 
 _PARTIAL_SUFFIXES = frozenset({".part", ".partial", ".crdownload", ".download", ".tmp", ".filepart"})
 """Files browsers and copy tools write while a download or copy is unfinished."""
@@ -102,7 +105,8 @@ class WatchFolder:
         for entry in entries:
             if entry.name.startswith(".") or entry in (self.sliced, self.failed):
                 continue
-            if entry.is_dir() or (entry.is_file() and entry.suffix.casefold() in MODEL_SUFFIXES):
+            suffix = entry.suffix.casefold()
+            if entry.is_dir() or (entry.is_file() and suffix in MODEL_SUFFIXES | _ARCHIVE_SUFFIXES):
                 yield entry
 
 

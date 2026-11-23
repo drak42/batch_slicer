@@ -59,6 +59,7 @@ docstring says more, including what it intentionally does not do.
 | `services/thumbnails.py` | draw preview pictures from G-code toolpaths and insert them as PNG blocks |
 | `services/filament_matching.py` | match multi-colour projects to the filaments loaded in the printer (`--loaded-filaments`) and write their filament files |
 | `services/sending.py` | plan where each G-code file goes on the printer and send them (`--send`, `--start`) |
+| `services/archives.py` | unpack the models of a zip file (`--input kit.zip`, zip drops) safely: model files only, no paths outside the folder, size limits |
 | `services/watching.py` | watch a folder (`--watch`): find drops that have finished copying and move them to `sliced` or `failed` once handled |
 
 ## backends

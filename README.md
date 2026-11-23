@@ -480,7 +480,7 @@ asking; anything you leave out is still asked for, unless you add
 | `--filament NAME` | filament preset name (must suit the printer); repeat it for the slots of a multi-colour print, slot 1 first (see [Multi-colour projects](#multi-colour-projects)) |
 | `--slot PATTERN=SLOT` | print STL, OBJ and STEP models matching PATTERN with filament SLOT: a number, or with `--loaded-filaments` a loaded filament such as `1B` or `external`; repeatable (see [Colours for STL files](#colours-for-stl-files)) |
 | `--process NAME` | process (print settings) preset name (must suit the printer) |
-| `--input PATH` | a model file, or a folder: every model in it and its subfolders is sliced, without asking for confirmation |
+| `--input PATH` | a model file, a folder (every model in it and its subfolders is sliced, without asking for confirmation), or a zip file such as a downloaded kit (its models are unpacked to a temporary folder and sliced like a folder; `--last` remembers the zip) |
 | `--output PATH` | output folder; created if missing; defaults to the configured `output` folder |
 | `--no-prompt` | never ask anything; a missing choice is an error that names the option to add |
 | `--orient MODE` | the slicer's auto-orient: `off` (default), `retry` (slice a model that fails once more with auto-orient) or `always` (auto-orient every model; this may rotate parts saved the right way up). Not available for Creality Print |
@@ -818,10 +818,17 @@ batchslicer --profile k2-pla --watch
 batchslicer --profile k2-pla --input ~/drop --plates --send k2plus --watch
 ```
 
-- **What counts as a drop:** each model file (STL, 3MF, OBJ) or folder put
-  directly in the watched folder. A folder is sliced like `--input FOLDER`,
-  subfolders and all, so `--plates` and `--exclude` work as usual. Other
-  files are left alone.
+- **What counts as a drop:** each model file (STL, 3MF, OBJ), zip file or
+  folder put directly in the watched folder. A folder is sliced like
+  `--input FOLDER`, subfolders and all, so `--plates` and `--exclude` work as
+  usual. Other files are left alone.
+- **Zip files** (a kit downloaded from a model site) are unpacked into a
+  temporary folder and sliced like a folder; the zip then moves to `sliced/`
+  or `failed/`. Only the models are taken out (pictures, instructions and Mac
+  junk stay behind), and folders every model shares are left out, so
+  `kit.zip` with `kit/files/part.stl` gives `kit/part.gcode`. Archives with
+  paths reaching outside their folder, or that would unpack to an unusual
+  size, are refused; one without models goes to `failed/` with the reason.
 - **When it is sliced:** once it has stopped changing. BatchSlicer looks every
   5 seconds, and slices a drop when two looks in a row find it unchanged, so
   a large file or folder still being copied is not sliced half-way. Folders

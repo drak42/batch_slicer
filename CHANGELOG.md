@@ -6,6 +6,15 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Zip files: `--input kit.zip` and zip files dropped into the watch folder
+  are unpacked into a temporary folder and sliced like a folder (a kit
+  downloaded from a model site no longer needs unpacking first). Only model
+  files are taken out; folders every model shares are left out; archives with
+  paths outside their folder or an unusual size are refused; a zip without
+  models fails with the reason. `--last` remembers the zip.
+
 ### Documentation
 
 - Confirmed on a Creality K2 Plus: a single-colour part sliced for one CFS

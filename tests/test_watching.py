@@ -166,3 +166,16 @@ def test_a_drop_interrupted_while_slicing_stays_put(tmp_path: Path) -> None:
 
     assert summary == WatchSummary()
     assert cube.is_file()
+
+
+def test_zip_files_are_drops(tmp_path: Path) -> None:
+    """A downloaded kit dropped as a zip file is a drop; other files are not."""
+    import zipfile
+
+    folder = WatchFolder(tmp_path)
+    with zipfile.ZipFile(tmp_path / "kit.zip", "w") as archive:
+        archive.writestr("kit/a.stl", "solid")
+    _write(tmp_path / "notes.txt")
+
+    folder.ready()
+    assert folder.ready() == [tmp_path / "kit.zip"]

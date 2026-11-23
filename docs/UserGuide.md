@@ -152,6 +152,10 @@ batchslicer --profile k2-petg --input ~/BatchSlicer/incoming/rc-boat
 
 Interactively, choose *Every model in a folder* in step 4.
 
+**Zip files work too.** A kit downloaded from a model site can be sliced
+without unpacking it yourself: `--input ~/Downloads/rc-boat.zip`. Only its
+models are taken out, into a temporary folder that is removed afterwards.
+
 **Kits on plates.** A kit of small parts usually prints best together. With
 `--plates`, the loose models (STL, OBJ, STEP) of each folder are arranged on
 as few plates as they fit, one G-code file per plate:
@@ -293,8 +297,10 @@ Good to know:
 
 ## 9. Slice whatever you drop into a folder
 
-With `--watch`, BatchSlicer keeps running and slices every model or folder you
-drop into the incoming folder, once it has finished copying:
+With `--watch`, BatchSlicer keeps running and slices every model, folder or
+zip file you drop into the incoming folder, once it has finished copying. A
+kit downloaded as a zip can go straight in: its models are unpacked and sliced
+like a folder.
 
 ```bash
 batchslicer --profile k2-petg --plates --send k2plus --watch

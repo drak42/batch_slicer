@@ -1974,3 +1974,41 @@ def test_dry_run_cannot_watch(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
         app.main(["--dry-run", "--watch"])
     assert "--dry-run shows one run" in capsys.readouterr().err
+
+
+def test_a_zip_input_is_unpacked_sliced_and_cleaned_up(
+    startup_mocks: tuple[Mock, Mock, Mock, Mock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--input kit.zip slices the unpacked models, remembers the zip, and removes the temporary folder."""
+    import zipfile
+
+    from batchslicer.infrastructure.profiles import ProfileStore
+
+    kit = tmp_path / "kit.zip"
+    with zipfile.ZipFile(kit, "w") as archive:
+        archive.writestr("kit/files/a.stl", "solid a")
+        archive.writestr("kit/files/b.stl", "solid b")
+    store = _store_with(monkeypatch, tmp_path)
+    data = tmp_path / "data"
+    original = app.get_config.return_value.get_path.side_effect
+    app.get_config.return_value.get_path.side_effect = (
+        lambda section, key: data if (section, key) == ("paths", "data") else original(section, key)
+    )
+    seen: list[list[str]] = []
+
+    def slice_folder(service: object, slice_input: object, *args: object) -> BatchOutcome:
+        seen.append(sorted(model.name for model in slice_input.models))  # type: ignore[attr-defined]
+        return BatchOutcome(batch_directory=tmp_path / "out" / "kit", outcomes=(), planned=2)
+
+    monkeypatch.setattr(app, "_slice_folder", slice_folder)
+    monkeypatch.setattr(app, "output_from_path", lambda path: path)
+
+    assert app.main(["--slicer", "bambu", "--input", str(kit), "--output", str(tmp_path / "out"), "--no-prompt"]) == 0
+
+    assert seen == [["a.stl", "b.stl"]]
+    assert "Unpacked kit.zip." in capsys.readouterr().out
+    assert ProfileStore(store).get("last").input == kit
+    assert not any((data / "unzipped").iterdir())

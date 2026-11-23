@@ -17,8 +17,10 @@ one line with the full details written to the log. Exit statuses: 0 success,
 import logging
 import os
 import re
+import shutil
 import signal
 import sys
+import tempfile
 import time
 import traceback
 from collections.abc import Sequence
@@ -69,6 +71,7 @@ from batchslicer.domain.profiles import LAST_RUN, Profile, Target, combine, is_v
 from batchslicer.infrastructure.printer_api import PrinterError
 from batchslicer.infrastructure.printer_clients import client_for
 from batchslicer.infrastructure.profiles import ProfileError, ProfileStore
+from batchslicer.services.archives import ArchiveError, extract_models, is_archive
 from batchslicer.services.filament_matching import FilamentMatcher, build_matcher
 from batchslicer.services.gcode_stats import GcodeStats, format_duration
 from batchslicer.services.report import write_report
@@ -132,6 +135,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except Exception as error:  # noqa: BLE001 - last-resort report for any bug
         return _report_unexpected(error)
     finally:
+        _remove_unpacked()
         _restore_terminate(previous)
 
 
@@ -221,7 +225,7 @@ def _run(options: RunOptions) -> int:
                 jobs,
                 from_profile,
             )
-        slice_input = _apply_exclude(_select_input(options, config), options.exclude or ())
+        slice_input = _apply_exclude(_select_input(options, config, logger), options.exclude or ())
         if options.plates is None and not from_profile and not options.no_prompt:
             options = replace(options, plates=_ask_plates(targets, slice_input, profiles))
         if options.copies is None and not from_profile and not options.no_prompt:
@@ -266,6 +270,7 @@ def _run(options: RunOptions) -> int:
             output_directory,
         )
         chosen = slice_input.root if slice_input.is_folder else slice_input.models[0]
+        chosen = _UNPACKED.get(chosen, chosen)  # remember the zip, not its temporary folder
         _remember_choices(profiles, options, targets, chosen, output_directory, logger)
         return _slice_targets(
             targets,
@@ -733,7 +738,7 @@ def _watch(
     print("")
     print(f"Watching {folder} for models; output to {output_directory}.")
     print(
-        f"Put a model file or a folder of models in it. When it has finished copying it is "
+        f"Put a model file, a zip file or a folder of models in it. When it has finished copying it is "
         f"sliced, then moved to {watched.sliced.name}/ (or {watched.failed.name}/ if any "
         f"model failed). {_how_to_stop()}",
         flush=True,
@@ -747,7 +752,7 @@ def _watch(
         print(f"=== {drop.name} ===", flush=True)
         logger.info("Slicing %s from the watched folder", drop)
         try:
-            slice_input = _apply_exclude(input_from_path(drop), options.exclude or ())
+            slice_input = _apply_exclude(_input_from(drop, config, logger), options.exclude or ())
             single = not slice_input.is_folder
             copyable = single and slice_input.models[0].suffix.casefold() in COPYABLE_SUFFIXES
             drop_options = replace(
@@ -763,6 +768,8 @@ def _watch(
             _error(f"Could not slice {drop.name}: {error}")
             logger.error("Could not slice %s: %s", drop, error)
             return False
+        finally:
+            _remove_unpacked()  # a dropped zip's temporary folder goes as soon as it is done
         if status == EXIT_INTERRUPTED:
             raise KeyboardInterrupt
         return status == EXIT_SUCCESS
@@ -1411,10 +1418,45 @@ def _unique_folder_names(targets: list[_ResolvedTarget]) -> list[str]:
     return names
 
 
-def _select_input(options: RunOptions, config: Config) -> SliceInput:
-    """Return the models given with --input, or ask what to slice."""
+_UNPACKED: dict[Path, Path] = {}
+"""Temporary folders holding unpacked zip files, and the zip each came from."""
+
+
+def _input_from(path: Path, config: Config, logger: logging.Logger) -> SliceInput:
+    """Return the models in ``path``: a model file, a folder, or a zip file (unpacked first).
+
+    A zip is unpacked into a temporary folder in BatchSlicer's data folder,
+    removed again by :func:`_remove_unpacked`.
+    """
+    if not is_archive(path.expanduser()):
+        return input_from_path(path)
+    path = path.expanduser().absolute()
+    work = config.get_path("paths", "data") / "unzipped"
+    work.mkdir(parents=True, exist_ok=True)
+    temporary = Path(tempfile.mkdtemp(prefix="unzip-", dir=work))
+    try:
+        folder = extract_models(path, temporary)
+    except ArchiveError as error:
+        shutil.rmtree(temporary, ignore_errors=True)
+        raise SlicerSelectionError(str(error)) from error
+    _UNPACKED[folder] = path
+    logger.info("Unpacked the models of %s into %s", path, folder)
+    print(f"Unpacked {path.name}.")
+    return input_from_path(folder)
+
+
+def _remove_unpacked(folder: Path | None = None) -> None:
+    """Remove the temporary folder of one unpacked zip, or of all of them."""
+    for unpacked in [folder] if folder is not None else list(_UNPACKED):
+        if unpacked in _UNPACKED:
+            shutil.rmtree(unpacked.parent, ignore_errors=True)
+            del _UNPACKED[unpacked]
+
+
+def _select_input(options: RunOptions, config: Config, logger: logging.Logger) -> SliceInput:
+    """Return the models given with --input (a zip file is unpacked), or ask what to slice."""
     if options.input is not None:
-        return input_from_path(options.input)
+        return _input_from(options.input, config, logger)
     if options.no_prompt:
         raise SlicerSelectionError("--input is required when --no-prompt is used.")
     return prompt_for_input(config.get_path("paths", "incoming"))
