@@ -123,6 +123,11 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - `--dry-run` shows what a run would do; a terminate request stops
   BatchSlicer like Ctrl+C.
 
+### 0.16.0 (2026-11-24): zip files
+
+- `--input kit.zip` and zips dropped into the watch folder are unpacked
+  safely and sliced like a folder.
+
 ## Next
 
 - Multi-colour: the Bambu AMS.
