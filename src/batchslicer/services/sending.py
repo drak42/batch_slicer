@@ -19,6 +19,7 @@ from pathlib import Path, PurePosixPath
 
 from batchslicer.domain.printers import PrinterHost
 from batchslicer.infrastructure.printer_api import PrinterClient, PrinterError, PrinterStatus
+from batchslicer.services.results import RunResult
 from batchslicer.services.slicing import SliceOutcome
 
 
@@ -103,7 +104,42 @@ def plan_uploads(outcomes: Sequence[SliceOutcome], base: Path) -> list[Upload]:
             short = Upload(gcode, _posix(parent))
             full = Upload(gcode, _posix(parent / job.name) if parent.parts and in_job else _posix(parent))
             uploads.append((short, full))
+    return _without_clashes(uploads)
 
+
+def plan_result_uploads(result: RunResult) -> list[Upload]:
+    """Return the uploads for a finished run's G-code, laid out as :func:`plan_uploads` lays out a run.
+
+    A single model's G-code (directly in its run folder) goes to the top of
+    the printer's G-code folder; a batch's goes into a folder named after the
+    run, keeping its subfolders but not each model's own folder.
+    """
+    top = PurePosixPath(result.name).name
+    single = len(result.rows) == 1 and all("/" not in name for name in result.gcode)
+    uploads: list[tuple[Upload, Upload]] = []
+    for row in result.rows:
+        if not row.success:
+            continue
+        for name in row.gcode:
+            relative = PurePosixPath(name)
+            local = result.folder.joinpath(*relative.parts)
+            if single:
+                short = full = Upload(local, "")
+            else:
+                job = relative.parent
+                short = Upload(local, _joined(top, job.parent) if job.parts else top)
+                full = Upload(local, _joined(top, job))
+            uploads.append((short, full))
+    return _without_clashes(uploads)
+
+
+def _joined(top: str, folder: PurePosixPath) -> str:
+    """Return ``top/folder``, or ``top`` when ``folder`` is empty."""
+    return str(PurePosixPath(top, folder)) if folder.parts and str(folder) != "." else top
+
+
+def _without_clashes(uploads: Sequence[tuple[Upload, Upload]]) -> list[Upload]:
+    """Return each short upload, or its full one where two short ones would land on the same path."""
     counts: dict[str, int] = {}
     for short, _ in uploads:
         key = short.remote_path.casefold()
