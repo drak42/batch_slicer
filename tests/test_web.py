@@ -322,7 +322,7 @@ def test_the_about_page_and_doctor(folders: tuple[Path, Path], tmp_path: Path, m
     client = _with_service(folders, tmp_path)
     about = client.get("/about").text
     assert "batchslicer web --profile &#39;k2 pla&#39;" in about
-    assert str(tmp_path / "config.yaml") in about and "Service ender" in about
+    assert web_app._shown(tmp_path / "config.yaml") in about and "Service ender" in about
 
     assert client.post("/about/doctor").status_code == 403
     report = client.post("/about/doctor", headers={"x-batchslicer-token": _token(client)}).text
@@ -398,7 +398,7 @@ def test_web_serves_the_page_while_the_watch_runs(tmp_path: Path, monkeypatch: p
     lines: list[str] = []
     assert run_web(options, run=run, write=lines.append) == 0
     assert seen[:3] == ["--profile", "k2", "--watch"]
-    assert str(tmp_path / "in") in seen[3]
+    assert web_app._shown(tmp_path / "in") in seen[3]
     assert 'hx-get="/printers/k2plus"' in seen[4]  # the configured printers are on the page
     assert lines == [f"Web page: http://127.0.0.1:{port}  (on this computer only)"]
     with pytest.raises(OSError):
@@ -421,4 +421,4 @@ def test_a_port_in_use_is_explained(tmp_path: Path) -> None:
 def test_paths_in_the_home_folder_are_shown_short(folders: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch) -> None:
     """Folders inside the home folder read as ~/..."""
     monkeypatch.setattr(Path, "home", lambda: folders[0].parent)
-    assert "<code>~/in</code>" in _client(folders).get("/queue").text
+    assert f"<code>{Path('~', 'in')}</code>" in _client(folders).get("/queue").text
