@@ -155,6 +155,17 @@ def find_data_directory(
     return versions[0] if versions else None
 
 
+def program_version(program: Path) -> tuple[int, ...]:
+    """Return a slicer program's version as detection reads it, or () if unknown.
+
+    Used when the slicer's own help text gives no version: Windows slicers are
+    window programs whose command-line help never reaches BatchSlicer.
+    """
+    if is_windows():
+        return _windows_installation(program).version
+    return _installation(program).version
+
+
 def _windows_programs(
     signature: _SlicerSignature, home: Path, environ: Mapping[str, str]
 ) -> Iterable[Path]:

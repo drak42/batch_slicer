@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeAlias
 
+from batchslicer.backends.detection import program_version
 from batchslicer.backends.slicers import ORCASLICER, SlicerDefinition
 from batchslicer.core.config import Config, get_config
 from batchslicer.core.logging import get_logger
@@ -184,7 +185,10 @@ class OrcaBackend:
         """Run OrcaSlicer with its general help option."""
         result = self._run_in_scratch_directory(self.build_help_command())
         if not self._version_known and result.success:
-            self._version = parse_version(result.stdout + "\n" + result.stderr)
+            self._version = parse_version(result.stdout + "\n" + result.stderr) or (
+                # Windows slicers are window programs: their help text never arrives.
+                program_version(self._config.get_program(self._slicer.key)) or None
+            )
             self._version_known = True
         return result
 
