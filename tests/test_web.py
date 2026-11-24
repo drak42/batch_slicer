@@ -17,10 +17,11 @@ from starlette.testclient import TestClient  # noqa: E402
 from batchslicer.cli import web as web_command  # noqa: E402
 from batchslicer.cli.arguments import parse_arguments  # noqa: E402
 from batchslicer.cli.web import WebOptions, run_web  # noqa: E402
+from batchslicer.domain.printers import PrinterHost  # noqa: E402
 from batchslicer.services.thumbnails import add_thumbnails  # noqa: E402
 from batchslicer.services.watch_status import StatusWriter  # noqa: E402
 from batchslicer.web.app import WebSettings, create_app  # noqa: E402
-from conftest import write_config  # noqa: E402
+from conftest import FakeMoonraker, write_config  # noqa: E402
 
 _GCODE = "\n".join(
     ["; HEADER_BLOCK_START", "; HEADER_BLOCK_END", "M83", ";TYPE:Outer wall"]
@@ -201,6 +202,81 @@ def test_a_run_downloads_as_a_zip(folders: tuple[Path, Path]) -> None:
     assert _client(folders).get("/zip/../in").status_code == 404
 
 
+# --- printers and sending ------------------------------------------------------
+
+
+def _printing_client(folders: tuple[Path, Path], fake: FakeMoonraker | None) -> TestClient:
+    watched, output = folders
+    printers = {"k2plus": PrinterHost("k2plus", fake.url)} if fake is not None else {}
+    app = create_app(WebSettings(watched=watched, output=output, printers=printers))
+    return TestClient(app, base_url="http://127.0.0.1:8765")
+
+
+def test_the_printers_page_shows_each_printer_and_its_cfs(
+    folders: tuple[Path, Path], fake_moonraker: FakeMoonraker
+) -> None:
+    """Each card asks its printer: state, software, and every loaded filament with a swatch."""
+    from test_filaments import K2_STATUS
+
+    fake_moonraker.objects = K2_STATUS
+    client = _printing_client(folders, fake_moonraker)
+    page = client.get("/printers")
+    assert page.status_code == 200 and 'hx-get="/printers/k2plus"' in page.text
+
+    card = client.get("/printers/k2plus").text
+    assert "ready" in card
+    assert card.count('class="swatch"') == 3
+    assert 'fill="#' in card
+    assert client.get("/printers/unknown").status_code == 404
+
+
+def test_a_printer_that_does_not_answer_says_so(folders: tuple[Path, Path]) -> None:
+    """An address nothing listens on is reported, not an error page."""
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    watched, output = folders
+    app = create_app(WebSettings(watched=watched, output=output,
+                                 printers={"gone": PrinterHost("gone", f"http://127.0.0.1:{port}")}))
+    card = TestClient(app, base_url="http://127.0.0.1:8765").get("/printers/gone")
+    assert card.status_code == 200 and "Not answering" in card.text
+
+
+def test_without_printers_the_page_says_how_to_add_them(folders: tuple[Path, Path]) -> None:
+    """No printers section: the printers page and the result page explain."""
+    client = _printing_client(folders, None)
+    assert "No printers are configured" in client.get("/printers").text
+    result = client.get("/results/bracket%20set-20261124-100000").text
+    assert "add your printers" in result and "<select" not in result
+
+
+def test_a_run_is_sent_to_a_printer(folders: tuple[Path, Path], fake_moonraker: FakeMoonraker) -> None:
+    """The run's G-code goes into a folder named after it; nothing is started."""
+    client = _printing_client(folders, fake_moonraker)
+    assert '<option value="k2plus">' in client.get("/results/bracket%20set-20261124-100000").text
+
+    answer = client.post("/send", data={"run": "bracket set-20261124-100000", "printer": "k2plus"},
+                         headers={"x-batchslicer-token": _token(client)})
+
+    assert answer.status_code == 200
+    assert "Sent 1 of 1 file" in answer.text
+    assert list(fake_moonraker.files) == ["bracket set-20261124-100000/bracket.gcode"]
+    assert all(form.get("print") != "true" for form in fake_moonraker.forms)
+
+
+def test_sending_needs_the_page_and_a_configured_printer(
+    folders: tuple[Path, Path], fake_moonraker: FakeMoonraker
+) -> None:
+    """Without the token nothing is sent; unknown printers and runs are refused."""
+    client = _printing_client(folders, fake_moonraker)
+    run = "bracket set-20261124-100000"
+    assert client.post("/send", data={"run": run, "printer": "k2plus"}).status_code == 403
+    token = {"x-batchslicer-token": _token(client)}
+    assert client.post("/send", data={"run": run, "printer": "other"}, headers=token).status_code == 400
+    assert client.post("/send", data={"run": "../x", "printer": "k2plus"}, headers=token).status_code == 400
+    assert fake_moonraker.files == {}
+
+
 # --- batchslicer web -----------------------------------------------------------
 
 
@@ -242,12 +318,16 @@ def _free_port() -> int:
 def test_web_serves_the_page_while_the_watch_runs(tmp_path: Path) -> None:
     """The page answers on 127.0.0.1 while the watch runs, and stops with it."""
     write_config(tmp_path / "bs", {"paths": {"incoming": tmp_path / "in", "output": tmp_path / "out"}})
+    config_file = tmp_path / "bs" / "config.yaml"
+    config_file.write_text(config_file.read_text() + "printers:\n  k2plus:\n    url: http://192.0.2.1:7125\n")
     port = _free_port()
     seen: list[str] = []
 
     def run(arguments: Sequence[str]) -> int:
         seen.extend(arguments)
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/queue", timeout=10) as response:
+            seen.append(response.read().decode())
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/printers", timeout=10) as response:
             seen.append(response.read().decode())
         return 0
 
@@ -256,6 +336,7 @@ def test_web_serves_the_page_while_the_watch_runs(tmp_path: Path) -> None:
     assert run_web(options, run=run, write=lines.append) == 0
     assert seen[:3] == ["--profile", "k2", "--watch"]
     assert str(tmp_path / "in") in seen[3]
+    assert 'hx-get="/printers/k2plus"' in seen[4]  # the configured printers are on the page
     assert lines == [f"Web page: http://127.0.0.1:{port}  (on this computer only)"]
     with pytest.raises(OSError):
         urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2)

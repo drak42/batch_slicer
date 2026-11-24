@@ -9,21 +9,27 @@ The page never slices; the watcher does.
 
 Uploads go into the watched folder through :mod:`batchslicer.services.uploads`;
 G-code and reports can be downloaded one by one or a run at a time as a ZIP.
+The printers page shows whether each configured printer answers and what is
+loaded in its CFS; a run's G-code can be sent to a configured printer, laid
+out as ``--send`` lays it out (:mod:`batchslicer.services.sending`). The page
+never starts a print.
 Paths never come from the browser unchecked: uploads only ever land in the
 watched folder, and downloads only come from the output folder.
 
 It answers only to the host names ``localhost`` and ``127.0.0.1``, so a
 website cannot reach it by pointing its own name at this computer. Requests
-that change something (uploads) must carry the page's own token and come
+that change something (uploads, sending) must carry the page's own token and come
 from the page itself, so another website open in the same browser cannot
 send them.
 """
 
+import logging
+import re
 import secrets
 import tempfile
 import time
 import urllib.parse
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
@@ -40,6 +46,9 @@ from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from batchslicer.domain.printers import PrinterHost
+from batchslicer.infrastructure.printer_api import PrinterError
+from batchslicer.infrastructure.printer_clients import client_for
 from batchslicer.services.results import (
     RunResult,
     downloadable,
@@ -48,6 +57,7 @@ from batchslicer.services.results import (
     inside,
     write_zip,
 )
+from batchslicer.services.sending import SendingService, SendOutcome, plan_result_uploads
 from batchslicer.services.thumbnails import read_preview
 from batchslicer.services.uploads import (
     MAX_FILES,
@@ -65,6 +75,10 @@ from batchslicer.version import __version__
 ALLOWED_HOSTS = ("localhost", "127.0.0.1")
 REFRESH_SECONDS = 3
 TOKEN_HEADER = "x-batchslicer-token"
+PRINTER_TIMEOUT_SECONDS = 5.0
+"""How long the printers page waits for a printer to answer."""
+
+PRINTER_REFRESH_SECONDS = 10
 _FORM_OVERHEAD_BYTES = 16 * 1024 * 1024
 """Room in a request for the form's own text around the files."""
 _HERE = Path(__file__).parent
@@ -90,6 +104,9 @@ class WebSettings:
     output: Path
     """The output folder, used until the watcher says where its output goes."""
 
+    printers: dict[str, PrinterHost] = field(default_factory=dict)
+    """The configured printers (the configuration's ``printers`` section), by name."""
+
 
 def create_app(settings: WebSettings) -> Starlette:
     """Return the web application for ``settings``."""
@@ -103,8 +120,11 @@ def create_app(settings: WebSettings) -> Starlette:
         token=token,
         max_upload_mb=MAX_UPLOAD_BYTES // 1024**2,
         max_upload=describe_size(MAX_UPLOAD_BYTES),
+        printers=settings.printers,
+        printer_refresh=PRINTER_REFRESH_SECONDS,
     )
-    templates.env.filters.update(when=_when, grams=_grams, url_path=_url_path)
+    logger = logging.getLogger("batchslicer")
+    templates.env.filters.update(when=_when, grams=_grams, url_path=_url_path, colour=_colour)
 
     def output_folder(status: WatchStatus | None) -> Path:
         return Path(status.output) if status is not None and status.output else settings.output
@@ -205,6 +225,38 @@ def create_app(settings: WebSettings) -> Starlette:
                 return _error(f"Could not store the upload: {error}", 500)
         return JSONResponse({"added": result.added, "skipped": result.skipped})
 
+    async def printers(request: Request) -> Response:
+        return templates.TemplateResponse(request, "printers.html", {})
+
+    async def printer(request: Request) -> Response:
+        """One printer's state and the filaments loaded in its CFS (asked when the card loads)."""
+        host = settings.printers.get(request.path_params["name"])
+        if host is None:
+            return Response("Not found", status_code=404, media_type="text/plain")
+        return templates.TemplateResponse(request, "_printer.html", await run_in_threadpool(_ask_printer, host))
+
+    async def send(request: Request) -> Response:
+        """Send a run's G-code to a configured printer; never start printing."""
+        refusal = _refusal(request, token)
+        if refusal is not None:
+            return refusal
+        async with request.form(max_files=0, max_fields=10) as form:
+            run_name, printer_name = str(form.get("run", "")), str(form.get("printer", ""))
+        host = settings.printers.get(printer_name)
+        found = get_result(output_folder(read_status(settings.watched)), run_name)
+        if host is None or found is None:
+            return templates.TemplateResponse(
+                request, "_sent.html", {"error": "Choose a configured printer and a run that exists."},
+                status_code=400,
+            )
+        uploads = plan_result_uploads(found)
+        if not uploads:
+            return templates.TemplateResponse(request, "_sent.html", {"error": "Nothing in this run sliced."})
+        logger.info("Sending %s to %s from the web page", found.name, host.describe())
+        service = SendingService(client_for(host), logger=logger)
+        outcome: SendOutcome = await run_in_threadpool(service.send, uploads)
+        return templates.TemplateResponse(request, "_sent.html", {"outcome": outcome})
+
     return Starlette(
         routes=[
             Route("/", index),
@@ -215,6 +267,9 @@ def create_app(settings: WebSettings) -> Starlette:
             Route("/download/{path:path}", download),
             Route("/zip/{name:path}", download_zip),
             Route("/upload", upload, methods=["POST"]),
+            Route("/printers", printers),
+            Route("/printers/{name}", printer),
+            Route("/send", send, methods=["POST"]),
             Mount("/static", StaticFiles(directory=_HERE / "static"), name="static"),
         ],
         middleware=[
@@ -232,6 +287,20 @@ def preview_url(result: RunResult, gcode: str) -> str:
     except OSError:
         version = 0
     return f"/preview/{_url_path(result.name)}/{_url_path(gcode)}?v={version}"
+
+
+def _ask_printer(host: PrinterHost) -> dict[str, object]:
+    """Return whether a printer answers, its state, and what is loaded in its CFS."""
+    client = client_for(host, timeout_seconds=PRINTER_TIMEOUT_SECONDS)
+    try:
+        status = client.status()
+    except PrinterError as error:
+        return {"host": host, "error": str(error)}
+    try:
+        loaded, loaded_error = client.loaded_filaments(), ""
+    except PrinterError as error:
+        loaded, loaded_error = [], str(error)
+    return {"host": host, "status": status, "loaded": loaded, "loaded_error": loaded_error}
 
 
 def _store(watched: Path, files: list[tuple[str, UploadFile]]) -> UploadResult:
@@ -294,6 +363,11 @@ def _when(value: str | datetime) -> str:
         return str(value)
     today = datetime.fromtimestamp(time.time()).date()
     return moment.strftime("%H:%M" if moment.date() == today else "%d %b %H:%M")
+
+
+def _colour(value: str) -> str:
+    """Return a ``#RRGGBB`` colour as given, or grey for anything else."""
+    return value if re.fullmatch(r"#[0-9A-Fa-f]{6}", value) else "#9AA4B1"
 
 
 def _url_path(value: str) -> str:

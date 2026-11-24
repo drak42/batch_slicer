@@ -1,0 +1,21 @@
+<h2 class="printer-name">{{ host.describe() }}</h2>
+{% if error %}
+  <p><span class="dot dot-idle"></span> <span class="failed">Not answering:</span> {{ error }}</p>
+  <p class="muted small">Is the printer on and on this network?</p>
+{% else %}
+  <p><span class="dot {{ 'dot-ok' if status.ready else 'dot-busy' }}"></span> {{ status.state }}
+    {% if status.software %}<span class="muted small">· {{ status.software }}</span>{% endif %}</p>
+  {% if loaded %}
+    <h3>Loaded filaments</h3>
+    <ul class="plain slots">
+    {% for filament in loaded %}
+      <li><svg class="swatch" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="{{ filament.colour | colour }}"/></svg>
+        {{ filament.describe() }} <span class="muted small">{{ filament.colour }}</span></li>
+    {% endfor %}
+    </ul>
+  {% elif loaded_error %}
+    <p class="muted small">What is loaded could not be read: {{ loaded_error }}</p>
+  {% else %}
+    <p class="muted small">No CFS reported.</p>
+  {% endif %}
+{% endif %}

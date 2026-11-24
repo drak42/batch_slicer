@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from batchslicer.core.config import find_config_file, get_config
+from batchslicer.domain.printers import PrinterHostError, printer_hosts
 
 if TYPE_CHECKING:
     from batchslicer.web.app import WebSettings
@@ -104,16 +105,17 @@ def run_web(
 
 
 def _settings(options: WebOptions) -> "WebSettings":
-    """Return the folders the page shows: the watched folder and the configured output folder."""
+    """Return what the page shows: the watched folder, the configured output folder and printers."""
     from batchslicer.web.app import WebSettings
 
     try:
         config = get_config(find_config_file(options.config))
         watched = (options.input or config.get_path("paths", "incoming")).expanduser().absolute()
         output = config.get_path("paths", "output").expanduser().absolute()
-    except (FileNotFoundError, KeyError, ValueError) as error:
+        printers = printer_hosts(config.section("printers"))
+    except (FileNotFoundError, KeyError, ValueError, PrinterHostError) as error:
         raise WebError(str(error)) from error
-    return WebSettings(watched=watched, output=output)
+    return WebSettings(watched=watched, output=output, printers=printers)
 
 
 def _listen(port: int) -> socket.socket:

@@ -1,0 +1,13 @@
+{% if error %}
+<p class="failed">{{ error }}</p>
+{% else %}
+<div class="panel">
+  <p>Sent {{ outcome.sent | length }} of {{ outcome.files | length }} file{{ '' if outcome.files | length == 1 else 's' }} to {{ outcome.host.describe() }}.</p>
+  <ul class="plain small">
+  {% for item in outcome.files %}
+    <li>{% if item.success %}<span class="tag tag-ok">sent</span> {{ item.remote_path or item.upload.remote_path }}
+        {% else %}<span class="tag tag-failed">failed</span> {{ item.upload.remote_path }}: {{ item.error }}{% endif %}</li>
+  {% endfor %}
+  </ul>
+</div>
+{% endif %}

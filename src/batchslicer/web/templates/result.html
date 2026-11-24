@@ -13,6 +13,21 @@
   <a href="/download/{{ result.name | url_path }}/report.csv">report.csv</a>
   <a href="/download/{{ result.name | url_path }}/report.json">report.json</a>
 </p>
+{% if result.gcode and result.succeeded %}
+<form class="send" hx-post="/send" hx-target="#sent" hx-disabled-elt="find button">
+  <input type="hidden" name="run" value="{{ result.name }}">
+  {% if printers %}
+    <label>Send the G-code to
+      <select name="printer">{% for name, host in printers.items() %}<option value="{{ name }}">{{ host.describe() }}</option>{% endfor %}</select>
+    </label>
+    <button class="button" type="submit">Send</button>
+    <span class="muted small">It is not started; start it on the printer.</span>
+  {% else %}
+    <span class="muted small">To send from here, add your printers to the <code>printers</code> section of the configuration.</span>
+  {% endif %}
+</form>
+<div id="sent" role="status" aria-live="polite"></div>
+{% endif %}
 
 {% for row in result.rows %}
 <article class="row">

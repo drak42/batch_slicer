@@ -21,6 +21,8 @@ h2 { font-size: 1.15rem; margin: 2rem 0 0.75rem; }
 h3 { font-size: 1rem; margin: 0 0 0.5rem; overflow-wrap: anywhere; }
 .top { display: flex; gap: 0.75rem; align-items: baseline; padding: 0.75rem 1.25rem;
        background: var(--panel); border-bottom: 1px solid var(--line); }
+.top nav { margin-left: auto; display: flex; gap: 1rem; }
+.top nav a { text-decoration: none; }
 .brand { font-weight: 700; font-size: 1.1rem; color: var(--text); text-decoration: none; }
 .muted { color: var(--muted); }
 .small { font-size: 0.85rem; }
@@ -67,3 +69,10 @@ dd { margin: 0; }
 .upload-status:empty { display: none; }
 .upload-status.error { color: var(--failed); }
 .downloads { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+.send { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
+.send select { font: inherit; padding: 0.3rem; }
+.button[disabled] { opacity: 0.5; cursor: wait; }
+.printer-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+.printer-name { margin-top: 0; font-size: 1.05rem; overflow-wrap: anywhere; }
+.slots li { display: flex; gap: 0.5rem; align-items: center; }
+.swatch { width: 1.1rem; height: 1.1rem; flex: none; stroke: var(--line); }
