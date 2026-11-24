@@ -345,6 +345,8 @@ once.
 
 The background service is for Linux (it uses systemd). On Windows, run the
 `--watch` command in a terminal window and leave it open; minimised is fine.
+With Bambu Studio on Windows that is the only way: it slices only from a
+signed-in desktop session.
 
 ## 10. Find your results
 
