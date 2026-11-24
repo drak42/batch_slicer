@@ -1094,12 +1094,16 @@ The page shows, refreshing every few seconds:
   plate's picture, filament per slot for a multi-colour print, filament
   changes, and the slicer's reason for a failure. Download each G-code file
   and the reports, or **Download all (ZIP)** for the run's G-code and reports
-  with their folders.
+  with their folders. **Send** a run's G-code to one of your
+  [configured printers](#sending-g-code-to-a-printer); it goes into the same
+  folders as with `--send`. The page never starts a print: start it on the
+  printer;
+- a **Printers** page: whether each configured printer answers and its
+  state, and for a Creality printer with a CFS, what is loaded in each slot,
+  with its colour. It refreshes every 10 seconds.
 
-Sending to a printer from the page, and a page for the printers' CFS, come
-next (see the [web plan](docs/WebPlan.md)). The page can only be opened on
-the computer it runs on, and it answers only to `localhost` and `127.0.0.1`;
-uploads are only accepted from the page itself, never from another website
+The page can only be opened on the computer it runs on, and it answers only to `localhost` and `127.0.0.1`;
+uploads and sending are only accepted from the page itself, never from another website
 open in the same browser.
 
 The watcher writes what it is doing to a hidden file in the watched folder,

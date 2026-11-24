@@ -380,7 +380,9 @@ collect models somewhere else, and move them in when they are ready.
 the same as `--watch` and also shows a web page with what is waiting, what is
 slicing, and every result with its preview picture, print time and filament.
 Drag models, zip files or folders onto the page to slice them, and download
-the G-code one file at a time or a whole run as a ZIP.
+the G-code one file at a time or a whole run as a ZIP. With printers set up
+(step 7), send a run to one from its page, and see what is loaded in each
+printer's CFS on the Printers page.
 
 ```bash
 pipx install --force "batchslicer[web]"   # once
