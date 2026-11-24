@@ -12,20 +12,24 @@ G-code and reports can be downloaded one by one or a run at a time as a ZIP.
 The printers page shows whether each configured printer answers and what is
 loaded in its CFS; a run's G-code can be sent to a configured printer, laid
 out as ``--send`` lays it out (:mod:`batchslicer.services.sending`). The page
-never starts a print.
+never starts a print. Folders watched by installed ``batchslicer service``
+watches are offered as further upload targets, and the About page shows the
+settings and the output of ``batchslicer doctor``.
 Paths never come from the browser unchecked: uploads only ever land in the
 watched folder, and downloads only come from the output folder.
 
 It answers only to the host names ``localhost`` and ``127.0.0.1``, so a
 website cannot reach it by pointing its own name at this computer. Requests
-that change something (uploads, sending) must carry the page's own token and come
+that change something or run programs (uploads, sending, doctor) must carry the page's own token and come
 from the page itself, so another website open in the same browser cannot
 send them.
 """
 
 import logging
+import platform
 import re
 import secrets
+import shlex
 import tempfile
 import time
 import urllib.parse
@@ -46,6 +50,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from batchslicer.cli.doctor import DoctorOptions, run_doctor
 from batchslicer.domain.printers import PrinterHost
 from batchslicer.infrastructure.printer_api import PrinterError
 from batchslicer.infrastructure.printer_clients import client_for
@@ -95,6 +100,16 @@ _SECURITY_HEADERS = (
 
 
 @dataclass(frozen=True, slots=True)
+class DropTarget:
+    """Another watched folder uploads can go to: one an installed service watches."""
+
+    name: str
+    """The service's name."""
+
+    folder: Path
+
+
+@dataclass(frozen=True, slots=True)
 class WebSettings:
     """What the page shows."""
 
@@ -106,6 +121,15 @@ class WebSettings:
 
     printers: dict[str, PrinterHost] = field(default_factory=dict)
     """The configured printers (the configuration's ``printers`` section), by name."""
+
+    config: Path | None = None
+    """The configuration file in use, for the About page and doctor."""
+
+    run_arguments: tuple[str, ...] = ()
+    """The options the page's watch runs with, as given."""
+
+    targets: tuple[DropTarget, ...] = ()
+    """Other watched folders, offered as upload targets."""
 
 
 def create_app(settings: WebSettings) -> Starlette:
@@ -122,7 +146,9 @@ def create_app(settings: WebSettings) -> Starlette:
         max_upload=describe_size(MAX_UPLOAD_BYTES),
         printers=settings.printers,
         printer_refresh=PRINTER_REFRESH_SECONDS,
+        targets=settings.targets,
     )
+    folders = {"": settings.watched, **{target.name: target.folder for target in settings.targets}}
     logger = logging.getLogger("batchslicer")
     templates.env.filters.update(when=_when, grams=_grams, url_path=_url_path, colour=_colour)
 
@@ -137,11 +163,19 @@ def create_app(settings: WebSettings) -> Starlette:
             waiting = []
         if status is not None and status.drop in waiting:
             waiting.remove(status.drop)
+        others = []
+        for target in settings.targets:
+            try:
+                count = len(candidates(target.folder))
+            except OSError:
+                count = 0
+            others.append({"target": target, "status": read_status(target.folder), "waiting": count})
         return {
             "status": status,
             "waiting": waiting,
             "watched": settings.watched,
             "output": output_folder(status),
+            "others": others,
         }
 
     def results_context() -> dict[str, object]:
@@ -210,6 +244,9 @@ def create_app(settings: WebSettings) -> Starlette:
         if int(length) > MAX_UPLOAD_BYTES + _FORM_OVERHEAD_BYTES:
             return _error(f"Too large: at most {describe_size(MAX_UPLOAD_BYTES)} at a time.", 413)
         async with request.form(max_files=MAX_FILES, max_fields=MAX_FILES + 10) as form:
+            folder = folders.get(str(form.get("target") or ""))
+            if folder is None:
+                return _error("That folder is not one this page uploads to.", 400)
             names = form.getlist("path")
             files = form.getlist("file")
             if not files or len(names) != len(files):
@@ -218,12 +255,35 @@ def create_app(settings: WebSettings) -> Starlette:
                 (str(name), file) for name, file in zip(names, files, strict=True) if isinstance(file, UploadFile)
             ]
             try:
-                result = await run_in_threadpool(_store, settings.watched, pairs)
+                result = await run_in_threadpool(_store, folder, pairs)
             except UploadError as error:
                 return _error(str(error), 413)
             except OSError as error:
                 return _error(f"Could not store the upload: {error}", 500)
         return JSONResponse({"added": result.added, "skipped": result.skipped})
+
+    async def about(request: Request) -> Response:
+        status = read_status(settings.watched)
+        return templates.TemplateResponse(request, "about.html", {
+            "python": platform.python_version(),
+            "system": platform.platform(),
+            "config": settings.config,
+            "command": shlex.join(["batchslicer", "web", *settings.run_arguments]),
+            "watched": settings.watched,
+            "output": output_folder(status),
+            "status": status,
+        })
+
+    async def doctor(request: Request) -> Response:
+        """Run ``batchslicer doctor`` and show its report (it may take a minute: it runs the slicers)."""
+        refusal = _refusal(request, token)
+        if refusal is not None:
+            return refusal
+        lines: list[str] = []
+        problems = await run_in_threadpool(
+            lambda: run_doctor(DoctorOptions(config=settings.config), write=lines.append)
+        )
+        return templates.TemplateResponse(request, "_doctor.html", {"lines": lines, "problems": problems})
 
     async def printers(request: Request) -> Response:
         return templates.TemplateResponse(request, "printers.html", {})
@@ -267,6 +327,8 @@ def create_app(settings: WebSettings) -> Starlette:
             Route("/download/{path:path}", download),
             Route("/zip/{name:path}", download_zip),
             Route("/upload", upload, methods=["POST"]),
+            Route("/about", about),
+            Route("/about/doctor", doctor, methods=["POST"]),
             Route("/printers", printers),
             Route("/printers/{name}", printer),
             Route("/send", send, methods=["POST"]),

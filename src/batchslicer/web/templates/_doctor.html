@@ -1,0 +1,3 @@
+<p class="{{ 'failed' if problems else '' }}">{{ problems }} problem{{ '' if problems == 1 else 's' }} found.</p>
+<pre class="report">{% for line in lines %}{{ line }}
+{% endfor %}</pre>

@@ -20,7 +20,8 @@ from batchslicer.cli.web import WebOptions, run_web  # noqa: E402
 from batchslicer.domain.printers import PrinterHost  # noqa: E402
 from batchslicer.services.thumbnails import add_thumbnails  # noqa: E402
 from batchslicer.services.watch_status import StatusWriter  # noqa: E402
-from batchslicer.web.app import WebSettings, create_app  # noqa: E402
+from batchslicer.web import app as web_app  # noqa: E402
+from batchslicer.web.app import DropTarget, WebSettings, create_app  # noqa: E402
 from conftest import FakeMoonraker, write_config  # noqa: E402
 
 _GCODE = "\n".join(
@@ -277,6 +278,67 @@ def test_sending_needs_the_page_and_a_configured_printer(
     assert fake_moonraker.files == {}
 
 
+# --- other watched folders and the About page -------------------------------------
+
+
+def _with_service(folders: tuple[Path, Path], tmp_path: Path) -> TestClient:
+    watched, output = folders
+    settings = WebSettings(watched=watched, output=output, config=tmp_path / "config.yaml",
+                           run_arguments=("--profile", "k2 pla"),
+                           targets=(DropTarget("ender", tmp_path / "ender-drop"),))
+    return TestClient(create_app(settings), base_url="http://127.0.0.1:8765")
+
+
+def test_uploads_can_go_to_a_services_folder(folders: tuple[Path, Path], tmp_path: Path) -> None:
+    """The page offers each service's folder; an unknown one is refused."""
+    (tmp_path / "ender-drop").mkdir()
+    client = _with_service(folders, tmp_path)
+    assert '<option value="ender">' in client.get("/").text
+    token = {"x-batchslicer-token": _token(client)}
+    data, files = _files(("bolt.stl", b"solid"))
+
+    answer = client.post("/upload", data={**data, "target": "ender"}, files=files, headers=token)
+    assert answer.status_code == 200 and (tmp_path / "ender-drop" / "bolt.stl").is_file()
+    assert not (folders[0] / "bolt.stl").exists()
+    assert client.post("/upload", data={**data, "target": "nope"}, files=files, headers=token).status_code == 400
+
+
+def test_the_queue_shows_what_services_are_doing(folders: tuple[Path, Path], tmp_path: Path) -> None:
+    """Each service's folder: its state from its status file and how much waits."""
+    (tmp_path / "ender-drop").mkdir()
+    (tmp_path / "ender-drop" / "a.stl").write_text("solid")
+    StatusWriter(tmp_path / "ender-drop", tmp_path / "out").slicing("kit")
+    queue = _with_service(folders, tmp_path).get("/queue").text
+    assert "Watched by services" in queue and "slicing kit" in queue and "1 waiting" in queue
+
+
+def test_the_about_page_and_doctor(folders: tuple[Path, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """About shows the settings; doctor runs only from the page, and its report is shown."""
+    def fake_doctor(options: object, *, write: object) -> int:
+        write(f"checked {options.config}")  # type: ignore[attr-defined, operator]
+        return 1
+
+    monkeypatch.setattr(web_app, "run_doctor", fake_doctor)
+    client = _with_service(folders, tmp_path)
+    about = client.get("/about").text
+    assert "batchslicer web --profile &#39;k2 pla&#39;" in about
+    assert str(tmp_path / "config.yaml") in about and "Service ender" in about
+
+    assert client.post("/about/doctor").status_code == 403
+    report = client.post("/about/doctor", headers={"x-batchslicer-token": _token(client)}).text
+    assert "1 problem found." in report and f"checked {tmp_path / 'config.yaml'}" in report
+
+
+def test_services_already_shown_are_not_offered_twice(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A service watching the page's own folder is not a second target."""
+    write_config(tmp_path / "bs", {"paths": {"incoming": tmp_path / "in"}})
+    monkeypatch.setattr(web_command, "_service_folders",
+                        lambda: [("watch", tmp_path / "in"), ("ender", tmp_path / "ender")])
+    settings = web_command._settings(WebOptions(config=tmp_path / "bs" / "config.yaml"))
+    assert settings.targets == (DropTarget("ender", tmp_path / "ender"),)
+    assert settings.config == (tmp_path / "bs" / "config.yaml").absolute()
+
+
 # --- batchslicer web -----------------------------------------------------------
 
 
@@ -315,8 +377,9 @@ def _free_port() -> int:
         return int(probe.getsockname()[1])
 
 
-def test_web_serves_the_page_while_the_watch_runs(tmp_path: Path) -> None:
+def test_web_serves_the_page_while_the_watch_runs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The page answers on 127.0.0.1 while the watch runs, and stops with it."""
+    monkeypatch.setattr(web_command, "_service_folders", lambda: [])
     write_config(tmp_path / "bs", {"paths": {"incoming": tmp_path / "in", "output": tmp_path / "out"}})
     config_file = tmp_path / "bs" / "config.yaml"
     config_file.write_text(config_file.read_text() + "printers:\n  k2plus:\n    url: http://192.0.2.1:7125\n")

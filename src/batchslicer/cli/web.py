@@ -105,17 +105,38 @@ def run_web(
 
 
 def _settings(options: WebOptions) -> "WebSettings":
-    """Return what the page shows: the watched folder, the configured output folder and printers."""
-    from batchslicer.web.app import WebSettings
+    """Return what the page shows: the folders, the configured printers, and services' folders."""
+    from batchslicer.web.app import DropTarget, WebSettings
 
     try:
-        config = get_config(find_config_file(options.config))
+        config_path = find_config_file(options.config).absolute()
+        config = get_config(config_path)
         watched = (options.input or config.get_path("paths", "incoming")).expanduser().absolute()
         output = config.get_path("paths", "output").expanduser().absolute()
         printers = printer_hosts(config.section("printers"))
     except (FileNotFoundError, KeyError, ValueError, PrinterHostError) as error:
         raise WebError(str(error)) from error
-    return WebSettings(watched=watched, output=output, printers=printers)
+    targets: list[DropTarget] = []
+    seen = {watched.resolve()}
+    for name, folder in _service_folders():
+        if folder.resolve() not in seen:
+            seen.add(folder.resolve())
+            targets.append(DropTarget(name=name, folder=folder))
+    return WebSettings(
+        watched=watched,
+        output=output,
+        printers=printers,
+        config=config_path,
+        run_arguments=options.run_arguments,
+        targets=tuple(targets),
+    )
+
+
+def _service_folders() -> list[tuple[str, Path]]:
+    """Return the folders installed ``batchslicer service`` watches use, by service name."""
+    from batchslicer.cli.service import watch_targets
+
+    return [(target.name, target.folder) for target in watch_targets()]
 
 
 def _listen(port: int) -> socket.socket:

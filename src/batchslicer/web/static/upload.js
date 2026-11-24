@@ -43,6 +43,8 @@
       return;
     }
     const form = new FormData();
+    const target = zone.querySelector('select[name="target"]');
+    if (target) form.append("target", target.value);
     for (const [path, file] of pairs) {
       form.append("path", path);
       form.append("file", file, file.name);
