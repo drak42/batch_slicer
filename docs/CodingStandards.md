@@ -47,7 +47,8 @@ tools on every push (see "Checks").
 
 ## Checks
 
-Run before every commit; GitHub Actions runs the same on Python 3.12 and 3.13:
+Run before every commit; GitHub Actions runs the same on Python 3.12 and 3.13,
+on Linux, Windows and macOS (on Windows the programs are in `.venv\Scripts\`):
 
 ```bash
 .venv/bin/ruff check src tests   # rules E4, E7, E9, F, I, B (pyproject.toml)

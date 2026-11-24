@@ -22,5 +22,5 @@ Useful context when judging a problem:
 - It reads the slicers' settings folders but never writes to them.
 - It writes only to its own folders (output, logs, cache, profiles).
 - With `--send`, it uploads G-code to the printer address you give, through
-  Moonraker's HTTP API, and with `--start` asks the printer to print it. An
-  `api_key` in the configuration is sent only to that printer.
+  Moonraker's or OctoPrint's HTTP API, and with `--start` asks the printer to
+  print it. An `api_key` in the configuration is sent only to that printer.

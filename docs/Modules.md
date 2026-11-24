@@ -17,7 +17,7 @@ docstring says more, including what it intentionally does not do.
 | Module | Purpose |
 |---|---|
 | `core/config.py` | find, load and render the configuration; resolve its paths and programs |
-| `core/locations.py` | standard per-user folders (XDG) |
+| `core/locations.py` | standard per-user folders (XDG on Linux, AppData on Windows, `~/Library` on macOS), and which system is running |
 | `core/logging.py` | the rotating log file |
 | `core/environment.py` | start-up checks of Python, configuration, folders and the chosen slicer |
 
@@ -72,7 +72,7 @@ docstring says more, including what it intentionally does not do.
 | `backends/projects.py` | read the filament slots a 3MF project lists |
 | `backends/profiles.py` | locate built-in presets, extracting or unpacking them into the cache |
 | `backends/opc.py` | read OrcaSlicer's packed `.opc` preset files |
-| `backends/detection.py` | find installed slicers and their settings folders |
+| `backends/detection.py` | find installed slicers and their settings folders (AppImages and PATH on Linux, Program Files on Windows, `.app` bundles on macOS) and their versions |
 | `backends/backend.py` | the minimal `Backend` protocol (`run(command)`) |
 
 ## infrastructure
@@ -84,7 +84,7 @@ docstring says more, including what it intentionally does not do.
 | `infrastructure/moonraker.py` | talk to a Klipper printer's Moonraker: check it answers, upload (and start) G-code |
 | `infrastructure/octoprint.py` | talk to OctoPrint: check it answers and the printer's state, create folders, upload (and start) G-code |
 | `infrastructure/printer_clients.py` | choose the Moonraker or OctoPrint client for a printer by its `type` |
-| `infrastructure/systemd.py` | write, list and remove systemd user units for `batchslicer service`, and run `systemctl`/`journalctl` |
+| `infrastructure/systemd.py` | write, list and remove systemd user units for `batchslicer service`, and run `systemctl`/`journalctl` (Linux only) |
 
 ## Reserved
 

@@ -25,7 +25,7 @@ not replace the command line, and it does not try to be a slicer.
 | Framework | **Starlette + Jinja2 templates, run by Uvicorn** | Small, well-maintained, handles large uploads by streaming; pages are made on the server, so no JavaScript build step. FastAPI would add Pydantic for little gain; Flask would need a separate server for production. |
 | Live updates | **htmx** (one small JavaScript file shipped with the package), refreshing parts of the page every few seconds | Pages stay plain HTML; no front-end tool chain to maintain. |
 | Who can open it? | **Only this computer in the first release.** Access from the local network (a phone, another computer), with a password, comes in a later release | It runs slicers and sends to printers, so it must not be open by accident; keeping the first release local leaves out the password and sign-in work until the pages are proven. |
-| Platforms | Linux server; any browser | The slicers already run without a display (tested with all three), which a server needs. |
+| Platforms | Linux server; any browser | The slicers already run without a display (tested with all three on Linux and macOS; on Windows, Bambu Studio needs a signed-in desktop session), which a server needs. |
 
 ## What the first version does
 
