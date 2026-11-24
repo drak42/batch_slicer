@@ -49,6 +49,7 @@ from batchslicer.cli.send_prompt import prompt_for_printer
 from batchslicer.cli.service import ServiceOptions, run_service
 from batchslicer.cli.setup import SetupOptions, run_setup
 from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slicer
+from batchslicer.core import locations
 from batchslicer.core.config import Config, find_config_file, get_config
 from batchslicer.core.environment import EnvironmentService
 from batchslicer.core.logging import configure_logging, current_log_file
@@ -796,6 +797,8 @@ def _how_to_stop() -> str:
         interactive = False
     if interactive:
         return "Press Ctrl+C to stop."
+    if locations.is_windows():  # no systemd service on Windows
+        return "It runs until it is stopped (Ctrl+C in its window, or end the batchslicer process)."
     return "It runs until it is stopped (for a service: batchslicer service uninstall, or systemctl --user stop)."
 
 
