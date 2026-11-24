@@ -91,7 +91,7 @@ BatchSlicer follows a layered architecture. As built today:
 ```
                         User
                           │
-                    CLI (cli/)                    Web page (web/, planned; see WebPlan.md)
+                    CLI (cli/)                    Web page (web/; being built, see WebPlan.md)
                           │
               Application (app.py: one run, start to finish)
                           │
@@ -109,7 +109,8 @@ BatchSlicer follows a layered architecture. As built today:
 ```
 
 Planned layers not built yet: a service registry, a database and history, an
-event system, a job queue, plugins and the web dashboard.
+event system, a job queue and plugins. The web page's first step is built
+(on the `feat/web` branch); the rest is planned in [WebPlan](WebPlan.md).
 
 Each layer has clearly defined responsibilities.
 
@@ -149,7 +150,7 @@ src/
     ├── infrastructure/    # saved profiles (YAML), printer clients
     ├── application/       # reserved (planned)
     ├── plugins/           # reserved (planned)
-    └── web/               # reserved (planned web page, see WebPlan.md)
+    └── web/               # the web page (Starlette app, templates, static files; see WebPlan.md)
 ```
 
 Each package has a single responsibility. [Modules](Modules.md) lists every
@@ -261,10 +262,13 @@ Responsible only for user interaction.
 
 ## web
 
-A web page served by Starlette (planned, to be done later; see
-[WebPlan](WebPlan.md)).
+A web page served by Starlette (`batchslicer web`; see [WebPlan](WebPlan.md)).
+The first step shows the watch folder's queue and the results, read from the
+watched folder's status file and the output folder's reports and G-code. It
+never slices: the watch run does.
 
-Responsible only for presentation.
+Responsible only for presentation. It needs the optional `web` extra, and
+only `cli/web.py` starts it, so the command line works without it.
 
 ---
 

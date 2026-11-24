@@ -6,6 +6,18 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `batchslicer web` (first step of the web page, needs the new `web` extra:
+  `pipx install --force "batchslicer[web]"`): runs a watch together with a
+  page on <http://127.0.0.1:8765> that shows what is waiting, what is being
+  sliced (model *n* of *m*), the drops finished, and the results in the
+  output folder with their preview pictures, print time, filament per slot
+  and the slicer's reason for failures. It only shows things for now, and
+  only on this computer. `--port` chooses another port.
+- A watch run keeps `.batchslicer-status.json` in the watched folder up to
+  date with what it is doing, for the web page and your own scripts.
+
 ## [0.19.0] - 2026-11-24
 
 The background service on every system, API keys from the environment, and a

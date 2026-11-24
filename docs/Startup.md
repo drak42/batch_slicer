@@ -10,7 +10,11 @@ unless `--no-prompt` is used (then a missing choice is an error). Code lives in
 `batchslicer setup` (`cli/setup.py`), `batchslicer doctor` (`cli/doctor.py`)
 and `batchslicer service` (`cli/service.py`) are separate commands chosen by
 the first argument; they do not slice. A service runs a normal watch run
-(below) with `--watch --no-prompt`. Everything below describes a normal run.
+(below) with `--watch --no-prompt`. `batchslicer web` (`cli/web.py`) opens
+the web page's port on `127.0.0.1`, serves the page (`web/app.py`) from a
+background thread, and runs a normal watch run (below, with `--watch`) in the
+main thread; when the watch ends, the page stops. Everything below describes
+a normal run.
 
 ## Sequence
 
@@ -126,3 +130,7 @@ Steps 1 to 7 and 10 are the same. Then, instead of steps 8 to 13 once:
   the folder's `sliced` or `failed` subfolder. Ctrl+C, or a request to
   terminate (`kill`, `systemctl stop`), stops watching with exit status 0; a
   drop being sliced at that moment is left where it is.
+- Throughout, `services/watch_status.py` keeps `.batchslicer-status.json` in
+  the watched folder up to date: waiting or slicing, the drop and model being
+  sliced, the output folder, the drops finished, and `stopped` at the end.
+  Failing to write it is logged and never stops the watch.

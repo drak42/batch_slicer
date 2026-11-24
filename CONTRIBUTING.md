@@ -44,7 +44,7 @@ If a feature does not solve a real problem, it probably should not exist.
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -e '.[dev]'
+.venv/bin/pip install -e '.[dev,web]'
 ```
 
 Before committing, run the same checks as GitHub Actions:
@@ -56,7 +56,7 @@ Before committing, run the same checks as GitHub Actions:
 ```
 
 On Windows the programs are in `.venv\Scripts\` instead of `.venv/bin/`
-(`py -m venv .venv`, then `.venv\Scripts\pip install -e ".[dev]"`).
+(`py -m venv .venv`, then `.venv\Scripts\pip install -e ".[dev,web]"`).
 
 After changing anything that talks to a slicer, also run the real-slicer tests
 against your installed slicers (see "Testing" in the README). After changing
