@@ -1181,6 +1181,29 @@ is offered only when the printer you send to reports loaded filaments).
   reason. `--slot` works with Creality Print for single files, but not for
   kits on plates (it cannot arrange).
 
+### Designing your own multi-colour parts
+
+[BlendSVG](https://github.com/drak42/blendsvg), a companion project, cuts an
+SVG logo or label into your own model as flush inlays: one part per colour,
+sitting in a matching pocket, so the print comes out smooth with no painting.
+Its 3MF puts the model on filament 1 and the colours of the artwork on
+filaments 2, 3, … in the order BlendSVG lists them. Design with BlendSVG, then
+slice and send with BatchSlicer:
+
+```bash
+# 1. cut a three-colour logo into the front of a mug (BlendSVG's command line,
+#    or its Blender add-on)
+bin/blendsvg mug.stl logo.svg --face front --width 50 -o mug.3mf
+
+# 2. one filament per part: the mug first, then each colour of the logo
+batchslicer --profile k2 --input mug.3mf --send k2plus \
+  --filament "White PLA" --filament "Blue PLA" --filament "Red PLA" --filament "Black PLA"
+```
+
+Tested with OrcaSlicer. Bambu Studio's command line puts every part of a
+BlendSVG file on the first filament, and Creality Print cannot use your presets
+for 3MF projects (see above).
+
 ## Output
 
 Each run creates a new folder inside the output folder, so earlier results are
