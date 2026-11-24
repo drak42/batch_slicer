@@ -243,3 +243,46 @@ def test_missing_help_text_is_fine_only_on_windows(
     assert found == problems, lines
     if on_windows:
         assert any("Windows shows no command-line help" in line for line in lines), lines
+
+
+def test_printer_option_checks_only_that_printer(tmp_path: Path, fake_moonraker: FakeMoonraker) -> None:
+    """--printer NAME checks the configured printer and nothing else (no slicers, no folders)."""
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump({
+        "creality_print": {"executable": str(tmp_path / "missing"), "datadir": str(tmp_path / "missing")},
+        "printers": {"k2plus": {"url": fake_moonraker.url}},
+    }))
+
+    problems, lines = _report(DoctorOptions(config=path, printers=("K2PLUS",)))
+
+    assert problems == 0, lines  # the broken slicer is not looked at
+    assert any(f"k2plus ({fake_moonraker.url}): answers, Klipper is ready" in line for line in lines)
+    assert not any(line.startswith(("Slicers:", "Folders:", "Profiles:")) for line in lines)
+
+
+def test_printer_option_takes_an_address_without_a_configuration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_moonraker: FakeMoonraker
+) -> None:
+    """An address works even when no configuration file exists."""
+    monkeypatch.chdir(tmp_path)
+    address = fake_moonraker.url.removeprefix("http://")
+
+    problems, lines = _report(DoctorOptions(config=tmp_path / "none.yaml", printers=(address,)))
+
+    assert problems == 0, lines
+    assert any(f"{address} ({fake_moonraker.url}): answers" in line for line in lines)
+
+
+def test_printer_option_explains_unknown_names_and_refusals(
+    tmp_path: Path, fake_moonraker: FakeMoonraker
+) -> None:
+    """An unknown name lists the configured ones; a refusal points to the key or trusted_clients."""
+    fake_moonraker.api_key = "secret"
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump({"printers": {"k2plus": {"url": fake_moonraker.url}}}))
+
+    problems, lines = _report(DoctorOptions(config=path, printers=("ender", "k2plus")))
+
+    assert problems == 2, lines
+    assert any("No printer named 'ender' (configured: k2plus)" in line for line in lines)
+    assert any("refused access (HTTP 401)" in line and "trusted_clients" in line for line in lines)

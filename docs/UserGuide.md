@@ -264,7 +264,8 @@ How sending works:
   never saved in a profile, and a multi-colour print is never started from
   BatchSlicer: start it on the printer's screen, where you can check which
   spool each colour comes from.
-- `batchslicer doctor` checks every printer in the configuration.
+- `batchslicer doctor` checks every printer in the configuration;
+  `batchslicer doctor --printer k2plus` (or an address) checks just one, quickly.
 
 ## 8. Print in several colours
 
@@ -401,6 +402,7 @@ the grams of each filament and the number of filament changes.
 |---|---|
 | Find my slicers | `batchslicer setup` |
 | Check my setup | `batchslicer doctor` |
+| Check just a printer | `batchslicer doctor --printer NAME` or an address |
 | Slice, answering questions | `batchslicer` |
 | Repeat the last run | `batchslicer --last` |
 | Save choices as a profile | add `--save-profile NAME` |
