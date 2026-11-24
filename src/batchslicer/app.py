@@ -797,7 +797,7 @@ def _how_to_stop() -> str:
         interactive = False
     if interactive:
         return "Press Ctrl+C to stop."
-    if locations.is_windows():  # no systemd service on Windows
+    if locations.is_windows() or locations.is_macos():  # the service is systemd, Linux only
         return "It runs until it is stopped (Ctrl+C in its window, or end the batchslicer process)."
     return "It runs until it is stopped (for a service: batchslicer service uninstall, or systemctl --user stop)."
 
