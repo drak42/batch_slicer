@@ -25,7 +25,8 @@ results removed, and the run ends with exit status 130 (0 for a watch run).
 3. **Load the configuration** (`core/config.py`): `--config`, then
    `BATCHSLICER_CONFIG`, then `./config/config.yaml`, then
    `~/.config/batchslicer/config.yaml` (`%APPDATA%\BatchSlicer\config.yaml`
-   on Windows).
+   on Windows, `~/Library/Application Support/BatchSlicer/config.yaml` on
+   macOS).
 4. **Configure logging** (`core/logging.py`) in the configured logs folder,
    rotating at about 1 MB.
 5. **Open the profiles store** (`infrastructure/profiles.py`); handle

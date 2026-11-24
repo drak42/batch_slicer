@@ -10,7 +10,7 @@
 
 Slice one 3D model or whole folders of them with **OrcaSlicer**, **Creality
 Print** or **Bambu Studio**, using the printer, filament and process presets
-you already have in those slicers, on Linux or Windows. Run it interactively and answer a few
+you already have in those slicers, on Linux, Windows or macOS. Run it interactively and answer a few
 questions, or pass everything on the command line for unattended, scripted runs.
 It can put a kit's parts together on plates, make several copies of a part,
 adds preview pictures for printer screens, and can send the G-code straight to
@@ -33,7 +33,9 @@ batchslicer                                      # answer a few questions, get G
 Results appear in `~/BatchSlicer/output`. Next time, `batchslicer --last`
 repeats the same run.
 
-On Windows the steps are the same in PowerShell or Command Prompt (see
+On macOS the steps are the same in Terminal (see
+[Installing on macOS](#installing-on-macos) for Python and pipx). On Windows
+they are the same in PowerShell or Command Prompt (see
 [Installing on Windows](#installing-on-windows) for pipx); the folders are
 `%USERPROFILE%\BatchSlicer\incoming` and `%USERPROFILE%\BatchSlicer\output`.
 
@@ -58,7 +60,7 @@ onto one plate. Recorded with [`docs/demo/demo.sh`](https://github.com/drak42/ba
 - [What it does](#what-it-does)
 - [How it works](#how-it-works)
 - [Requirements](#requirements)
-- [Installation](#installation) (including [on Windows](#installing-on-windows))
+- [Installation](#installation) (including [on Windows](#installing-on-windows) and [on macOS](#installing-on-macos))
 - [Configuration](#configuration)
 - [Using BatchSlicer interactively](#using-batchslicer-interactively)
 - [Using the command line](#using-the-command-line)
@@ -201,8 +203,8 @@ Windows the first time can take a minute or two.
 ## Requirements
 
 - Linux (the slicers are used as AppImages, or a regular install for
-  OrcaSlicer), or Windows 10 or 11 (the slicers' regular installers, or
-  portable copies)
+  OrcaSlicer), Windows 10 or 11 (the slicers' regular installers, or
+  portable copies), or macOS (the slicer apps in Applications)
 - Python 3.12 or newer
 - At least one of OrcaSlicer, Creality Print or Bambu Studio installed, and
   **opened at least once** so it has created its settings folder and you have
@@ -245,6 +247,30 @@ batchslicer` works too.)
 
 Use PowerShell or Command Prompt; every command in this README works the same
 way, with Windows paths (`C:\Users\you\Models`) where it shows Linux ones.
+
+### Installing on macOS
+
+1. Install Python 3.12 or newer from [python.org](https://www.python.org/downloads/macos/)
+   (or with Homebrew: `brew install python`). The `python3` that comes with
+   macOS is too old.
+2. Install pipx and put its folder on your PATH, then open a **new** Terminal
+   window:
+
+   ```bash
+   python3 -m pip install --user pipx
+   python3 -m pipx ensurepath
+   ```
+
+   (With Homebrew, `brew install pipx` does both.)
+
+3. Install BatchSlicer and let it find your slicers:
+
+   ```bash
+   pipx install batchslicer
+   batchslicer setup
+   ```
+
+Every command in this README works the same in Terminal.
 
 ### From a release file
 
@@ -318,6 +344,11 @@ portable copies in the same home folders as above (`Downloads`, `Desktop`...,
 up to two folders deep). The version comes from Windows' list of installed
 programs. The settings folders are under `%APPDATA%` (see the table below).
 
+**On macOS**, setup looks for `OrcaSlicer.app`, `BambuStudio.app` and
+`Creality Print.app` in `/Applications` and `~/Applications`, uses the program
+inside the app (`Contents/MacOS`), and reads the version from the app's
+`Info.plist`. The settings folders are under `~/Library/Application Support`.
+
 ### Where the configuration lives
 
 BatchSlicer uses the first of these that applies:
@@ -327,7 +358,8 @@ BatchSlicer uses the first of these that applies:
 3. `config/config.yaml` in the current folder (handy when working in a copy of
    this project)
 4. `~/.config/batchslicer/config.yaml` (where `setup` writes it), or
-   `%APPDATA%\BatchSlicer\config.yaml` on Windows
+   `%APPDATA%\BatchSlicer\config.yaml` on Windows and
+   `~/Library/Application Support/BatchSlicer/config.yaml` on macOS
 
 ### Editing it by hand
 
@@ -374,11 +406,14 @@ whichever folder you run it from. Folders are created when needed.
 
 Typical slicer settings folders:
 
-| Slicer | `datadir` on Linux | `datadir` on Windows |
-|---|---|---|
-| OrcaSlicer | `~/.config/OrcaSlicer` | `~/AppData/Roaming/OrcaSlicer` |
-| Creality Print | `~/.config/Creality/Creality Print/<version>` (for example `7.3`) | `~/AppData/Roaming/Creality/Creality Print/<version>` |
-| Bambu Studio | `~/.config/BambuStudio` | `~/AppData/Roaming/BambuStudio` |
+| Slicer | `datadir` on Linux | `datadir` on Windows | `datadir` on macOS |
+|---|---|---|---|
+| OrcaSlicer | `~/.config/OrcaSlicer` | `~/AppData/Roaming/OrcaSlicer` | `~/Library/Application Support/OrcaSlicer` |
+| Creality Print | `~/.config/Creality/Creality Print/<version>` (for example `7.3`) | `~/AppData/Roaming/Creality/Creality Print/<version>` | `~/Library/Application Support/Creality/Creality Print/<version>` |
+| Bambu Studio | `~/.config/BambuStudio` | `~/AppData/Roaming/BambuStudio` | `~/Library/Application Support/BambuStudio` |
+
+On macOS the `executable` is the program inside the app, for example
+`/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer`.
 
 **Windows paths in the configuration.** Write them with forward slashes, as
 setup does (`"C:/Program Files/OrcaSlicer/orca-slicer.exe"`); Windows accepts
@@ -388,16 +423,16 @@ goes in single quotes: `'C:\Program Files\OrcaSlicer\orca-slicer.exe'`.
 
 **Folders.** The defaults for the `paths` settings:
 
-| Setting | Linux | Windows |
-|---|---|---|
-| `incoming` | `~/BatchSlicer/incoming` | `%USERPROFILE%\BatchSlicer\incoming` |
-| `output` | `~/BatchSlicer/output` | `%USERPROFILE%\BatchSlicer\output` |
-| `logs` | `~/.local/state/batchslicer` | `%LOCALAPPDATA%\BatchSlicer\logs` |
-| `data` | `~/.cache/batchslicer` | `%LOCALAPPDATA%\BatchSlicer\cache` |
-| `profiles` | `~/.local/share/batchslicer/profiles.yaml` | `%APPDATA%\BatchSlicer\profiles.yaml` |
+| Setting | Linux | Windows | macOS |
+|---|---|---|---|
+| `incoming` | `~/BatchSlicer/incoming` | `%USERPROFILE%\BatchSlicer\incoming` | `~/BatchSlicer/incoming` |
+| `output` | `~/BatchSlicer/output` | `%USERPROFILE%\BatchSlicer\output` | `~/BatchSlicer/output` |
+| `logs` | `~/.local/state/batchslicer` | `%LOCALAPPDATA%\BatchSlicer\logs` | `~/Library/Logs/BatchSlicer` |
+| `data` | `~/.cache/batchslicer` | `%LOCALAPPDATA%\BatchSlicer\cache` | `~/Library/Caches/BatchSlicer` |
+| `profiles` | `~/.local/share/batchslicer/profiles.yaml` | `%APPDATA%\BatchSlicer\profiles.yaml` | `~/Library/Application Support/BatchSlicer/profiles.yaml` |
 
 On Linux an `XDG_*` environment variable, when set, moves the matching folder
-(and on Windows too, if you set one).
+(and on Windows and macOS too, if you set one).
 
 ## Using BatchSlicer interactively
 
@@ -932,8 +967,8 @@ batchslicer --profile k2-pla --input ~/drop --plates --send k2plus --watch
 ### Running it in the background
 
 `batchslicer service install` keeps the watch folder running without a
-terminal, as a systemd user service (Linux only; on Windows, see the end of
-this section). It takes the same options as a
+terminal, as a systemd user service (Linux only; on Windows and macOS, see
+the end of this section). It takes the same options as a
 watch run and adds `--watch --no-prompt`, so it needs a profile (or
 `--slicer`, `--printer`, `--filament` and `--process`):
 
@@ -970,8 +1005,8 @@ The service 'watch' is watching, and starts again whenever you log in.
   with OrcaSlicer, Bambu Studio and Creality Print AppImages).
 
 Without systemd, run `batchslicer --watch ...` in a `tmux` or `screen`
-session instead. On Windows, run it in a terminal window and leave the window
-open (minimised is fine); Ctrl+C in that window stops it.
+session instead. On Windows and macOS, run it in a terminal window and leave
+the window open (minimised is fine); Ctrl+C in that window stops it.
 
 ## Multi-colour projects
 
@@ -1291,7 +1326,7 @@ technical details are in the log. Please include them when reporting a problem.
 
 A log of every run is written to `batchslicer.log` in the logs folder
 (`~/.local/state/batchslicer/` by default, `%LOCALAPPDATA%\BatchSlicer\logs`
-on Windows), including the choices
+on Windows, `~/Library/Logs/BatchSlicer` on macOS), including the choices
 made, each slicer command and its result, and the slicer's error output when a
 model fails. When it reaches about 1 MB it is renamed `batchslicer.log.1` and a
 new one is started; the three most recent old logs are kept.
@@ -1433,6 +1468,22 @@ escape"**: a Windows path with backslashes was written in double quotes; use
 forward slashes or single quotes (see
 [Editing it by hand](#editing-it-by-hand)).
 
+### On macOS
+
+**`batchslicer` is not found** after installing: open a new Terminal window
+(`pipx ensurepath` changes PATH only for new ones). **`pip` or `pipx` says the
+Python is too old**: `python3 --version` shows which Python runs; macOS's own
+is 3.9, so install a newer one (see [Installing on macOS](#installing-on-macos)).
+
+**macOS asks whether Terminal may access a folder** (Desktop, Documents,
+Downloads) the first time BatchSlicer reads models there: allow it, or keep
+models in `~/BatchSlicer/incoming`. Without that permission, for example over
+SSH, reading those folders fails with "Operation not permitted".
+
+**"setup" finds no slicer**: the apps must be in `/Applications` or
+`~/Applications` and opened once. For a copy elsewhere, set `executable` to
+the program inside the app (`.../OrcaSlicer.app/Contents/MacOS/OrcaSlicer`).
+
 ## Checking your setup: `batchslicer doctor`
 
 ```bash
@@ -1456,8 +1507,8 @@ Use `--config PATH` to check a specific configuration file.
 ## Testing
 
 Run the same checks as the automated build (GitHub Actions runs them on every
-push to `main` and on every pull request, with Python 3.12 and 3.13, on Linux
-and Windows):
+push to `main` and on every pull request, with Python 3.12 and 3.13, on Linux,
+Windows and macOS):
 
 ```bash
 .venv/bin/ruff check src tests   # lint: errors, import order, likely bugs
@@ -1494,10 +1545,11 @@ the Actions tab ("Latest slicers").
 
 ## Current limitations
 
-- **Linux and Windows.** macOS is not supported yet. On Windows, the
-  watch folder has no background service (run `--watch` in a terminal
-  window instead), and Bambu Studio works only from a signed-in desktop
-  session, not over SSH or as a background task.
+- **No background service on Windows and macOS.** `batchslicer service`
+  uses systemd, so it is Linux-only; run `--watch` in a terminal window
+  instead.
+- **Bambu Studio on Windows** works only from a signed-in desktop session,
+  not over SSH or as a background task.
 - **Loaded filaments from Creality's CFS only.** Reading a Bambu AMS needs the
   Bambu connection, which is not built yet.
 - **Creality Print and 3MF projects.** Creality Print's command line cannot

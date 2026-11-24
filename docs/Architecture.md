@@ -337,18 +337,21 @@ Configuration is loaded once during startup.
 The configuration file is found by `core/config.py` in this order: `--config`,
 the `BATCHSLICER_CONFIG` environment variable, `config/config.yaml` in the
 current folder (a project checkout), then `~/.config/batchslicer/config.yaml`
-(`%APPDATA%\BatchSlicer\config.yaml` on Windows).
+(`%APPDATA%\BatchSlicer\config.yaml` on Windows,
+`~/Library/Application Support/BatchSlicer/config.yaml` on macOS).
 All path settings are read through `Config.get_path()` / `get_program()`:
 `~` is expanded, relative paths are relative to the configuration file, and
 missing `paths` settings use standard per-user locations (`core/locations.py`):
 models and results in `~/BatchSlicer`; on Linux, following the XDG conventions,
 logs in `~/.local/state/batchslicer` and caches in `~/.cache/batchslicer`; on
 Windows, settings and profiles in `%APPDATA%\BatchSlicer` and logs and caches
-in `%LOCALAPPDATA%\BatchSlicer`. BatchSlicer therefore behaves the same from
-any working folder.
+in `%LOCALAPPDATA%\BatchSlicer`; on macOS, settings and profiles in
+`~/Library/Application Support/BatchSlicer`, logs in `~/Library/Logs/BatchSlicer`
+and caches in `~/Library/Caches/BatchSlicer`. BatchSlicer therefore behaves the
+same from any working folder.
 
-`core/locations.is_windows()` is the one place that decides which system's
-conventions apply; modules call it through the `locations` module so tests can
+`core/locations.is_windows()` and `is_macos()` are the one place that decides
+which system's conventions apply; modules call it through the `locations` module so tests can
 switch the layout.
 
 `batchslicer setup` (`cli/setup.py`) creates the configuration: it detects
@@ -358,9 +361,12 @@ On Windows, detection searches Program Files and `%LOCALAPPDATA%\Programs` and
 reads versions from Windows' list of installed programs; because the slicers
 are window programs there, their help text never reaches BatchSlicer, so the
 backend falls back to that detected version (`detection.program_version`).
+On macOS, detection looks for the slicer apps in `/Applications` and
+`~/Applications`, takes the program inside the app and its version from
+`Info.plist`; the slicers there print their help text as on Linux.
 `batchslicer service` (`cli/service.py`, `infrastructure/systemd.py`) writes
 systemd user units that run a watch run with the configuration file named
-explicitly; it is Linux-only.
+explicitly; it is Linux-only (no launchd service on macOS yet).
 
 No module should read configuration files directly.
 
