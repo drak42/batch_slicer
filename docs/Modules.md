@@ -36,7 +36,7 @@ docstring says more, including what it intentionally does not do.
 | `cli/setup.py` | `batchslicer setup`: detect slicers, write the configuration |
 | `cli/doctor.py` | `batchslicer doctor`: check the setup and report problems (or, with `--printer`, only the printers named) |
 | `cli/service_host.py` | Windows: run BatchSlicer for a background task, with its output in a log file, stopping like Ctrl+C when asked |
-| `cli/service.py` | `batchslicer service`: install, show and remove watch-folder services, with this system's service manager |
+| `cli/service.py` | `batchslicer service`: install, show and remove watch-folder services (or, with `--web`, the web page with its watch), with this system's service manager; tell the web page which folders services watch |
 | `cli/web.py` | `batchslicer web`: serve the web page on this computer in a background thread while a watch run keeps the terminal |
 
 ## domain
@@ -100,7 +100,7 @@ Needs the `web` extra (Starlette, Uvicorn, Jinja2); nothing else imports it.
 
 | Module | Purpose |
 |---|---|
-| `web/app.py` | the Starlette application: queue, results, preview pictures, uploads, downloads, the printers and their CFS, and sending; answers only to `localhost` and `127.0.0.1`, and takes uploads and sends only with the page's token from the page itself |
+| `web/app.py` | the Starlette application: queue, results, preview pictures, uploads (also into services' folders), downloads, the printers and their CFS, sending, and the About page with `doctor`; answers only to `localhost` and `127.0.0.1`, and takes uploads, sends and checks only with the page's token from the page itself |
 | `web/templates/` | the pages (Jinja2) |
 | `web/static/` | the stylesheet, `upload.js` (dragging and choosing files and folders) and htmx (shipped, never downloaded) |
 

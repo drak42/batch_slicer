@@ -382,7 +382,9 @@ slicing, and every result with its preview picture, print time and filament.
 Drag models, zip files or folders onto the page to slice them, and download
 the G-code one file at a time or a whole run as a ZIP. With printers set up
 (step 7), send a run to one from its page, and see what is loaded in each
-printer's CFS on the Printers page.
+printer's CFS on the Printers page. To keep the page running in the
+background, install it as a service: `batchslicer service install --web
+--profile k2-petg --plates`.
 
 ```bash
 pipx install --force "batchslicer[web]"   # once

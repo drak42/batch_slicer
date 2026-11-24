@@ -19,8 +19,13 @@ All notable changes to BatchSlicer are recorded here. The format follows
   the reports, or a whole run as a ZIP. Send a run's G-code to a configured
   printer, into the same folders as `--send` (it is never started), and see
   on the Printers page whether each printer answers and what is loaded in
-  its CFS. It works only on this computer, and takes uploads and sends only
-  from the page itself. `--port` chooses another port.
+  its CFS. An About page shows the settings and runs `batchslicer doctor`.
+  Folders watched by installed services are offered as upload targets, with
+  what each service is doing. It works only on this computer, and takes
+  uploads, sends and checks only from the page itself. `--port` chooses another port.
+- `batchslicer service install --web` keeps the web page and its watch
+  running in the background, as a service named `web` (`--port` for another
+  port).
 - A watch run keeps `.batchslicer-status.json` in the watched folder up to
   date with what it is doing, for the web page and your own scripts.
 

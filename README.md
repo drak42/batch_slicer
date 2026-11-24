@@ -1100,11 +1100,28 @@ The page shows, refreshing every few seconds:
   printer;
 - a **Printers** page: whether each configured printer answers and its
   state, and for a Creality printer with a CFS, what is loaded in each slot,
-  with its colour. It refreshes every 10 seconds.
+  with its colour. It refreshes every 10 seconds;
+- an **About** page: the version, the configuration file, the options the
+  page's watch runs with, the folders and printers, and a **Run the checks**
+  button that shows the report of `batchslicer doctor`.
 
-The page can only be opened on the computer it runs on, and it answers only to `localhost` and `127.0.0.1`;
-uploads and sending are only accepted from the page itself, never from another website
-open in the same browser.
+Folders watched by your [background services](#running-it-in-the-background)
+are offered too: the upload area asks which folder to put models in, and the
+queue shows what each service is doing (services report this from this
+version on).
+
+The page can only be opened on the computer it runs on, and it answers only
+to `localhost` and `127.0.0.1`. Uploads, sending and the checks are only
+accepted from the page itself, never from another website open in the same
+browser.
+
+**Keep the page running in the background** with
+`batchslicer service install --web` and the options of the watch, for example
+`batchslicer service install --web --profile k2-petg --plates`. It runs
+`batchslicer web` as a service named `web` (`--name` for another name,
+`--port` for another port), starting when you log in, and is shown, checked
+and removed like any service: `batchslicer service status`,
+`batchslicer service uninstall --name web`.
 
 The watcher writes what it is doing to a hidden file in the watched folder,
 `.batchslicer-status.json`; the page reads it, and so can your own scripts.
