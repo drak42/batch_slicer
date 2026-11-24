@@ -47,7 +47,8 @@ paths:
 # such as 192.168.1.50 directly, without any of this): Klipper printers running
 # Moonraker (Creality K1/K2 series, Voron, Prusa with Klipper, ...). url is
 # Moonraker's address, usually port 7125; api_key is only needed if Moonraker
-# asks for one. Remove the # to use it.
+# asks for one. To keep the key out of this file, write api_key_env: NAME
+# instead, naming an environment variable that holds it. Remove the # to use it.
 # printers:
 #   k2plus:
 #     url: "http://192.168.1.50:7125"

@@ -23,4 +23,6 @@ Useful context when judging a problem:
 - It writes only to its own folders (output, logs, cache, profiles).
 - With `--send`, it uploads G-code to the printer address you give, through
   Moonraker's or OctoPrint's HTTP API, and with `--start` asks the printer to
-  print it. An `api_key` in the configuration is sent only to that printer.
+  print it. A printer's API key (`api_key`, or the environment variable its
+  `api_key_env` names) is sent only to that printer, and never shown by
+  `batchslicer doctor`.

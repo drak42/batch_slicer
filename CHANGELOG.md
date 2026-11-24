@@ -6,6 +6,14 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `api_key_env: VARIABLE` in a printer's settings reads its API key from that
+  environment variable, so the key need not be stored in the configuration
+  file. A missing or empty variable, or setting both `api_key` and
+  `api_key_env`, is explained; `batchslicer doctor` shows where each key
+  came from, never the key (#18).
+
 ## [0.18.0] - 2026-11-24
 
 macOS: BatchSlicer runs on macOS with OrcaSlicer, Creality Print and Bambu

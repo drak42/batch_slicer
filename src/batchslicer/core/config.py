@@ -258,5 +258,6 @@ PRINTERS_COMMENT = (
     "# such as 192.168.1.50 directly): Klipper printers running Moonraker, or",
     "# OctoPrint with type: octoprint. url is the address (Moonraker usually uses",
     "# port 7125); api_key is only needed if Moonraker asks for one, and OctoPrint",
-    "# always needs one (Settings > Application Keys).",
+    "# always needs one (Settings > Application Keys). To keep a key out of this",
+    "# file, use api_key_env: VARIABLE_NAME instead, and set that variable.",
 )

@@ -15,7 +15,7 @@ in `domain/` know nothing about files, slicers or the user interface.
 | `Target` | `domain/profiles.py` | one slicer and its preset names, possibly not chosen yet, and the printer its G-code is sent to (`send`); `more_filaments` for slots 2, 3... (stored with `filament` as a list) |
 | `Profile` | `domain/profiles.py` | a named run: one or more targets, input, output, and slicing settings (`orient`, `allow_newer_files`, `jobs`, `exclude`, `thumbnails`, `plates`, `copies`) |
 | `SliceOptions` | `domain/options.py` | how every model is sliced: auto-orient mode, newer-file handling, preview pictures, models together on plates, copies of a single model |
-| `PrinterHost` | `domain/printers.py` | a printer G-code can be sent to: name (or the address as given), API address, API key, and whether it is Moonraker or OctoPrint (`kind`) |
+| `PrinterHost` | `domain/printers.py` | a printer G-code can be sent to: name (or the address as given), API address, API key (and the environment variable it was read from, for `api_key_env`), and whether it is Moonraker or OctoPrint (`kind`) |
 
 A profile with one target is stored flat in `profiles.yaml`; one with several
 lists them under `targets` (`infrastructure/profiles.py`).
