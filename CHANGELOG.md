@@ -6,8 +6,41 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-24
+
+Windows: BatchSlicer runs on Windows 10 and 11 with OrcaSlicer, Creality
+Print and Bambu Studio, tested on a real Windows 11 machine.
+
+### Added
+
+- Windows support. Settings and profiles live in `%APPDATA%\BatchSlicer`,
+  logs and cache in `%LOCALAPPDATA%\BatchSlicer`, and models and results in
+  `%USERPROFILE%\BatchSlicer` as on Linux.
+- `batchslicer setup` finds slicers installed in Program Files or
+  `%LOCALAPPDATA%\Programs`, and portable copies in Downloads, Desktop and the
+  other usual folders; their settings folders are found under `%APPDATA%`.
+  The version comes from Windows' list of installed programs.
+- The automated checks also run on Windows (Python 3.12 and 3.13).
+
+### Fixed
+
+- Creality Print's hidden migration folders (`.7.3.staging-...`,
+  `.migration-7.3`) are no longer mistaken for its settings folder. This
+  could happen on Linux too, once Creality Print 7.3 had moved its settings.
+- Slicer output is read as UTF-8 on every system, and paths in the
+  configuration, reports and menus are written with `/`.
+- A Windows path written with backslashes inside YAML double quotes gets a
+  message saying how to write it, instead of a bare YAML error.
+
 ### Documentation
 
+- Installing and using BatchSlicer on Windows, in the README (installation,
+  where setup looks, folders, Windows paths in the configuration, running the
+  watch folder, troubleshooting) and the User Guide; Windows locations in the
+  architecture, startup sequence and example configuration.
+- Known limits on Windows: `batchslicer service` is Linux-only (run `--watch`
+  in a terminal window), and Bambu Studio slices only from a signed-in
+  desktop session, not over SSH or as a background task.
 - A short terminal demo (`docs/images/demo.gif`, recorded with
   `docs/demo/demo.sh`) in the README's "See it in action" and the User Guide.
 
@@ -516,7 +549,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.16.1...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/drak42/batch_slicer/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/drak42/batch_slicer/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/drak42/batch_slicer/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/drak42/batch_slicer/compare/v0.14.2...v0.15.0

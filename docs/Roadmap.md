@@ -133,11 +133,17 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - A zip file's name in messages; a demo script for recording; the step order
   and newest features documented throughout.
 
+### 0.17.0 (2026-11-24): Windows
+
+- Windows 10 and 11 with OrcaSlicer, Creality Print and Bambu Studio: setup,
+  doctor, slicing, plates, zips and the watch folder, checked on a real
+  Windows 11 machine; CI runs on Windows too.
+
 ## Next
 
 - Multi-colour: the Bambu AMS.
-- Windows and macOS work continues on the `feat/windows` and `feat/macos`
-  branches (draft pull requests), outside `main`.
+- macOS work continues on the `feat/macos` branch (draft pull request),
+  outside `main`.
 
 ## Then: decisions on reach
 
@@ -146,9 +152,9 @@ These need a decision from the project owner before work starts.
 - **Visibility**: decided; the repository is public (with issue templates,
   private vulnerability reporting and `SECURITY.md`).
 - **PyPI**: decided; published from 0.9.2 with trusted publishing.
-- **Audience**: Linux command-line users only, or also people who expect a
-  graphical interface and Windows/macOS? This decides between the feature work
-  below and the platform work further down.
+- **Audience**: command-line users on Linux and (from 0.17.0) Windows, or
+  also people who expect a graphical interface, and macOS? This decides
+  between the feature work below and the platform work further down.
 
 ## Later: features
 
@@ -165,8 +171,10 @@ Ideas from users, kept for a later release.
   `batchslicer web` in a browser on this computer, with upload, queue,
   results, download, sending and the printers' CFS; network access with a
   password in the release after; Docker after that.
-- Windows and macOS support (locations, slicer detection, reading built-in
-  presets without AppImages).
+- macOS support (locations, slicer detection, reading built-in presets
+  without AppImages); Windows is done (0.17.0).
+- On Windows: a background watch service (the systemd service is
+  Linux-only).
 - A standalone download that does not need Python.
 - Sending G-code to Bambu Lab printers (LAN mode); Klipper/Moonraker and
   OctoPrint are done.

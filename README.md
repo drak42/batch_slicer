@@ -1456,7 +1456,8 @@ Use `--config PATH` to check a specific configuration file.
 ## Testing
 
 Run the same checks as the automated build (GitHub Actions runs them on every
-push to `main` and on every pull request, with Python 3.12 and 3.13):
+push to `main` and on every pull request, with Python 3.12 and 3.13, on Linux
+and Windows):
 
 ```bash
 .venv/bin/ruff check src tests   # lint: errors, import order, likely bugs
