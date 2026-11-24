@@ -195,3 +195,27 @@ def test_loaded_cfs_filaments_are_listed(tmp_path: Path, fake_moonraker: FakeMoo
         "      CFS 1C light grey PETG  (#9EA7AE)",
         "      external spool white PETG  (#FFFFFF)",
     ]
+
+
+@pytest.mark.parametrize(("on_windows", "problems"), [(True, 0), (False, 1)])
+def test_missing_help_text_is_fine_only_on_windows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, on_windows: bool, problems: int
+) -> None:
+    """Windows slicers run their help without showing it; elsewhere that means trouble."""
+    monkeypatch.setattr("batchslicer.core.locations.is_windows", lambda: on_windows)
+    data = tmp_path / "creality"
+    _creality_data(data, printers=["K2 Plus"])
+    config = write_config(
+        tmp_path / "settings",
+        # What Creality Print 7.3 prints on Windows instead of its help.
+        {"creality_print": {
+            "executable": fake_program(tmp_path / "bin" / "creality", "System OpenGL library released\n"),
+            "datadir": data,
+        }},
+    )
+
+    found, lines = _report(DoctorOptions(config=config.path))
+
+    assert found == problems, lines
+    if on_windows:
+        assert any("Windows shows no command-line help" in line for line in lines), lines
