@@ -167,6 +167,11 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 ## Next
 
+**Direction (24 November 2026):** let 0.20.0 be used for a while and decide
+from the feedback that comes in. When work resumes, functional and feature
+improvements come first; the platform items (a Docker image, a standalone
+download) wait, but stay on this list.
+
 - Multi-colour: the Bambu AMS.
 
 ## Then: decisions on reach
@@ -190,8 +195,17 @@ None waiting: the last two (#18, #19) shipped in 0.19.0. New ideas come in as
 ## Later: platform
 
 - **Web interface, next steps** (see [WebPlan](WebPlan.md)): access from
-  the local network (a phone, another computer) with a password; then a
-  Docker image with OrcaSlicer.
-- A standalone download that does not need Python.
+  the local network (a phone, another computer) with a password.
+- **Docker image** with OrcaSlicer, for a NAS or home server (waiting; see
+  the direction under Next).
+- **A standalone download that does not need Python** (waiting). What it
+  needs, as worked out on 24 November 2026: a build per system with a tool
+  such as PyInstaller, in the release workflow (two for macOS, Intel and
+  Apple Silicon); `batchslicer service` changed to run the built program
+  instead of `python -m batchslicer` (and a windowless build for the Windows
+  task); a notice of new versions, since `pipx upgrade` would not apply; and a
+  decision on code signing: without it Windows SmartScreen warns and macOS
+  blocks the download until allowed (signing costs about US$10 a month for
+  Windows and US$99 a year for Apple).
 - Sending G-code to Bambu Lab printers (LAN mode); Klipper/Moonraker and
   OctoPrint are done.
