@@ -5,8 +5,9 @@ for slicer programs on PATH), reads the version from the file name, and finds
 the settings folder each slicer creates the first time it is opened. Stable
 releases are recommended over pre-releases, newest first. On Windows it also
 looks in Program Files, ``%LOCALAPPDATA%\\Programs`` and portable copies
-unzipped into the usual folders, reads the version from the program's version
-information (or its folder name), and finds the settings folder under
+unzipped into the usual folders, reads the version from Windows' list of
+installed programs (or else the program's version information or its folder
+name), and finds the settings folder under
 ``%APPDATA%``. This module only looks; it does not write configuration or run
 slicers. Flatpak installs are
 not detected, because a Flatpak app is not a single program file.
@@ -18,7 +19,8 @@ import shutil
 import sys
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
+from typing import Any
 
 from batchslicer.backends.slicers import BAMBU_STUDIO, CREALITY_PRINT, ORCASLICER
 from batchslicer.core.locations import is_windows
@@ -175,14 +177,97 @@ def _windows_programs(
 
 
 def _windows_installation(program: Path) -> Installation:
-    """Return an Installation, its version from the program's version information or folder names."""
-    version = _file_version(program)
+    """Return an Installation with the program's version.
+
+    The version comes from the list of installed programs, then the program's
+    version information, then its folder names. Installed programs come first
+    because some slicers carry a placeholder in their version information
+    (OrcaSlicer 2.5 says 2.0.0.0, Creality Print 7.x says 7.0.0.0).
+    """
     names = " ".join(part for part in (program.parent.name, program.parent.parent.name))
+    version = (
+        _installed_version(program, _uninstall_entries())
+        or _file_version(program)
+        or _parse_version(program.parent.name)
+        or _parse_version(names)
+    )
     return Installation(
         executable=program,
-        version=version or _parse_version(program.parent.name) or _parse_version(names),
+        version=version,
         prerelease=bool(_PRERELEASE_PATTERN.search(names)),
     )
+
+
+def _installed_version(program: Path, entries: Iterable[tuple[str, str]]) -> tuple[int, ...]:
+    """Return the version Windows lists for the program's install folder, or ().
+
+    ``entries`` are (install folder, version) pairs from the installed-programs
+    list. A slicer that updates itself in place may leave an older version
+    there; it is still closer than a placeholder in the program file.
+    """
+    folder = _folder_key(str(program.parent))
+    for location, version in entries:
+        if location and _folder_key(location) == folder:
+            parsed = _parse_version(version)
+            if parsed:
+                return parsed
+    return ()
+
+
+def _folder_key(text: str) -> str:
+    """Return a folder path in a form that compares equal however Windows wrote it."""
+    return text.strip().strip('"').rstrip("\\/").replace("/", "\\").casefold()
+
+
+def _uninstall_entries() -> list[tuple[str, str]]:
+    """Return (install folder, version) for each program in Windows' installed-programs list.
+
+    The install folder is InstallLocation, or else the folder of the
+    uninstaller. Returns [] on other systems or when the list cannot be read.
+    """
+    if sys.platform != "win32":
+        return []
+    import winreg
+
+    keys = (
+        (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (winreg.HKEY_LOCAL_MACHINE, r"Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"),
+        (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Uninstall"),
+    )
+    entries: list[tuple[str, str]] = []
+    for root, path in keys:
+        try:
+            parent = winreg.OpenKey(root, path)
+        except OSError:
+            continue
+        with parent:
+            for index in range(winreg.QueryInfoKey(parent)[0]):
+                try:
+                    with winreg.OpenKey(parent, winreg.EnumKey(parent, index)) as entry:
+                        version = _registry_text(winreg, entry, "DisplayVersion")
+                        location = _registry_text(winreg, entry, "InstallLocation") or (
+                            _uninstaller_folder(_registry_text(winreg, entry, "UninstallString"))
+                        )
+                except OSError:
+                    continue
+                if version and location:
+                    entries.append((location, version))
+    return entries
+
+
+def _registry_text(winreg: Any, key: Any, name: str) -> str:
+    """Return a registry value as text, or "" when the key does not have it."""
+    try:
+        return str(winreg.QueryValueEx(key, name)[0])
+    except OSError:
+        return ""
+
+
+def _uninstaller_folder(command: str) -> str:
+    """Return the folder of the program an UninstallString runs, or ""."""
+    command = command.strip()
+    program = command[1:].split('"', 1)[0] if command.startswith('"') else command.split(" /", 1)[0]
+    return str(PureWindowsPath(program).parent) if program else ""
 
 
 def _file_version(program: Path) -> tuple[int, ...]:
