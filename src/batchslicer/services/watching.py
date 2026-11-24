@@ -83,7 +83,7 @@ class WatchFolder:
         target_folder = self.sliced if success else self.failed
         try:
             target_folder.mkdir(exist_ok=True)
-            target = _free_name(target_folder / drop.name, keep_suffix=drop.is_file())
+            target = free_name(target_folder / drop.name, keep_suffix=drop.is_file())
             drop.rename(target)
         except OSError as error:
             self._logger.warning("Could not move %s to %s: %s", drop, target_folder, error)
@@ -181,7 +181,7 @@ def _has_models(entry: Path, signature: _Signature) -> bool:
     return any(Path(name).suffix.casefold() in MODEL_SUFFIXES for name, _, _ in signature)
 
 
-def _free_name(target: Path, *, keep_suffix: bool) -> Path:
+def free_name(target: Path, *, keep_suffix: bool) -> Path:
     """Return ``target``, or ``name (2)``, ``name (3)``... if it already exists.
 
     With ``keep_suffix`` (a file) the number goes before the file type:
