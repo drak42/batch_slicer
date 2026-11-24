@@ -16,6 +16,7 @@ from batchslicer.cli.file_prompt import SliceInput
 from batchslicer.cli.slicer_prompt import SlicerSelectionError
 from batchslicer.domain.presets import Preset, PresetKind, PresetSelection
 from batchslicer.services.slicing import BatchOutcome, SliceOutcome
+from batchslicer.services.watch_status import read_status
 from conftest import FakeMoonraker, FakeOctoPrint
 
 
@@ -1724,6 +1725,12 @@ def test_watch_slices_each_drop_and_moves_it(
     assert "Moved kit to sliced/kit" in out
     assert "Stopped watching. Sliced 2, failed 1." in out
     app.ProfileStore.return_value.save.assert_not_called()  # type: ignore[attr-defined]
+    status = read_status(watched)  # for the web page
+    assert status is not None and status.state == "stopped"
+    assert status.output == str(tmp_path / "out")
+    assert [(drop.name, drop.success, drop.moved_to) for drop in status.recent] == [
+        ("kit", True, "sliced/kit"), ("cube.stl", True, "sliced/cube.stl"), ("broken.stl", False, "failed/broken.stl"),
+    ]
 
 
 def test_watch_never_watches_a_profiles_input(
@@ -2016,7 +2023,7 @@ def test_a_zip_input_is_unpacked_sliced_and_cleaned_up(
     )
     seen: list[list[str]] = []
 
-    def slice_folder(service: object, slice_input: object, *args: object) -> BatchOutcome:
+    def slice_folder(service: object, slice_input: object, *args: object, **kwargs: object) -> BatchOutcome:
         seen.append(sorted(model.name for model in slice_input.models))  # type: ignore[attr-defined]
         print(f"Slicing from {app._shown(slice_input.root)}")  # type: ignore[attr-defined]
         return BatchOutcome(batch_directory=tmp_path / "out" / "kit", outcomes=(), planned=2)

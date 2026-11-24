@@ -98,16 +98,26 @@ class WatchFolder:
     def _entries(self) -> Iterable[Path]:
         """Yield the files and folders directly in the watched folder that could be drops."""
         try:
-            entries = list(self.root.iterdir())
+            yield from candidates(self.root)
         except OSError as error:
             self._logger.warning("Cannot read %s: %s", self.root, error)
-            return
-        for entry in entries:
-            if entry.name.startswith(".") or entry in (self.sliced, self.failed):
-                continue
-            suffix = entry.suffix.casefold()
-            if entry.is_dir() or (entry.is_file() and suffix in MODEL_SUFFIXES | _ARCHIVE_SUFFIXES):
-                yield entry
+
+
+def candidates(root: Path) -> list[Path]:
+    """Return the files and folders directly in ``root`` that could be drops, by name.
+
+    Hidden entries and the ``sliced`` and ``failed`` subfolders are left out;
+    whether a drop has finished copying is not checked. Raises OSError if
+    ``root`` cannot be read.
+    """
+    found = []
+    for entry in root.iterdir():
+        if entry.name.startswith(".") or entry.name in (SLICED_FOLDER, FAILED_FOLDER):
+            continue
+        suffix = entry.suffix.casefold()
+        if entry.is_dir() or (entry.is_file() and suffix in MODEL_SUFFIXES | _ARCHIVE_SUFFIXES):
+            found.append(entry)
+    return sorted(found, key=lambda path: path.name.casefold())
 
 
 def watch(
