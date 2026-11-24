@@ -1,5 +1,6 @@
 """Tests for sending G-code to printers: configuration, Moonraker and the sending service."""
 
+import json
 import socket
 from pathlib import Path
 from unittest.mock import Mock
@@ -17,7 +18,8 @@ from batchslicer.infrastructure.moonraker import MoonrakerClient, MoonrakerError
 from batchslicer.infrastructure.octoprint import OctoPrintClient
 from batchslicer.infrastructure.printer_api import PrinterError
 from batchslicer.infrastructure.printer_clients import client_for
-from batchslicer.services.sending import SendingService, Upload, plan_uploads
+from batchslicer.services.results import RunResult, get_result
+from batchslicer.services.sending import SendingService, Upload, plan_result_uploads, plan_uploads
 from batchslicer.services.slicing import SliceOutcome
 from conftest import FakeMoonraker, FakeOctoPrint
 
@@ -392,3 +394,41 @@ def test_flat_gcode_is_sent_into_the_batch_folder(tmp_path: Path) -> None:
     [upload] = plan_uploads([outcome], tmp_path / "out")
 
     assert upload.remote_path == "kits-20261123-073000/b-arm.gcode"
+
+
+def _result(folder: Path, rows: list[dict[str, object]]) -> RunResult:
+    """Write a run's report.json and read the run back, as the web page does."""
+    folder.mkdir(parents=True)
+    (folder / "report.json").write_text(json.dumps({"models": rows}), encoding="utf-8")
+    result = get_result(folder.parent, folder.name)
+    assert result is not None
+    return result
+
+
+def test_a_finished_run_is_laid_out_as_send_would(tmp_path: Path) -> None:
+    """A single model goes to the top; a batch into a folder named after the run, without model folders."""
+    single = _result(tmp_path / "cube-20261124-100000",
+                     [{"model": "cube.stl", "status": "ok", "gcode": ["cube.gcode"]}])
+    assert [(u.folder, u.local) for u in plan_result_uploads(single)] == [
+        ("", tmp_path / "cube-20261124-100000" / "cube.gcode")]
+
+    batch = _result(tmp_path / "kits-20261124-100000", [
+        {"model": "a/arm.stl", "status": "ok", "gcode": ["a/arm/arm.gcode"]},
+        {"model": "b/arm.stl", "status": "ok", "gcode": ["b/arm/arm.gcode"]},
+        {"model": "top.stl", "status": "ok", "gcode": ["top/top.gcode"]},
+        {"model": "kit", "status": "ok", "gcode": ["kit/plates/plate_1.gcode", "kit/plates/plate_2.gcode"]},
+        {"model": "broken.stl", "status": "failed", "gcode": []},
+    ])
+    assert [u.remote_path for u in plan_result_uploads(batch)] == [
+        "kits-20261124-100000/a/arm.gcode",
+        "kits-20261124-100000/b/arm.gcode",
+        "kits-20261124-100000/top.gcode",
+        "kits-20261124-100000/kit/plate_1.gcode",
+        "kits-20261124-100000/kit/plate_2.gcode",
+    ]
+
+    clash = _result(tmp_path / "x", [
+        {"model": "arm.stl", "status": "ok", "gcode": ["arm/arm.gcode"]},
+        {"model": "arm.obj", "status": "ok", "gcode": ["arm-2/arm.gcode"]},
+    ])
+    assert [u.remote_path for u in plan_result_uploads(clash)] == ["x/arm/arm.gcode", "x/arm-2/arm.gcode"]
