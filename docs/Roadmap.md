@@ -189,8 +189,18 @@ These need a decision from the project owner before work starts.
 
 Ideas from users, kept for a later release.
 
-None waiting: the last two (#18, #19) shipped in 0.19.0. New ideas come in as
+New ideas come in as
 [feature requests](https://github.com/drak42/batch_slicer/issues/new/choose).
+
+- **More room between parts on plates** (nice to have; only if the slicers
+  support it). `--plates` packs parts very tightly, perhaps too tightly. As
+  checked on 24 November 2026 with OrcaSlicer 2.5 and Bambu Studio 2.9: neither
+  command line has a spacing option (the spacing in OrcaSlicer's Arrange
+  dialog is a desktop-app setting the command line does not read), the brim
+  setting did not change the gap, and `--allow-rotations` gave the same
+  number of plates for a 37-part kit. Possible ways: ask OrcaSlicer for a
+  command-line spacing option and offer it once there; or have BatchSlicer
+  arrange the parts itself and hand the slicer finished plates.
 
 ## Later: platform
 
