@@ -63,7 +63,13 @@ class Launchd:
         """Use ``runner`` to run programs, and ``home`` and ``uid`` for the user (tests pass stand-ins)."""
         self._run = runner or _run
         self._home = home
-        self._domain = f"gui/{os.getuid() if uid is None else uid}"  # type: ignore[attr-defined,unused-ignore]
+        self._uid = uid
+
+    @property
+    def _domain(self) -> str:
+        """The signed-in user's launchd session (the user is looked up only on macOS)."""
+        uid = os.getuid() if self._uid is None else self._uid  # type: ignore[attr-defined,unused-ignore]
+        return f"gui/{uid}"
 
     def check_available(self) -> None:
         """Raise :class:`ServiceError` unless agents can be loaded into the user's session."""
