@@ -13,7 +13,10 @@ the first argument; they do not slice. A service runs a normal watch run
 (below) with `--watch --no-prompt`. `batchslicer web` (`cli/web.py`) opens
 the web page's port on `127.0.0.1`, serves the page (`web/app.py`) from a
 background thread, and runs a normal watch run (below, with `--watch`) in the
-main thread; when the watch ends, the page stops. Everything below describes
+main thread; when the watch ends, the page stops. It reads the configured
+printers and the folders installed services watch when it starts.
+`batchslicer service install --web` installs a service that runs
+`batchslicer web` with `--no-prompt`. Everything below describes
 a normal run.
 
 ## Sequence

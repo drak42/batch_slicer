@@ -1,6 +1,6 @@
 # Web interface: plan
 
-**Status:** agreed on 23 November 2026; steps 1 to 3 built on the `feat/web` branch (24 November 2026)
+**Status:** agreed on 23 November 2026; steps 1 to 4 built on the `feat/web` branch (24 November 2026)
 **Date:** 23 November 2026
 
 ## Goal
@@ -127,7 +127,7 @@ First release (this computer only):
 | 1 | Status file from the watcher; `batchslicer web --profile ...` running the page and the watcher, with the queue and results pages (read-only) | Medium; **built** |
 | 2 | Upload, and download (files and ZIP) | Medium; **built** |
 | 3 | Printers page with the CFS, and sending from the page | Small-medium; **built** |
-| 4 | About page; drop targets from installed watch services; `batchslicer service install --web` | Small |
+| 4 | About page; drop targets from installed watch services; `batchslicer service install --web` | Small; **built** |
 | 5 | Docs, screenshots in the README, release | Small |
 
 Step 1 alone already lets a watch run be followed in a browser on this

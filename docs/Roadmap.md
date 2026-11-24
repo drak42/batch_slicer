@@ -178,9 +178,10 @@ None waiting: the last two (#18, #19) shipped in 0.19.0. New ideas come in as
 
 ## Later: platform
 
-- **Web interface** (in progress on the `feat/web` branch: steps 1 to 3,
-  the queue and results pages, uploads and downloads, the printers page and
-  sending, are built; see
+- **Web interface** (in progress on the `feat/web` branch: steps 1 to 4
+  are built: the queue and results pages, uploads and downloads, the printers
+  page and sending, the About page, services' folders as upload targets, and
+  `batchslicer service install --web`; docs and the release remain; see
   [WebPlan](WebPlan.md)):
   `batchslicer web` in a browser on this computer, with upload, queue,
   results, download, sending and the printers' CFS; network access with a
