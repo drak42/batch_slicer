@@ -76,7 +76,15 @@ from batchslicer.services.filament_matching import FilamentMatcher, build_matche
 from batchslicer.services.gcode_stats import GcodeStats, format_duration
 from batchslicer.services.report import write_report
 from batchslicer.services.sending import SendingService, SendOutcome, SentFile, plan_uploads
-from batchslicer.services.slicing import BatchOutcome, SliceOutcome, SlicingService, Work, plan_work
+from batchslicer.services.slicing import (
+    BatchOutcome,
+    ProgressCallback,
+    SliceOutcome,
+    SlicingService,
+    Work,
+    plan_work,
+)
+from batchslicer.services.watch_status import StatusWriter
 from batchslicer.services.watching import DEFAULT_INTERVAL_SECONDS, WatchFolder, watch
 
 EXIT_SUCCESS = 0
@@ -735,6 +743,12 @@ def _watch(
         _remember_choices(profiles, options, targets, None, output_directory, logger, remember_last=False)
 
     watched = WatchFolder(folder, logger=logger)
+    progress = StatusWriter(
+        folder,
+        output_directory.expanduser().absolute(),
+        on_error=lambda error: logger.warning("Could not write the watch status file: %s", error),
+    )
+    progress.watching()
     print("")
     print(f"Watching {folder} for models; output to {output_directory}.")
     print(
@@ -751,6 +765,12 @@ def _watch(
         print("")
         print(f"=== {drop.name} ===", flush=True)
         logger.info("Slicing %s from the watched folder", drop)
+        progress.slicing(drop.name)
+
+        def on_model(number: int, count: int, model: Path) -> None:
+            shown = model.relative_to(drop).as_posix() if model.is_relative_to(drop) else model.name
+            progress.progress(number, count, "" if shown == "." else shown)
+
         try:
             slice_input = _apply_exclude(_input_from(drop, config, logger), options.exclude or ())
             single = not slice_input.is_folder
@@ -763,6 +783,7 @@ def _watch(
             status = _slice_targets(
                 targets, slice_input, output_directory, config, logger, drop_options, jobs,
                 loaded_filaments=bool(options.loaded_filaments),
+                on_model=on_model,
             )
         except (SlicerSelectionError, PresetError, PrinterError, OSError, ValueError) as error:
             _error(f"Could not slice {drop.name}: {error}")
@@ -775,13 +796,21 @@ def _watch(
         return status == EXIT_SUCCESS
 
     def on_moved(drop: Path, moved: Path | None, success: bool) -> None:
+        progress.finished(
+            drop.name, success=success, moved_to=moved.relative_to(folder).as_posix() if moved else ""
+        )
         if moved is None:
             _error(f"Could not move {drop.name} out of the watched folder; it will not be sliced again.")
         else:
             print(f"Moved {drop.name} to {moved.relative_to(folder).as_posix()}")
         print("Watching for more models...", flush=True)
 
-    summary = watch(watched, handle, interval=DEFAULT_INTERVAL_SECONDS, sleep=time.sleep, on_moved=on_moved)
+    try:
+        summary = watch(
+            watched, handle, interval=DEFAULT_INTERVAL_SECONDS, sleep=time.sleep, on_moved=on_moved
+        )
+    finally:
+        progress.stopped()
     print("")
     print(f"Stopped watching. Sliced {summary.sliced}, failed {summary.failed}.")
     logger.info("Stopped watching %s: %d sliced, %d failed", folder, summary.sliced, summary.failed)
@@ -1044,6 +1073,7 @@ def _slice_targets(
     *,
     start: bool = False,
     loaded_filaments: bool = False,
+    on_model: ProgressCallback | None = None,
 ) -> int:
     """Slice the input for every target and return the run's exit status.
 
@@ -1051,7 +1081,8 @@ def _slice_targets(
     output folder, named after the printer. A target with a printer to send to
     has its G-code sent once it is sliced. With ``loaded_filaments``, the
     filaments loaded in that printer are read first, and multi-colour projects
-    are matched to them.
+    are matched to them. ``on_model(number, count, model)`` is called as each
+    model (or folder sliced together on plates) starts.
     """
     multi = len(targets) > 1
     folders = _unique_folder_names(targets) if multi else [""]
@@ -1071,7 +1102,9 @@ def _slice_targets(
             backend, presets=target.library, logger=logger, options=options, matcher=matcher
         )
         if slice_input.is_folder:
-            batch = _slice_folder(service, slice_input, destination, target.selection, jobs)
+            batch = _slice_folder(
+                service, slice_input, destination, target.selection, jobs, on_model=on_model
+            )
             _report_batch(batch, slice_input.root, options or SliceOptions())
             _report_matches(matcher, slice_input.root)
             if batch.interrupted:
@@ -1084,6 +1117,8 @@ def _slice_targets(
         else:
             model = slice_input.models[0]
             print(f"Slicing {model.name} with {target.slicer.display_name}...")
+            if on_model is not None:
+                on_model(1, 1, model)
             outcome = service.slice(model, destination, target.selection)
             _report(outcome, options or SliceOptions())
             _report_matches(matcher, slice_input.root)
@@ -1502,6 +1537,8 @@ def _slice_folder(
     output_directory: Path,
     selection: PresetSelection | None,
     jobs: int = 1,
+    *,
+    on_model: ProgressCallback | None = None,
 ) -> BatchOutcome:
     """Slice every model in the chosen folder, showing progress as it goes.
 
@@ -1517,6 +1554,8 @@ def _slice_folder(
 
     def on_start(number: int, count: int, model: Path) -> None:
         nonlocal open_line
+        if on_model is not None:
+            on_model(number, count, model)
         if jobs == 1:
             print(f"  [{number}/{count}] {_label(model, slice_input.root)} ... ", end="", flush=True)
             open_line = model
