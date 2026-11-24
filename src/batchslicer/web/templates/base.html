@@ -10,10 +10,14 @@
   <script src="/static/htmx.min.js" defer></script>
   <script src="/static/upload.js" defer></script>
 </head>
-<body>
+<body hx-headers='{"X-BatchSlicer-Token": "{{ token }}"}'>
   <header class="top">
     <a class="brand" href="/">BatchSlicer</a>
     <span class="muted">{{ version }}</span>
+    <nav>
+      <a href="/">Queue and results</a>
+      <a href="/printers">Printers</a>
+    </nav>
   </header>
   <main>
     {% block content %}{% endblock %}

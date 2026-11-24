@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Printers · BatchSlicer{% endblock %}
+{% block content %}
+<h1>Printers</h1>
+{% if printers %}
+<div class="printer-list">
+  {% for name in printers %}
+  <section class="panel" hx-get="/printers/{{ name | url_path }}" hx-trigger="load, every {{ printer_refresh }}s" hx-swap="innerHTML">
+    <h2 class="printer-name">{{ printers[name].describe() }}</h2>
+    <p class="muted">Asking the printer…</p>
+  </section>
+  {% endfor %}
+</div>
+<p class="muted small">Refreshed every {{ printer_refresh }} seconds. These are the printers in the configuration's <code>printers</code> section.</p>
+{% else %}
+<p>No printers are configured. Add them to the <code>printers</code> section of the configuration
+  (<code>batchslicer doctor</code> shows where it is), then start <code>batchslicer web</code> again.</p>
+{% endif %}
+{% endblock %}
