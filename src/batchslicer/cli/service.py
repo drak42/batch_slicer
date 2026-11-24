@@ -1,7 +1,7 @@
 """``batchslicer service``: keep the watch folder running in the background.
 
 ``install`` writes a background service (a systemd user service on Linux, a
-launchd agent on macOS) that runs BatchSlicer with the given options plus
+launchd agent on macOS, a scheduled task on Windows) that runs BatchSlicer with the given options plus
 ``--watch --no-prompt``, starts it and shows its first lines of output; ``status`` lists the installed services and what they are
 doing; ``uninstall`` stops and removes one. Paths in the options are made
 absolute, and the configuration file in use now is named explicitly, so the
@@ -27,6 +27,7 @@ from batchslicer.infrastructure.service_manager import (
     check_name,
 )
 from batchslicer.infrastructure.systemd import Systemd
+from batchslicer.infrastructure.windows_tasks import WindowsTasks
 
 SERVICE_ACTIONS = ("install", "status", "uninstall")
 _PATH_OPTIONS = ("--input", "--output", "--config")
@@ -74,7 +75,9 @@ def run_service(
 
 
 def system_manager() -> ServiceManager:
-    """Return this system's service manager: launchd on macOS, systemd elsewhere."""
+    """Return this system's service manager: Task Scheduler, launchd or systemd."""
+    if locations.is_windows():
+        return WindowsTasks()
     if locations.is_macos():
         return Launchd()
     return Systemd()

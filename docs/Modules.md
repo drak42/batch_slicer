@@ -35,6 +35,7 @@ docstring says more, including what it intentionally does not do.
 | `cli/send_prompt.py` | ask whether to send the G-code to a printer, and to which |
 | `cli/setup.py` | `batchslicer setup`: detect slicers, write the configuration |
 | `cli/doctor.py` | `batchslicer doctor`: check the setup and report problems (or, with `--printer`, only the printers named) |
+| `cli/service_host.py` | Windows: run BatchSlicer for a background task, with its output in a log file, stopping like Ctrl+C when asked |
 | `cli/service.py` | `batchslicer service`: install, show and remove watch-folder services, with this system's service manager |
 
 ## domain
@@ -87,6 +88,7 @@ docstring says more, including what it intentionally does not do.
 | `infrastructure/service_manager.py` | what `batchslicer service` needs from a system's service manager (an interface), service names and errors |
 | `infrastructure/systemd.py` | Linux: write, list and remove systemd user units for `batchslicer service`, and run `systemctl`/`journalctl` |
 | `infrastructure/launchd.py` | macOS: write, list and remove launchd agents for `batchslicer service`, and run `launchctl` |
+| `infrastructure/windows_tasks.py` | Windows: register, list and remove Task Scheduler tasks for `batchslicer service`, with `schtasks` and PowerShell |
 
 ## Reserved
 

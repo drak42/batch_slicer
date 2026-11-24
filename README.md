@@ -1049,9 +1049,12 @@ How it works on each system:
   runs while you are signed in, with its output in
   `~/Library/Logs/BatchSlicer/service-NAME.log`. Installing needs you to be
   signed in at the Mac (not only connected over SSH).
-- **Windows**: no background service yet. Run `batchslicer --watch ...` in a
-  terminal window and leave it open (minimised is fine); Ctrl+C in that
-  window stops it.
+- **Windows**: a Task Scheduler task (`\BatchSlicer\NAME`) that starts when
+  you sign in and runs in your session without a window, with its output in
+  `%LOCALAPPDATA%\BatchSlicer\logs\service-NAME.log` (`status` shows the
+  PowerShell command that follows it). Because it runs in your session,
+  Bambu Studio slices there too. `uninstall` asks the task to stop like
+  Ctrl+C and waits up to a minute for a slice in progress before ending it.
 
 ## Multi-colour projects
 
@@ -1498,9 +1501,9 @@ BatchSlicer; doctor only checks that the program starts and exits cleanly.
 
 **Bambu Studio hangs, or doctor says it "timed out after 120 seconds"**:
 on Windows, Bambu Studio's command line needs a signed-in desktop session.
-Run BatchSlicer in a terminal on the desktop; over SSH, as a scheduled task
-that runs whether or not you are signed in, or as a Windows service, Bambu
-Studio waits at start-up and never slices. OrcaSlicer and Creality Print work
+Run BatchSlicer in a terminal on the desktop, or as `batchslicer service`
+(which runs in your session); over SSH, or from a task set up to run whether
+or not you are signed in, Bambu Studio waits at start-up and never slices. OrcaSlicer and Creality Print work
 either way. Open Bambu Studio once and finish its setup wizard before the
 first run, so it has your printers.
 
@@ -1609,11 +1612,8 @@ the Actions tab ("Latest slicers").
 
 ## Current limitations
 
-- **No background service on Windows.** `batchslicer service` works on Linux
-  (systemd) and macOS (launchd); on Windows, run `--watch` in a terminal
-  window instead.
-- **Bambu Studio on Windows** works only from a signed-in desktop session,
-  not over SSH or as a background task.
+- **Bambu Studio on Windows** works only in a signed-in desktop session: from
+  a terminal there, or from `batchslicer service`, not over SSH.
 - **Loaded filaments from Creality's CFS only.** Reading a Bambu AMS needs the
   Bambu connection, which is not built yet.
 - **Creality Print and 3MF projects.** Creality Print's command line cannot

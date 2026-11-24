@@ -234,7 +234,7 @@ def _service_parser() -> argparse.ArgumentParser:
         usage="batchslicer service {install,status,uninstall} [--name NAME] [run options]",
         description=(
             "Keep the watch folder running in the background: a systemd user service on "
-            "Linux, a launchd agent on macOS. 'install' takes the same options as a watch run, such as --profile, "
+            "Linux, a launchd agent on macOS, a scheduled task on Windows. 'install' takes the same options as a watch run, such as --profile, "
             "--input and --send, and adds --watch --no-prompt; it starts the service and "
             "shows its first lines of output. 'status' shows the installed services, "
             "'uninstall' stops and removes one."

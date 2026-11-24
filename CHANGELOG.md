@@ -21,6 +21,11 @@ All notable changes to BatchSlicer are recorded here. The format follows
   watches while you are signed in, starts at login, starts again after an
   error, and writes its output to `~/Library/Logs/BatchSlicer/service-NAME.log`.
   `status` and `uninstall` work as on Linux; stopping works like Ctrl+C.
+- `batchslicer service` works on Windows: it registers a Task Scheduler task
+  that starts when you sign in and runs in your session without a window (so
+  Bambu Studio slices there), with its output in
+  `%LOCALAPPDATA%\BatchSlicer\logs\service-NAME.log`. Stopping asks it to
+  stop like Ctrl+C before ending it.
 
 ### Documentation
 

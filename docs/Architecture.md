@@ -368,9 +368,12 @@ On macOS, detection looks for the slicer apps in `/Applications` and
 runs a watch run with the configuration file named explicitly. It talks to the
 system's service manager through one interface
 (`infrastructure/service_manager.py`): systemd user units on Linux
-(`infrastructure/systemd.py`) and launchd agents on macOS
-(`infrastructure/launchd.py`, with the output in a log file). Windows has no
-service manager implementation yet.
+(`infrastructure/systemd.py`), launchd agents on macOS
+(`infrastructure/launchd.py`, with the output in a log file) and Task
+Scheduler tasks on Windows (`infrastructure/windows_tasks.py`). On Windows the
+task runs `pythonw.exe` (no window) with `cli/service_host.py`, which sends the
+output to a log file and turns a stop-request file into Ctrl+C, because Task
+Scheduler's own stop ends the process outright.
 
 No module should read configuration files directly.
 
