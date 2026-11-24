@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from batchslicer.backends import detection
 from batchslicer.backends.detection import find_data_directory, find_installations
 from conftest import fake_program
 
@@ -118,3 +119,41 @@ def test_windows_settings_are_under_appdata(tmp_path: Path) -> None:
     )
     assert find_data_directory("bambu_studio", home=tmp_path, environ=environ) is None
     assert find_data_directory("orca", home=tmp_path, environ={}) == roaming / "OrcaSlicer"  # ~/AppData/Roaming
+
+
+def test_windows_version_comes_from_the_installed_programs_list() -> None:
+    """The installed-programs list is matched by folder, however Windows wrote the path."""
+    program = Path("C:/Program Files/OrcaSlicer/orca-slicer.exe")
+    entries = [
+        ("C:\\Program Files\\Bambu Studio", "02.09.01.70"),
+        ('"c:\\program files\\orcaslicer\\"', "2.5.2"),
+    ]
+
+    assert detection._installed_version(program, entries) == (2, 5, 2)
+    assert detection._installed_version(program, [("C:\\Program Files\\Other", "9.9")]) == ()
+    assert detection._installed_version(program, [("C:\\Program Files\\OrcaSlicer", "")]) == ()
+
+
+def test_uninstaller_folder_is_read_from_the_uninstall_command() -> None:
+    """Without InstallLocation, the uninstaller's folder stands for the install folder."""
+    assert detection._uninstaller_folder('"C:\\Program Files\\OrcaSlicer\\Uninstall.exe"') == (
+        "C:\\Program Files\\OrcaSlicer"
+    )
+    assert detection._uninstaller_folder("C:\\Apps\\Slicer\\uninst.exe /S") == "C:\\Apps\\Slicer"
+    assert detection._uninstaller_folder("") == ""
+
+
+@pytest.mark.usefixtures("windows")
+def test_installed_programs_list_wins_over_a_placeholder_file_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """OrcaSlicer's program file says 2.0.0.0; the installed-programs list says 2.5.2."""
+    program = _exe(tmp_path / "Program Files" / "OrcaSlicer" / "orca-slicer.exe")
+    monkeypatch.setattr(detection, "_file_version", lambda _: (2, 0, 0))
+    monkeypatch.setattr(detection, "_uninstall_entries", lambda: [(str(program.parent), "2.5.2")])
+
+    assert detection._windows_installation(program).version == (2, 5, 2)
+
+    monkeypatch.setattr(detection, "_uninstall_entries", list)
+    assert detection._windows_installation(program).version == (2, 0, 0)
+
