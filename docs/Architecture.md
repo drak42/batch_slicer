@@ -1,6 +1,6 @@
 # BatchSlicer Architecture
 
-**Version:** 0.19.0  
+**Version:** 0.20.0  
 **Status:** Current; parts marked *planned* are not built yet  
 **Last Updated:** November 2026
 
@@ -91,7 +91,7 @@ BatchSlicer follows a layered architecture. As built today:
 ```
                         User
                           │
-                    CLI (cli/)                    Web page (web/; being built, see WebPlan.md)
+                    CLI (cli/)                    Web page (web/, see WebPlan.md)
                           │
               Application (app.py: one run, start to finish)
                           │
@@ -109,8 +109,8 @@ BatchSlicer follows a layered architecture. As built today:
 ```
 
 Planned layers not built yet: a service registry, a database and history, an
-event system, a job queue and plugins. The web page's first four steps are
-built (on the `feat/web` branch); the rest is planned in [WebPlan](WebPlan.md).
+event system, a job queue and plugins. The web page's first release is built
+(0.20.0); what comes next for it is planned in [WebPlan](WebPlan.md).
 
 Each layer has clearly defined responsibilities.
 

@@ -1067,7 +1067,7 @@ How it works on each system:
 
 ### Following it in a web page
 
-*New, not released yet; on the `feat/web` branch.* `batchslicer web` runs a
+*New in 0.20.0.* `batchslicer web` runs a
 watch together with a web page that shows what it is doing:
 
 ```bash

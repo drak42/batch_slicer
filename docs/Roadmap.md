@@ -154,6 +154,17 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - `batchslicer doctor --printer NAME|ADDRESS` checks only a printer (#19).
 - The README and User Guide give each system its own steps.
 
+### 0.20.0 (2026-11-24): the web page
+
+- `batchslicer web`: a page on this computer to upload models, follow the
+  watch folder, see every result with its preview picture, download G-code
+  (one file or a ZIP), send it to a printer and see what is loaded in the
+  CFS, with an About page that runs `batchslicer doctor`; checked with a real
+  K2 Plus. Optional (`batchslicer[web]`).
+- `batchslicer service install --web` runs it in the background; folders of
+  other watch services are upload targets too.
+- The watcher reports what it is doing in `.batchslicer-status.json`.
+
 ## Next
 
 - Multi-colour: the Bambu AMS.
@@ -178,14 +189,9 @@ None waiting: the last two (#18, #19) shipped in 0.19.0. New ideas come in as
 
 ## Later: platform
 
-- **Web interface** (in progress on the `feat/web` branch: steps 1 to 4
-  are built: the queue and results pages, uploads and downloads, the printers
-  page and sending, the About page, services' folders as upload targets, and
-  `batchslicer service install --web`; docs and the release remain; see
-  [WebPlan](WebPlan.md)):
-  `batchslicer web` in a browser on this computer, with upload, queue,
-  results, download, sending and the printers' CFS; network access with a
-  password in the release after; Docker after that.
+- **Web interface, next steps** (see [WebPlan](WebPlan.md)): access from
+  the local network (a phone, another computer) with a password; then a
+  Docker image with OrcaSlicer.
 - A standalone download that does not need Python.
 - Sending G-code to Bambu Lab printers (LAN mode); Klipper/Moonraker and
   OctoPrint are done.
