@@ -668,3 +668,22 @@ def test_copies_are_cloned_and_arranged(backend: OrcaBackend, tmp_path: Path) ->
     assert "--clone-objects" not in single and "--arrange" not in single
     with pytest.raises(ValueError, match="Copies must be 1 or more"):
         backend.build_slice_command(tmp_path / "part.stl", tmp_path / "out", copies=0)
+
+
+@pytest.mark.parametrize(
+    ("installed", "expected"),
+    [((2, 5, 2), True), ((2, 4, 0), False), ((), False)],
+)
+def test_version_falls_back_to_the_installed_program_without_help_text(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    installed: tuple[int, ...],
+    expected: bool,
+) -> None:
+    """On Windows the help text never arrives; the installed version is used instead."""
+    backend = _backend_for(ORCASLICER, tmp_path)
+    monkeypatch.setattr("batchslicer.backends.orca.subprocess.Popen", _popen(stdout=""))
+    monkeypatch.setattr("batchslicer.backends.orca.program_version", lambda _: installed)
+
+    assert backend.version() == (installed or None)
+    assert backend.resolves_inherits() is expected
