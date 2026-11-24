@@ -30,10 +30,13 @@ For every option and detail, see the [README](../README.md).
 
 You need:
 
-- **A Linux computer** with Python 3.12 or newer (`python3 --version` shows it).
-  Windows and macOS are not supported yet.
+- **A Linux or Windows computer** with Python 3.12 or newer
+  (`python3 --version` shows it; on Windows, `py --version`). macOS is not
+  supported yet.
 - **At least one slicer** installed: OrcaSlicer, Bambu Studio or Creality
-  Print. An AppImage in `~/Apps`, `~/Applications` or `~/Downloads` is fine.
+  Print. On Linux an AppImage in `~/Apps`, `~/Applications` or `~/Downloads`
+  is fine; on Windows, the slicer's normal installer (or a portable copy in
+  Downloads or on the Desktop).
 - **The slicer opened once**, with your printer added and the filaments you use
   made visible. BatchSlicer uses the printers, filaments and settings
   ("presets") you set up there, including your own; it never changes them.
@@ -56,6 +59,20 @@ batchslicer --version
 
 Later, `pipx upgrade batchslicer` updates it.
 
+**On Windows**, install Python from [python.org](https://www.python.org/downloads/windows/)
+first, then in PowerShell:
+
+```powershell
+py -m pip install --user pipx
+py -m pipx ensurepath        # then open a new terminal
+pipx install batchslicer
+batchslicer --version
+```
+
+Every command in this guide works the same in PowerShell or Command Prompt.
+Where it shows `~/BatchSlicer`, that is `C:\Users\<you>\BatchSlicer` on
+Windows.
+
 ## 3. Let BatchSlicer find your slicers
 
 ```bash
@@ -64,7 +81,8 @@ batchslicer setup
 
 Setup looks for your slicers and their settings folders, shows what it found,
 and asks which copy to use when you have several. It writes the configuration
-to `~/.config/batchslicer/config.yaml` and creates two folders:
+to `~/.config/batchslicer/config.yaml` (on Windows,
+`%APPDATA%\BatchSlicer\config.yaml`) and creates two folders:
 
 - `~/BatchSlicer/incoming`: where BatchSlicer looks for models first;
 - `~/BatchSlicer/output`: where the G-code goes.
@@ -197,7 +215,9 @@ their address straight away:
 batchslicer --profile k2-petg --input ~/BatchSlicer/incoming/rc-boat --send 192.168.1.50
 ```
 
-To give the printer a name, add it to `~/.config/batchslicer/config.yaml`:
+To give the printer a name, add it to BatchSlicer's configuration file
+(`~/.config/batchslicer/config.yaml`; on Windows
+`%APPDATA%\BatchSlicer\config.yaml`):
 
 ```yaml
 printers:
@@ -323,6 +343,9 @@ The service starts again whenever you log in. To keep it running after you
 log out, and start it when the computer starts, run `loginctl enable-linger`
 once.
 
+The background service is for Linux (it uses systemd). On Windows, run the
+`--watch` command in a terminal window and leave it open; minimised is fine.
+
 ## 10. Find your results
 
 Every run gets its own folder in `~/BatchSlicer/output`, so nothing is ever
@@ -375,7 +398,7 @@ the grams of each filament and the number of filament changes.
 | Give parts their own colour | `--slot "PATTERN=SLOT"` |
 | See what a run would do, without doing it | add `--dry-run` |
 | Slice what I drop into a folder | `--watch` |
-| Keep watching in the background | `batchslicer service install ...` |
+| Keep watching in the background (Linux) | `batchslicer service install ...` |
 | See preset names for scripts | `batchslicer --slicer orca --list-presets` |
 | See every option | `batchslicer --help` |
 

@@ -336,20 +336,31 @@ Configuration is loaded once during startup.
 
 The configuration file is found by `core/config.py` in this order: `--config`,
 the `BATCHSLICER_CONFIG` environment variable, `config/config.yaml` in the
-current folder (a project checkout), then `~/.config/batchslicer/config.yaml`.
+current folder (a project checkout), then `~/.config/batchslicer/config.yaml`
+(`%APPDATA%\BatchSlicer\config.yaml` on Windows).
 All path settings are read through `Config.get_path()` / `get_program()`:
 `~` is expanded, relative paths are relative to the configuration file, and
-missing `paths` settings use standard per-user locations (`core/locations.py`,
-following the XDG conventions): models and results in `~/BatchSlicer`, logs in
-`~/.local/state/batchslicer`, caches in `~/.cache/batchslicer`. BatchSlicer
-therefore behaves the same from any working folder.
+missing `paths` settings use standard per-user locations (`core/locations.py`):
+models and results in `~/BatchSlicer`; on Linux, following the XDG conventions,
+logs in `~/.local/state/batchslicer` and caches in `~/.cache/batchslicer`; on
+Windows, settings and profiles in `%APPDATA%\BatchSlicer` and logs and caches
+in `%LOCALAPPDATA%\BatchSlicer`. BatchSlicer therefore behaves the same from
+any working folder.
+
+`core/locations.is_windows()` is the one place that decides which system's
+conventions apply; modules call it through the `locations` module so tests can
+switch the layout.
 
 `batchslicer setup` (`cli/setup.py`) creates the configuration: it detects
 installed slicers and their settings folders (`backends/detection.py`) and
 writes the file (`render_config`), keeping a backup of any file it replaces.
+On Windows, detection searches Program Files and `%LOCALAPPDATA%\Programs` and
+reads versions from Windows' list of installed programs; because the slicers
+are window programs there, their help text never reaches BatchSlicer, so the
+backend falls back to that detected version (`detection.program_version`).
 `batchslicer service` (`cli/service.py`, `infrastructure/systemd.py`) writes
 systemd user units that run a watch run with the configuration file named
-explicitly.
+explicitly; it is Linux-only.
 
 No module should read configuration files directly.
 
