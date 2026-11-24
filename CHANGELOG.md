@@ -6,6 +6,11 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-11-24
+
+The web page: upload, follow, download and send from a browser on this
+computer.
+
 ### Added
 
 - `batchslicer web` (first step of the web page, needs the new `web` extra:
@@ -636,7 +641,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/drak42/batch_slicer/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/drak42/batch_slicer/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/drak42/batch_slicer/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/drak42/batch_slicer/compare/v0.16.1...v0.17.0

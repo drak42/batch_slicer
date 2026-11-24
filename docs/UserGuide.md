@@ -376,7 +376,7 @@ new settings.
 has finished copying, including a folder you are still working on. Make or
 collect models somewhere else, and move them in when they are ready.
 
-**Follow it in a browser** (new, not released yet): `batchslicer web` does
+**Follow it in a browser** (new in 0.20.0): `batchslicer web` does
 the same as `--watch` and also shows a web page with what is waiting, what is
 slicing, and every result with its preview picture, print time and filament.
 Drag models, zip files or folders onto the page to slice them, and download
