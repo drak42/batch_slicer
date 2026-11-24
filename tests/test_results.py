@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from batchslicer.services.results import find_results, get_result, inside
+from batchslicer.services.results import ResultRow, find_results, get_result, inside
 
 
 def _run(output: Path, name: str, rows: list[dict[str, object]], *, age: int = 0) -> Path:
@@ -74,3 +74,11 @@ def test_links_cannot_leave_the_folder(tmp_path: Path) -> None:
     assert inside(tmp_path / "out", "link.gcode") is None
     (tmp_path / "out" / "real.gcode").write_text("G1")
     assert inside(tmp_path / "out", "real.gcode") == (tmp_path / "out" / "real.gcode").resolve()
+
+
+def test_a_whole_folder_on_plates_is_named_in_words(tmp_path: Path) -> None:
+    """The report calls the dropped folder itself "."; the page says what it is."""
+    _run(tmp_path, "kit-20261124-100000", [{**_OK, "model": ".", "models": ["a.stl", "b.stl"]}])
+    [result] = find_results(tmp_path)
+    assert result.rows[0].label == "All models, together on plates"
+    assert ResultRow(model="cube.stl", success=True, gcode=()).label == "cube.stl"

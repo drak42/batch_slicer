@@ -41,6 +41,13 @@ class ResultRow:
     filament_changes: int | None = None
     message: str = ""
 
+    @property
+    def label(self) -> str:
+        """Return the model as shown: a whole dropped folder sliced together has no name of its own."""
+        if self.model in ("", "."):
+            return "All models, together on plates" if self.model_count > 1 else "The dropped folder"
+        return self.model
+
 
 @dataclass(frozen=True, slots=True)
 class RunResult:
