@@ -100,7 +100,7 @@ def test_install_writes_starts_and_reports(setup_home: Path) -> None:
 
     status = run_service(
         ServiceOptions("install", run_arguments=("--config", str(config), "--profile", "k2 pla")),
-        systemd=Systemd(fake), write=lines.append, sleep=lambda _: None, python="/venv/bin/python",
+        manager=Systemd(fake), write=lines.append, sleep=lambda _: None, python="/venv/bin/python",
     )
 
     assert status == 0
@@ -127,7 +127,7 @@ def test_a_service_that_does_not_start_watching_is_reported(setup_home: Path) ->
     status = run_service(
         ServiceOptions("install", name="k3", run_arguments=("--config", str(setup_home / "bs" / "config.yaml"),
                                                             "--profile", "k3")),
-        systemd=Systemd(fake), write=lines.append, sleep=lambda _: None, python="/py",
+        manager=Systemd(fake), write=lines.append, sleep=lambda _: None, python="/py",
     )
 
     assert status == 1
@@ -141,33 +141,33 @@ def test_status_and_uninstall(setup_home: Path) -> None:
     config = str(setup_home / "bs" / "config.yaml")
     for name in ("k2", "ender"):
         run_service(ServiceOptions("install", name=name, run_arguments=("--config", config, "--profile", name)),
-                    systemd=Systemd(fake), write=lambda _: None, sleep=lambda _: None, python="/py")
+                    manager=Systemd(fake), write=lambda _: None, sleep=lambda _: None, python="/py")
     lines: list[str] = []
 
-    assert run_service(ServiceOptions("status"), systemd=Systemd(fake), write=lines.append) == 0
+    assert run_service(ServiceOptions("status"), manager=Systemd(fake), write=lines.append) == 0
     assert "ender: active" in lines and "k2: active" in lines
     assert f"  runs: batchslicer --config {config} --profile k2 --watch --no-prompt" in lines
 
-    assert run_service(ServiceOptions("uninstall", name="k2"), systemd=Systemd(fake), write=lines.append) == 0
+    assert run_service(ServiceOptions("uninstall", name="k2"), manager=Systemd(fake), write=lines.append) == 0
     assert ("systemctl", "--user", "disable", "--now", "batchslicer-k2.service") in fake.commands
     assert [service.name for service in installed_services()] == ["ender"]
 
     lines.clear()
-    assert run_service(ServiceOptions("uninstall", name="k2"), systemd=Systemd(fake), write=lines.append) == 1
+    assert run_service(ServiceOptions("uninstall", name="k2"), manager=Systemd(fake), write=lines.append) == 1
     assert lines == ["BatchSlicer service uninstall failed: No service named 'k2' (installed: ender)."]
 
 
 def test_status_with_nothing_installed(setup_home: Path) -> None:
     """With no services, status says how to add one."""
     lines: list[str] = []
-    assert run_service(ServiceOptions("status"), systemd=Systemd(FakeSystemctl()), write=lines.append) == 0
+    assert run_service(ServiceOptions("status"), manager=Systemd(FakeSystemctl()), write=lines.append) == 0
     assert "No BatchSlicer services are installed" in lines[0]
 
 
 def test_without_systemd_the_terminal_is_suggested(setup_home: Path) -> None:
     """Where systemctl --user does not work, nothing is written and tmux/screen are suggested."""
     lines: list[str] = []
-    status = run_service(ServiceOptions("status"), systemd=Systemd(FakeSystemctl(available=False)),
+    status = run_service(ServiceOptions("status"), manager=Systemd(FakeSystemctl(available=False)),
                          write=lines.append)
     assert status == 1
     assert "tmux or screen" in lines[0]
@@ -176,7 +176,7 @@ def test_without_systemd_the_terminal_is_suggested(setup_home: Path) -> None:
 def test_bad_service_names_are_refused(setup_home: Path) -> None:
     """Names must fit in a unit name."""
     lines: list[str] = []
-    status = run_service(ServiceOptions("uninstall", name="../etc"), systemd=Systemd(FakeSystemctl()),
+    status = run_service(ServiceOptions("uninstall", name="../etc"), manager=Systemd(FakeSystemctl()),
                          write=lines.append)
     assert status == 1
     assert "cannot be a service name" in lines[0]

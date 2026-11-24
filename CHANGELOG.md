@@ -17,6 +17,10 @@ All notable changes to BatchSlicer are recorded here. The format follows
   configured name, or any address, even without a configuration): whether it
   answers, which software answered, where its key came from and what is
   loaded in its CFS. Repeat it for several printers (#19).
+- `batchslicer service` works on macOS: it installs a launchd agent that
+  watches while you are signed in, starts at login, starts again after an
+  error, and writes its output to `~/Library/Logs/BatchSlicer/service-NAME.log`.
+  `status` and `uninstall` work as on Linux; stopping works like Ctrl+C.
 
 ### Documentation
 

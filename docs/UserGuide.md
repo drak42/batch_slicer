@@ -359,15 +359,12 @@ batchslicer service status
 batchslicer service uninstall
 ```
 
-The service starts again whenever you log in. To keep it running after you
-log out, and start it when the computer starts, run `loginctl enable-linger`
-once.
+The service starts again whenever you log in. On Linux, to keep it running
+after you log out (and start it when the computer starts), run
+`loginctl enable-linger` once. On a Mac, install it while signed in at the Mac.
 
-The background service is for Linux (it uses systemd). On Windows and macOS,
-run the `--watch` command in a terminal window and leave it open; minimised is
-fine.
-With Bambu Studio on Windows that is the only way: it slices only from a
-signed-in desktop session.
+On Windows there is no background service yet: run the `--watch` command in a
+terminal window and leave it open; minimised is fine.
 
 ## 10. Find your results
 
@@ -422,7 +419,7 @@ the grams of each filament and the number of filament changes.
 | Give parts their own colour | `--slot "PATTERN=SLOT"` |
 | See what a run would do, without doing it | add `--dry-run` |
 | Slice what I drop into a folder | `--watch` |
-| Keep watching in the background (Linux) | `batchslicer service install ...` |
+| Keep watching in the background (Linux, macOS) | `batchslicer service install ...` |
 | See preset names for scripts | `batchslicer --slicer orca --list-presets` |
 | See every option | `batchslicer --help` |
 

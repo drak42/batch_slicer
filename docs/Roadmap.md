@@ -175,9 +175,8 @@ Ideas from users, kept for a later release.
   `batchslicer web` in a browser on this computer, with upload, queue,
   results, download, sending and the printers' CFS; network access with a
   password in the release after; Docker after that.
-- On Windows and macOS: a background watch service (the systemd service is
-  Linux-only; launchd on macOS). Windows (0.17.0) and macOS (0.18.0) are
-  otherwise done.
+- On Windows: a background watch service (Linux has systemd, macOS launchd).
+  Windows (0.17.0) and macOS (0.18.0) are otherwise done.
 - A standalone download that does not need Python.
 - Sending G-code to Bambu Lab printers (LAN mode); Klipper/Moonraker and
   OctoPrint are done.

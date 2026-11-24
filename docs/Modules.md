@@ -35,7 +35,7 @@ docstring says more, including what it intentionally does not do.
 | `cli/send_prompt.py` | ask whether to send the G-code to a printer, and to which |
 | `cli/setup.py` | `batchslicer setup`: detect slicers, write the configuration |
 | `cli/doctor.py` | `batchslicer doctor`: check the setup and report problems (or, with `--printer`, only the printers named) |
-| `cli/service.py` | `batchslicer service`: install, show and remove watch-folder services |
+| `cli/service.py` | `batchslicer service`: install, show and remove watch-folder services, with this system's service manager |
 
 ## domain
 
@@ -84,7 +84,9 @@ docstring says more, including what it intentionally does not do.
 | `infrastructure/moonraker.py` | talk to a Klipper printer's Moonraker: check it answers, upload (and start) G-code |
 | `infrastructure/octoprint.py` | talk to OctoPrint: check it answers and the printer's state, create folders, upload (and start) G-code |
 | `infrastructure/printer_clients.py` | choose the Moonraker or OctoPrint client for a printer by its `type` |
-| `infrastructure/systemd.py` | write, list and remove systemd user units for `batchslicer service`, and run `systemctl`/`journalctl` (Linux only) |
+| `infrastructure/service_manager.py` | what `batchslicer service` needs from a system's service manager (an interface), service names and errors |
+| `infrastructure/systemd.py` | Linux: write, list and remove systemd user units for `batchslicer service`, and run `systemctl`/`journalctl` |
+| `infrastructure/launchd.py` | macOS: write, list and remove launchd agents for `batchslicer service`, and run `launchctl` |
 
 ## Reserved
 

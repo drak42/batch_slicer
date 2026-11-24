@@ -6,7 +6,8 @@ folder (``~/.config/systemd/user``) whose ``ExecStart`` runs BatchSlicer with
 like pressing Ctrl+C: slicers are stopped and a drop being sliced stays in the
 watched folder. ``systemctl --user`` and ``journalctl --user`` do the rest.
 This module writes, lists and removes unit files and runs those programs; it
-does not decide what the service runs.
+does not decide what the service runs. Output goes to the journal, so the log
+file a service manager may be given is not used here.
 """
 
 import os
@@ -14,41 +15,15 @@ import re
 import shutil
 import subprocess
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
 from pathlib import Path
 
+from batchslicer.infrastructure.service_manager import ServiceError, ServiceInfo, check_name
+
 UNIT_PREFIX = "batchslicer-"
-DEFAULT_NAME = "watch"
-_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$")
 _STOP_SECONDS = 60
 """How long systemd waits for a stop (slicers finishing their cleanup)."""
 
 Runner = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
-
-
-class ServiceError(Exception):
-    """Raised when a service cannot be installed, checked or removed."""
-
-
-@dataclass(frozen=True, slots=True)
-class ServiceInfo:
-    """One installed BatchSlicer service."""
-
-    name: str
-    unit: str
-    path: Path
-    command: tuple[str, ...]
-    """What the service runs (from its ExecStart line)."""
-
-
-def check_name(name: str) -> str:
-    """Return ``name`` if it can be part of a unit name, or raise :class:`ServiceError`."""
-    if not _NAME_PATTERN.match(name):
-        raise ServiceError(
-            f"'{name}' cannot be a service name: use up to 40 letters, digits, dashes and "
-            "underscores, starting with a letter or digit."
-        )
-    return name
 
 
 def unit_name(name: str) -> str:
@@ -125,16 +100,60 @@ def installed_services(environ: Mapping[str, str] | None = None) -> list[Service
                     command = unquote_command(line[len("ExecStart=") :])
         except OSError:
             pass
-        services.append(ServiceInfo(name=name, unit=path.name, path=path, command=command))
+        services.append(ServiceInfo(name=name, path=path, command=command))
     return services
 
 
 class Systemd:
-    """Run ``systemctl --user``, ``journalctl --user`` and ``loginctl`` for the current user."""
+    """Run ``systemctl --user``, ``journalctl --user`` and ``loginctl`` for the current user.
 
-    def __init__(self, runner: Runner | None = None) -> None:
-        """Use ``runner`` to run programs (tests pass a stand-in)."""
+    Implements :class:`~batchslicer.infrastructure.service_manager.ServiceManager`.
+    """
+
+    def __init__(self, runner: Runner | None = None, environ: Mapping[str, str] | None = None) -> None:
+        """Use ``runner`` to run programs and ``environ`` to find the unit folder (tests pass stand-ins)."""
         self._run = runner or _run
+        self._environ = environ
+
+    def definition_path(self, name: str) -> Path:
+        """Return the unit file of service ``name``."""
+        return unit_folder(self._environ) / unit_name(name)
+
+    def write(self, name: str, command: Sequence[str], working_directory: Path, log_file: Path) -> None:
+        """Write the unit file; the output goes to the journal, not ``log_file``."""
+        path = self.definition_path(name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(render_unit(name, command, working_directory), encoding="utf-8")
+
+    def start(self, name: str) -> None:
+        """Read the unit, start it at login from now on, and (re)start it now."""
+        self.reload()
+        self.enable_and_restart(unit_name(name))
+
+    def stop_and_remove(self, name: str) -> None:
+        """Stop and disable the unit (a failure to stop is not fatal) and delete it."""
+        try:
+            self.disable_and_stop(unit_name(name))
+        finally:
+            self.definition_path(name).unlink(missing_ok=True)
+            self.reload()
+
+    def installed(self) -> list[ServiceInfo]:
+        """Return the BatchSlicer units in the user's systemd folder."""
+        return installed_services(self._environ)
+
+    def follow_hint(self, name: str) -> str:
+        """Return the journalctl command that follows the service's output."""
+        return f"journalctl --user -u {unit_name(name)} -f"
+
+    def notes(self) -> list[str]:
+        """Say so when services stop at logout (no lingering)."""
+        if self.lingering() is False:
+            return [
+                "Services stop when you log out. To keep them running then (and start them "
+                "at boot), run once: loginctl enable-linger"
+            ]
+        return []
 
     def check_available(self) -> None:
         """Raise :class:`ServiceError` unless the user's systemd can be used."""
@@ -158,15 +177,16 @@ class Systemd:
         """Stop ``unit`` and no longer start it at login."""
         self._checked("systemctl", "--user", "disable", "--now", unit)
 
-    def state(self, unit: str) -> str:
+    def state(self, name: str) -> str:
         """Return ``active``, ``inactive``, ``failed``, ``activating``..."""
-        result = self._run(("systemctl", "--user", "is-active", unit))
+        result = self._run(("systemctl", "--user", "is-active", unit_name(name)))
         return result.stdout.strip() or "unknown"
 
-    def recent_log(self, unit: str, lines: int = 15) -> list[str]:
-        """Return the unit's last lines of output from the journal."""
+    def recent_log(self, name: str, lines: int = 15) -> list[str]:
+        """Return the service's last lines of output from the journal."""
         result = self._run(
-            ("journalctl", "--user", "--unit", unit, "--lines", str(lines), "--no-pager", "--output", "cat")
+            ("journalctl", "--user", "--unit", unit_name(name), "--lines", str(lines), "--no-pager",
+             "--output", "cat")
         )
         return [line for line in result.stdout.splitlines() if line.strip()]
 

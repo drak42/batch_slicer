@@ -1897,15 +1897,15 @@ def test_watch_says_how_to_stop(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "batchslicer service uninstall" in app._how_to_stop()
 
 
-@pytest.mark.parametrize("system", ["windows", "macos"])
-def test_watch_without_systemd_does_not_mention_it(
-    monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest, system: str
+@pytest.mark.parametrize(("system", "hint"), [("windows", "Ctrl+C"), ("macos", "batchslicer service uninstall")])
+def test_watch_stop_hint_fits_the_system(
+    monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest, system: str, hint: str
 ) -> None:
-    """Windows and macOS have no systemd service, so the hint says how to stop it there."""
+    """Without a terminal: Windows (no service) says Ctrl+C; macOS has services, like Linux."""
     request.getfixturevalue(system)
     monkeypatch.setattr(app.sys.stdin, "isatty", lambda: False, raising=False)
     assert "systemctl" not in app._how_to_stop()
-    assert "Ctrl+C" in app._how_to_stop()
+    assert hint in app._how_to_stop()
 
 
 def test_slots_are_checked_before_slicing() -> None:

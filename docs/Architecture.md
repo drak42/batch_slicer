@@ -364,9 +364,13 @@ backend falls back to that detected version (`detection.program_version`).
 On macOS, detection looks for the slicer apps in `/Applications` and
 `~/Applications`, takes the program inside the app and its version from
 `Info.plist`; the slicers there print their help text as on Linux.
-`batchslicer service` (`cli/service.py`, `infrastructure/systemd.py`) writes
-systemd user units that run a watch run with the configuration file named
-explicitly; it is Linux-only (no launchd service on macOS yet).
+`batchslicer service` (`cli/service.py`) installs a background service that
+runs a watch run with the configuration file named explicitly. It talks to the
+system's service manager through one interface
+(`infrastructure/service_manager.py`): systemd user units on Linux
+(`infrastructure/systemd.py`) and launchd agents on macOS
+(`infrastructure/launchd.py`, with the output in a log file). Windows has no
+service manager implementation yet.
 
 No module should read configuration files directly.
 
