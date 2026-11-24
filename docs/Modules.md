@@ -64,7 +64,8 @@ docstring says more, including what it intentionally does not do.
 | `services/archives.py` | unpack the models of a zip file (`--input kit.zip`, zip drops) safely: model files only, no paths outside the folder, size limits |
 | `services/watching.py` | watch a folder (`--watch`): find drops that have finished copying and move them to `sliced` or `failed` once handled |
 | `services/watch_status.py` | write and read `.batchslicer-status.json`: what a watch run is doing, for the web page |
-| `services/results.py` | find the runs in the output folder, newest first, and read their reports; keep paths inside it |
+| `services/results.py` | find the runs in the output folder, newest first, and read their reports; keep paths inside it; pack a run's G-code and reports into a ZIP |
+| `services/uploads.py` | put uploaded files into the watched folder all at once, through a hidden staging folder: clean names, keep only what the watcher slices, limit sizes |
 
 ## backends
 
@@ -99,9 +100,9 @@ Needs the `web` extra (Starlette, Uvicorn, Jinja2); nothing else imports it.
 
 | Module | Purpose |
 |---|---|
-| `web/app.py` | the Starlette application: queue, results and preview pictures, read from the watched and output folders; answers only to `localhost` and `127.0.0.1` |
+| `web/app.py` | the Starlette application: queue, results, preview pictures, uploads and downloads; answers only to `localhost` and `127.0.0.1`, and takes uploads only with the page's token from the page itself |
 | `web/templates/` | the pages (Jinja2) |
-| `web/static/` | the stylesheet and htmx (shipped, never downloaded) |
+| `web/static/` | the stylesheet, `upload.js` (dragging and choosing files and folders) and htmx (shipped, never downloaded) |
 
 ## Reserved
 

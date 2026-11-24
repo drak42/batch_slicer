@@ -1,6 +1,6 @@
 # Web interface: plan
 
-**Status:** agreed on 23 November 2026; step 1 built on the `feat/web` branch (24 November 2026)
+**Status:** agreed on 23 November 2026; steps 1 and 2 built on the `feat/web` branch (24 November 2026)
 **Date:** 23 November 2026
 
 ## Goal
@@ -33,8 +33,9 @@ It is opened in a browser on the computer BatchSlicer runs on.
 
 1. **Upload.** Drag files or a whole folder onto the page. They are written to a hidden folder first and moved into the
    watched folder only when complete, so the watcher never sees half an
-   upload. Only model files (STL, 3MF, OBJ, STEP) are accepted, with a size
-   limit; names are cleaned so nothing lands outside the watched folder.
+   upload. Only what the watcher slices is accepted (STL, 3MF and OBJ, and
+   zip files of them; BatchSlicer does not take STEP), up to 2 GB at a
+   time; names are cleaned so nothing lands outside the watched folder.
 2. **Queue.** What is waiting in the watched folder, what is slicing now
    (model *n* of *m*), and what finished, newest first. Updated every few
    seconds.
@@ -124,7 +125,7 @@ First release (this computer only):
 | Step | What | Size |
 |---|---|---|
 | 1 | Status file from the watcher; `batchslicer web --profile ...` running the page and the watcher, with the queue and results pages (read-only) | Medium; **built** |
-| 2 | Upload, and download (files and ZIP) | Medium |
+| 2 | Upload, and download (files and ZIP) | Medium; **built** |
 | 3 | Printers page with the CFS, and sending from the page | Small-medium |
 | 4 | About page; drop targets from installed watch services; `batchslicer service install --web` | Small |
 | 5 | Docs, screenshots in the README, release | Small |

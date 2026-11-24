@@ -379,6 +379,8 @@ collect models somewhere else, and move them in when they are ready.
 **Follow it in a browser** (new, not released yet): `batchslicer web` does
 the same as `--watch` and also shows a web page with what is waiting, what is
 slicing, and every result with its preview picture, print time and filament.
+Drag models, zip files or folders onto the page to slice them, and download
+the G-code one file at a time or a whole run as a ZIP.
 
 ```bash
 pipx install --force "batchslicer[web]"   # once
