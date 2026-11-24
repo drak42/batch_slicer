@@ -364,6 +364,18 @@ after you log out (and start it when the computer starts), run
 `loginctl enable-linger` once. On a Mac, install it while signed in at the Mac.
 On Windows it runs while you are signed in, without a window.
 
+**Which settings does it use?** `batchslicer service status` shows them on its
+`runs:` line: the slicer, printer, filament and process (or the profile), and
+options such as `--plates` and `--send`. They are read once, when the service
+starts. To **change them**, run `batchslicer service install` again with the
+new options; installing with the same name replaces the old service. After
+changing a profile the service uses, install it again too, so it reads the
+new settings.
+
+**Anything you put in the watched folder is sliced**, a few seconds after it
+has finished copying, including a folder you are still working on. Make or
+collect models somewhere else, and move them in when they are ready.
+
 ## 10. Find your results
 
 Every run gets its own folder in `~/BatchSlicer/output`, so nothing is ever

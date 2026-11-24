@@ -1029,12 +1029,20 @@ The service 'watch' is watching, and starts again whenever you log in.
   are written with their full paths, so the service works the same whatever
   folder you installed it from.
 - `batchslicer service status` shows each service, whether it is running and
-  what it runs, with its latest output, and how to follow it live.
+  what it runs (its `runs:` line lists the slicer, printer, filament and
+  process, or the profile, and the other options), with its latest output,
+  and how to follow it live.
+- The options are read once, when the service starts. To change them, run
+  `service install` again with the new options; installing with the same
+  name replaces the service. After changing a profile a service uses, install
+  it again so it reads the new settings.
+- Anything put in the watched folder is sliced a few seconds after it has
+  finished copying, including a folder you are still working on: make or
+  collect models elsewhere and move them in when they are ready.
 - `batchslicer service uninstall` stops and removes it. Stopping works like
   Ctrl+C: the slicer is stopped, and a drop being sliced stays in the folder.
 - `--name NAME` runs several, for example one folder per printer:
   `batchslicer service install --name ender --profile ender-pla --input ~/drop-ender`.
-  Installing again with the same name replaces it.
 
 How it works on each system:
 
