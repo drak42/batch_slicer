@@ -40,7 +40,7 @@
     {% endfor %}
   </div>
   <div>
-    <h3>{{ row.model }}
+    <h3>{{ row.label }}
       <span class="tag {{ 'tag-ok' if row.success else 'tag-failed' }}">{{ 'sliced' if row.success else 'failed' }}</span></h3>
     {% if row.success %}
       <dl>
