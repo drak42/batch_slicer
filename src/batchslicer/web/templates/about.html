@@ -5,12 +5,12 @@
 <div class="panel">
   <dl>
     <dt>Version</dt><dd>BatchSlicer {{ version }} (Python {{ python }}, {{ system }})</dd>
-    <dt>Configuration</dt><dd><code>{{ config or "not known" }}</code></dd>
+    <dt>Configuration</dt><dd><code>{{ (config | shown) or "not known" }}</code></dd>
     <dt>This page runs</dt><dd><code>{{ command }}</code></dd>
-    <dt>Watched folder</dt><dd><code>{{ watched }}</code>{% if status %} ({{ status.state }}){% endif %}</dd>
-    <dt>Output folder</dt><dd><code>{{ output }}</code></dd>
+    <dt>Watched folder</dt><dd><code>{{ watched | shown }}</code>{% if status %} ({{ status.state }}){% endif %}</dd>
+    <dt>Output folder</dt><dd><code>{{ output | shown }}</code></dd>
     {% for target in targets %}
-    <dt>Service {{ target.name }}</dt><dd><code>{{ target.folder }}</code></dd>
+    <dt>Service {{ target.name }}</dt><dd><code>{{ target.folder | shown }}</code></dd>
     {% endfor %}
     <dt>Printers</dt><dd>{% for name, host in printers.items() %}{{ host.describe() }}{{ ", " if not loop.last }}{% else %}none configured{% endfor %}</dd>
   </dl>

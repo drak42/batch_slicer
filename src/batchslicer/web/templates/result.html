@@ -7,7 +7,7 @@
   {{ result.succeeded }} sliced{% if result.failed %}, <span class="failed">{{ result.failed }} failed</span>{% endif %}
   {% if result.print_time %} · {{ result.print_time }} to print{% endif %}
   {% if result.filament_g is not none %} · {{ result.filament_g | grams }} of filament{% endif %}</p>
-<p class="muted small"><code>{{ result.folder }}</code></p>
+<p class="muted small"><code>{{ result.folder | shown }}</code></p>
 <p class="downloads">
   {% if result.gcode %}<a class="button" href="/zip/{{ result.name | url_path }}">Download all (ZIP)</a>{% endif %}
   <a href="/download/{{ result.name | url_path }}/report.csv">report.csv</a>

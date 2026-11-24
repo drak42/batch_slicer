@@ -150,7 +150,9 @@ def create_app(settings: WebSettings) -> Starlette:
     )
     folders = {"": settings.watched, **{target.name: target.folder for target in settings.targets}}
     logger = logging.getLogger("batchslicer")
-    templates.env.filters.update(when=_when, grams=_grams, url_path=_url_path, colour=_colour)
+    templates.env.filters.update(
+        when=_when, grams=_grams, url_path=_url_path, colour=_colour, shown=_shown
+    )
 
     def output_folder(status: WatchStatus | None) -> Path:
         return Path(status.output) if status is not None and status.output else settings.output
@@ -425,6 +427,17 @@ def _when(value: str | datetime) -> str:
         return str(value)
     today = datetime.fromtimestamp(time.time()).date()
     return moment.strftime("%H:%M" if moment.date() == today else "%d %b %H:%M")
+
+
+def _shown(path: Path | str | None) -> str:
+    """Return a path as shown on the page: inside the home folder as ``~/...``."""
+    if path is None:
+        return ""
+    try:
+        relative = Path(path).relative_to(Path.home())
+    except ValueError:
+        return str(path)
+    return str(Path("~", relative))
 
 
 def _colour(value: str) -> str:
