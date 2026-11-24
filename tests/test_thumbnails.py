@@ -15,6 +15,7 @@ from batchslicer.services.thumbnails import (
     add_thumbnails,
     encode_png,
     extrusions,
+    read_preview,
     render,
 )
 
@@ -220,3 +221,17 @@ def test_filament_colours_are_read_for_every_slot(tmp_path: Path) -> None:
         (0, 0, 0), (255, 255, 255), (0x9A, 0x9F, 0xA6),
     ]
     assert _filament_colours("; nothing\n") == [(0x9A, 0x9F, 0xA6)]
+
+
+def test_the_largest_picture_is_read_back(tmp_path: Path) -> None:
+    """read_preview returns the biggest PNG in the G-code, or None without pictures."""
+    path = tmp_path / "box.gcode"
+    path.write_text(_box_gcode())
+    assert read_preview(path) is None
+
+    add_thumbnails(path)
+
+    png = read_preview(path)
+    assert png is not None
+    assert _png_size_and_pixels(png)[:2] == (300, 300)
+    assert read_preview(tmp_path / "missing.gcode") is None
