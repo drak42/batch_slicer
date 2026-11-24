@@ -139,11 +139,15 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
   doctor, slicing, plates, zips and the watch folder, checked on a real
   Windows 11 machine; CI runs on Windows too.
 
+### 0.18.0 (2026-11-24): macOS
+
+- macOS with OrcaSlicer, Creality Print and Bambu Studio: setup, doctor,
+  slicing, plates, zips, Ctrl+C and the watch folder, checked on a real Mac;
+  CI runs on macOS too.
+
 ## Next
 
 - Multi-colour: the Bambu AMS.
-- macOS work continues on the `feat/macos` branch (draft pull request),
-  outside `main`.
 
 ## Then: decisions on reach
 
@@ -152,9 +156,9 @@ These need a decision from the project owner before work starts.
 - **Visibility**: decided; the repository is public (with issue templates,
   private vulnerability reporting and `SECURITY.md`).
 - **PyPI**: decided; published from 0.9.2 with trusted publishing.
-- **Audience**: command-line users on Linux and (from 0.17.0) Windows, or
-  also people who expect a graphical interface, and macOS? This decides
-  between the feature work below and the platform work further down.
+- **Audience**: command-line users on Linux, Windows (from 0.17.0) and
+  macOS (from 0.18.0), or also people who expect a graphical interface? This
+  decides between the feature work below and the platform work further down.
 
 ## Later: features
 
@@ -171,10 +175,9 @@ Ideas from users, kept for a later release.
   `batchslicer web` in a browser on this computer, with upload, queue,
   results, download, sending and the printers' CFS; network access with a
   password in the release after; Docker after that.
-- macOS support (locations, slicer detection, reading built-in presets
-  without AppImages); Windows is done (0.17.0).
-- On Windows: a background watch service (the systemd service is
-  Linux-only).
+- On Windows and macOS: a background watch service (the systemd service is
+  Linux-only; launchd on macOS). Windows (0.17.0) and macOS (0.18.0) are
+  otherwise done.
 - A standalone download that does not need Python.
 - Sending G-code to Bambu Lab printers (LAN mode); Klipper/Moonraker and
   OctoPrint are done.

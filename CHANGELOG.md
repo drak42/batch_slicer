@@ -6,6 +6,37 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-24
+
+macOS: BatchSlicer runs on macOS with OrcaSlicer, Creality Print and Bambu
+Studio, tested on a real Mac (macOS 15.8).
+
+### Added
+
+- macOS support. Settings and profiles live in
+  `~/Library/Application Support/BatchSlicer`, logs in
+  `~/Library/Logs/BatchSlicer` and the cache in `~/Library/Caches/BatchSlicer`;
+  models and results in `~/BatchSlicer` as on Linux.
+- `batchslicer setup` finds `OrcaSlicer.app`, `BambuStudio.app` and
+  `Creality Print.app` in `/Applications` and `~/Applications`, uses the
+  program inside the app and reads its version from the app's `Info.plist`;
+  the settings folders are found under `~/Library/Application Support`.
+  Built-in presets are read from the app itself.
+- The automated checks also run on macOS (Python 3.12 and 3.13).
+
+### Fixed
+
+- The watch folder's stop hint no longer mentions `systemctl` on macOS.
+
+### Documentation
+
+- Installing and using BatchSlicer on macOS, in the README (installation,
+  where setup looks, folders, troubleshooting) and the User Guide; macOS
+  locations in the architecture, startup sequence and example configuration.
+- `batchslicer service` is Linux-only: on macOS, as on Windows, run `--watch`
+  in a Terminal window. macOS's own `python3` (3.9) is too old; Terminal needs
+  permission to read Desktop, Documents and Downloads.
+
 ## [0.17.0] - 2026-11-24
 
 Windows: BatchSlicer runs on Windows 10 and 11 with OrcaSlicer, Creality
@@ -549,7 +580,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/drak42/batch_slicer/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/drak42/batch_slicer/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/drak42/batch_slicer/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/drak42/batch_slicer/compare/v0.15.0...v0.16.0

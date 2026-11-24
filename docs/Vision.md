@@ -44,8 +44,8 @@ print time and filament, puts a folder's parts together on plates, adds
 preview pictures for printer screens, and sends G-code to Klipper and
 OctoPrint printers.
 It also watches a folder and slices whatever is dropped into it, and runs
-on Linux and Windows. Next come multi-material printers, Bambu Lab printers
-over the local network, and macOS.
+on Linux, Windows and macOS. Next come multi-material printers and Bambu Lab
+printers over the local network.
 
 See [Roadmap](Roadmap.md) for the concrete plan and
 [Architecture](Architecture.md) for how the software is built.
