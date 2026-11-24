@@ -376,6 +376,17 @@ new settings.
 has finished copying, including a folder you are still working on. Make or
 collect models somewhere else, and move them in when they are ready.
 
+**Follow it in a browser** (new, not released yet): `batchslicer web` does
+the same as `--watch` and also shows a web page with what is waiting, what is
+slicing, and every result with its preview picture, print time and filament.
+
+```bash
+pipx install --force "batchslicer[web]"   # once
+batchslicer web --profile k2-petg --plates
+```
+
+Open <http://127.0.0.1:8765> on the same computer. Ctrl+C stops both.
+
 ## 10. Find your results
 
 Every run gets its own folder in `~/BatchSlicer/output`, so nothing is ever

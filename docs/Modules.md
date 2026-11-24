@@ -25,7 +25,7 @@ docstring says more, including what it intentionally does not do.
 
 | Module | Purpose |
 |---|---|
-| `cli/arguments.py` | parse command-line options for runs, `setup` and `doctor` |
+| `cli/arguments.py` | parse command-line options for runs, `setup`, `doctor`, `service` and `web` |
 | `cli/menu.py` | numbered menus with search, yes/no questions and number questions |
 | `cli/slicer_prompt.py` | choose a slicer |
 | `cli/preset_prompt.py` | choose printer, filament and process; find presets by name |
@@ -37,6 +37,7 @@ docstring says more, including what it intentionally does not do.
 | `cli/doctor.py` | `batchslicer doctor`: check the setup and report problems (or, with `--printer`, only the printers named) |
 | `cli/service_host.py` | Windows: run BatchSlicer for a background task, with its output in a log file, stopping like Ctrl+C when asked |
 | `cli/service.py` | `batchslicer service`: install, show and remove watch-folder services, with this system's service manager |
+| `cli/web.py` | `batchslicer web`: serve the web page on this computer in a background thread while a watch run keeps the terminal |
 
 ## domain
 
@@ -57,11 +58,13 @@ docstring says more, including what it intentionally does not do.
 | `services/slicing.py` | slice one model or a batch into job folders (parallel jobs, auto-orient retry, models together on plates, copies, clean-up) |
 | `services/report.py` | write `report.csv` and `report.json` |
 | `services/gcode_stats.py` | read print time and filament use from G-code |
-| `services/thumbnails.py` | draw preview pictures from G-code toolpaths and insert them as PNG blocks |
+| `services/thumbnails.py` | draw preview pictures from G-code toolpaths and insert them as PNG blocks; read them back |
 | `services/filament_matching.py` | match multi-colour projects to the filaments loaded in the printer (`--loaded-filaments`) and write their filament files |
 | `services/sending.py` | plan where each G-code file goes on the printer and send them (`--send`, `--start`) |
 | `services/archives.py` | unpack the models of a zip file (`--input kit.zip`, zip drops) safely: model files only, no paths outside the folder, size limits |
 | `services/watching.py` | watch a folder (`--watch`): find drops that have finished copying and move them to `sliced` or `failed` once handled |
+| `services/watch_status.py` | write and read `.batchslicer-status.json`: what a watch run is doing, for the web page |
+| `services/results.py` | find the runs in the output folder, newest first, and read their reports; keep paths inside it |
 
 ## backends
 
@@ -90,7 +93,17 @@ docstring says more, including what it intentionally does not do.
 | `infrastructure/launchd.py` | macOS: write, list and remove launchd agents for `batchslicer service`, and run `launchctl` |
 | `infrastructure/windows_tasks.py` | Windows: register, list and remove Task Scheduler tasks for `batchslicer service`, with `schtasks` and PowerShell |
 
+## web
+
+Needs the `web` extra (Starlette, Uvicorn, Jinja2); nothing else imports it.
+
+| Module | Purpose |
+|---|---|
+| `web/app.py` | the Starlette application: queue, results and preview pictures, read from the watched and output folders; answers only to `localhost` and `127.0.0.1` |
+| `web/templates/` | the pages (Jinja2) |
+| `web/static/` | the stylesheet and htmx (shipped, never downloaded) |
+
 ## Reserved
 
-`application/`, `plugins/`, `web/` and `cli/commands/` are empty packages kept
+`application/`, `plugins/` and `cli/commands/` are empty packages kept
 for planned work (see [Architecture](Architecture.md)).

@@ -65,7 +65,7 @@ onto one plate. Recorded with [`docs/demo/demo.sh`](https://github.com/drak42/ba
 - [Profiles](#profiles)
 - [Slicing for several printers](#slicing-for-several-printers)
 - [Sending G-code to a printer](#sending-g-code-to-a-printer)
-- [Watch folder](#watch-folder)
+- [Watch folder](#watch-folder) (including [the web page](#following-it-in-a-web-page))
 - [Multi-colour projects](#multi-colour-projects)
 - [Output](#output) (including [several models per plate](#several-models-per-plate), [reports](#reports) and [speed](#speed))
 - [Exit status and logs](#exit-status-and-logs)
@@ -289,10 +289,11 @@ From a copy of this repository:
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -e '.[dev]'
+.venv/bin/pip install -e '.[dev,web]'
 ```
 
-This installs BatchSlicer into `.venv` together with the test and lint tools.
+This installs BatchSlicer into `.venv` together with the web page's
+libraries and the test and lint tools.
 Run it as `.venv/bin/batchslicer` (or activate the environment with
 `source .venv/bin/activate`); the examples below just say `batchslicer`.
 
@@ -1063,6 +1064,38 @@ How it works on each system:
   PowerShell command that follows it). Because it runs in your session,
   Bambu Studio slices there too. `uninstall` asks the task to stop like
   Ctrl+C and waits up to a minute for a slice in progress before ending it.
+
+### Following it in a web page
+
+*New, not released yet; on the `feat/web` branch.* `batchslicer web` runs a
+watch together with a web page that shows what it is doing:
+
+```bash
+pipx install --force "batchslicer[web]"   # once: adds the web page's libraries
+batchslicer web --profile k2-petg --plates
+```
+
+Then open <http://127.0.0.1:8765> in a browser on the same computer. It
+takes the same options as a watch run (it adds `--watch`), asks the same
+questions in the terminal, and Ctrl+C stops both. `--port PORT` serves it on
+another port.
+
+The page shows, refreshing every few seconds:
+
+- what is waiting in the watched folder, what is being sliced (model *n* of
+  *m* for a folder), and the drops finished since it started;
+- the results in the output folder, newest first, each with its preview
+  picture, print time and filament; open one for each model's details: every
+  plate's picture, filament per slot for a multi-colour print, filament
+  changes, and the slicer's reason for a failure.
+
+For now it only shows: drop models into the folder as before. Uploading,
+downloading and sending from the page come next (see the
+[web plan](docs/WebPlan.md)). The page can only be opened on the computer it
+runs on, and it answers only to `localhost` and `127.0.0.1`.
+
+The watcher writes what it is doing to a hidden file in the watched folder,
+`.batchslicer-status.json`; the page reads it, and so can your own scripts.
 
 ## Multi-colour projects
 
