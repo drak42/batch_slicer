@@ -416,3 +416,9 @@ def test_a_port_in_use_is_explained(tmp_path: Path) -> None:
         options = WebOptions(port=port, config=tmp_path / "bs" / "config.yaml")
         assert run_web(options, run=lambda _: pytest.fail("must not run"), write=lines.append) == 1
     assert "--port" in lines[0]
+
+
+def test_paths_in_the_home_folder_are_shown_short(folders: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch) -> None:
+    """Folders inside the home folder read as ~/..."""
+    monkeypatch.setattr(Path, "home", lambda: folders[0].parent)
+    assert "<code>~/in</code>" in _client(folders).get("/queue").text
