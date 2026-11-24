@@ -30,13 +30,13 @@ For every option and detail, see the [README](../README.md).
 
 You need:
 
-- **A Linux or Windows computer** with Python 3.12 or newer
-  (`python3 --version` shows it; on Windows, `py --version`). macOS is not
-  supported yet.
+- **A Linux, Windows or Mac computer** with Python 3.12 or newer
+  (`python3 --version` shows it; on Windows, `py --version`). On a Mac the
+  `python3` that comes with macOS is too old: install one from python.org.
 - **At least one slicer** installed: OrcaSlicer, Bambu Studio or Creality
   Print. On Linux an AppImage in `~/Apps`, `~/Applications` or `~/Downloads`
   is fine; on Windows, the slicer's normal installer (or a portable copy in
-  Downloads or on the Desktop).
+  Downloads or on the Desktop); on a Mac, the app in Applications.
 - **The slicer opened once**, with your printer added and the filaments you use
   made visible. BatchSlicer uses the printers, filaments and settings
   ("presets") you set up there, including your own; it never changes them.
@@ -70,6 +70,19 @@ batchslicer --version
 ```
 
 Every command in this guide works the same in PowerShell or Command Prompt.
+
+**On a Mac**, install Python from [python.org](https://www.python.org/downloads/macos/)
+first, then in Terminal:
+
+```bash
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath   # then open a new Terminal window
+pipx install batchslicer
+batchslicer --version
+```
+
+If macOS asks whether Terminal may access your Downloads or Desktop folder,
+allow it so BatchSlicer can read models there.
 Where it shows `~/BatchSlicer`, that is `C:\Users\<you>\BatchSlicer` on
 Windows.
 
@@ -82,7 +95,9 @@ batchslicer setup
 Setup looks for your slicers and their settings folders, shows what it found,
 and asks which copy to use when you have several. It writes the configuration
 to `~/.config/batchslicer/config.yaml` (on Windows,
-`%APPDATA%\BatchSlicer\config.yaml`) and creates two folders:
+`%APPDATA%\BatchSlicer\config.yaml`; on a Mac,
+`~/Library/Application Support/BatchSlicer/config.yaml`) and creates two
+folders:
 
 - `~/BatchSlicer/incoming`: where BatchSlicer looks for models first;
 - `~/BatchSlicer/output`: where the G-code goes.
@@ -217,7 +232,8 @@ batchslicer --profile k2-petg --input ~/BatchSlicer/incoming/rc-boat --send 192.
 
 To give the printer a name, add it to BatchSlicer's configuration file
 (`~/.config/batchslicer/config.yaml`; on Windows
-`%APPDATA%\BatchSlicer\config.yaml`):
+`%APPDATA%\BatchSlicer\config.yaml`; on a Mac
+`~/Library/Application Support/BatchSlicer/config.yaml`):
 
 ```yaml
 printers:
@@ -343,8 +359,9 @@ The service starts again whenever you log in. To keep it running after you
 log out, and start it when the computer starts, run `loginctl enable-linger`
 once.
 
-The background service is for Linux (it uses systemd). On Windows, run the
-`--watch` command in a terminal window and leave it open; minimised is fine.
+The background service is for Linux (it uses systemd). On Windows and macOS,
+run the `--watch` command in a terminal window and leave it open; minimised is
+fine.
 With Bambu Studio on Windows that is the only way: it slices only from a
 signed-in desktop session.
 

@@ -5,7 +5,8 @@
 #   2. the file named by the BATCHSLICER_CONFIG environment variable
 #   3. config/config.yaml in the current folder (a project checkout)
 #   4. ~/.config/batchslicer/config.yaml (the usual place for an installed copy;
-#      on Windows %APPDATA%\BatchSlicer\config.yaml)
+#      on Windows %APPDATA%\BatchSlicer\config.yaml, on macOS
+#      ~/Library/Application Support/BatchSlicer/config.yaml)
 #
 # Copy this file to one of those places (or run `batchslicer setup`) and fill
 # in the slicers you use. Paths may start with ~ for your home folder; relative
@@ -20,6 +21,8 @@ orca:
   executable: ""     # e.g. ~/Apps/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.5.2.AppImage
   datadir: ""        # e.g. ~/.config/OrcaSlicer
   # On Windows, e.g. "C:/Program Files/OrcaSlicer/orca-slicer.exe" and ~/AppData/Roaming/OrcaSlicer
+  # On macOS, e.g. /Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer and
+  #   ~/Library/Application Support/OrcaSlicer
 
 creality_print:
   executable: ""     # e.g. ~/Apps/CrealityPrint-V7.3.0.6157-x86_64-Release.AppImage
@@ -31,7 +34,8 @@ bambu_studio:
 
 # Folders. All optional; remove or leave empty to use the defaults shown
 # (Linux; on Windows logs and cache go in %LOCALAPPDATA%\BatchSlicer and
-# profiles in %APPDATA%\BatchSlicer).
+# profiles in %APPDATA%\BatchSlicer; on macOS in ~/Library/Logs,
+# ~/Library/Caches and ~/Library/Application Support).
 paths:
   incoming: ""       # models offered for slicing   (default ~/BatchSlicer/incoming)
   output: ""         # default output folder        (default ~/BatchSlicer/output)

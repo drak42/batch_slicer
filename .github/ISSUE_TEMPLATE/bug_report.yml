@@ -40,7 +40,7 @@ body:
     id: slicer-version
     attributes:
       label: Slicer version and how it is installed
-      placeholder: OrcaSlicer 2.5.2, AppImage on Linux (or installer on Windows)
+      placeholder: OrcaSlicer 2.5.2, AppImage on Linux (or installer on Windows, app on macOS)
   - type: input
     id: printer
     attributes:
