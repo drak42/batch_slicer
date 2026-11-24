@@ -46,6 +46,10 @@ _HIDDEN_FEATURES = frozenset(
 )
 """Features left out of the picture: not part of the model, or hidden inside it."""
 
+_PREVIEW_SEARCH_CHARACTERS = 2 * 1024 * 1024
+_PREVIEW_PATTERN = re.compile(
+    r"^; thumbnail begin (\d+)x(\d+) \d+\n(.*?)^; thumbnail end", re.MULTILINE | re.DOTALL
+)
 _SIZES_PATTERN = re.compile(r"^; thumbnails = (.*)$", re.MULTILINE)
 _COLOUR_PATTERN = re.compile(r"^; (?:filament_colour|extruder_colour) = (.*)$", re.MULTILINE)
 _SIZE_PATTERN = re.compile(r"^\s*(\d+)\s*x\s*(\d+)\s*(?:/\s*(\w+))?\s*$", re.IGNORECASE)
@@ -109,6 +113,30 @@ def add_thumbnails(path: Path, sizes: Sequence[tuple[int, int]] | None = None) -
     )
     _write_with_block(path, text, blocks)
     return ThumbnailResult(added=tuple(wanted))
+
+
+def read_preview(path: Path) -> bytes | None:
+    """Return the largest PNG preview picture in the G-code at ``path``, or None if it has none.
+
+    Pictures are looked for near the start of the file, where slicers and
+    :func:`add_thumbnails` put them.
+    """
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as stream:
+            head = stream.read(_PREVIEW_SEARCH_CHARACTERS)
+    except OSError:
+        return None
+    best: tuple[int, bytes] | None = None
+    for match in _PREVIEW_PATTERN.finditer(head):
+        width, height, body = int(match[1]), int(match[2]), match[3]
+        encoded = "".join(line.removeprefix(";").strip() for line in body.splitlines())
+        try:
+            png = base64.b64decode(encoded, validate=True)
+        except ValueError:
+            continue
+        if png.startswith(b"\x89PNG") and (best is None or width * height > best[0]):
+            best = (width * height, png)
+    return best[1] if best else None
 
 
 def extrusions(lines: Iterable[str]) -> Iterable[Segment]:
