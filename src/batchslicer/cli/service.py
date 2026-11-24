@@ -2,13 +2,18 @@
 
 ``install`` writes a background service (a systemd user service on Linux, a
 launchd agent on macOS, a scheduled task on Windows) that runs BatchSlicer with the given options plus
-``--watch --no-prompt``, starts it and shows its first lines of output; ``status`` lists the installed services and what they are
+``--watch --no-prompt`` (with ``--web``: ``batchslicer web`` with the options
+plus ``--no-prompt``, the web page and its watch), starts it and shows its
+first lines of output; ``status`` lists the installed services and what they are
 doing; ``uninstall`` stops and removes one. Paths in the options are made
 absolute, and the configuration file in use now is named explicitly, so the
 service does not depend on the folder it was installed from. The options
 themselves are checked by :mod:`batchslicer.cli.arguments` before this runs.
+:func:`watch_targets` tells the web page which folders installed services watch.
 """
 
+import contextlib
+import io
 import shlex
 import sys
 import time
@@ -16,6 +21,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from batchslicer.cli.web import DEFAULT_PORT, INSTALL_HINT, WebOptions, missing_modules
 from batchslicer.core import locations
 from batchslicer.core.config import find_config_file, get_config
 from batchslicer.infrastructure.launchd import Launchd
@@ -30,6 +36,7 @@ from batchslicer.infrastructure.systemd import Systemd
 from batchslicer.infrastructure.windows_tasks import WindowsTasks
 
 SERVICE_ACTIONS = ("install", "status", "uninstall")
+WEB_DEFAULT_NAME = "web"
 _PATH_OPTIONS = ("--input", "--output", "--config")
 _ADDED_OPTIONS = ("--watch", "--no-prompt")
 _STARTUP_WAIT_SECONDS = 15.0
@@ -49,6 +56,17 @@ class ServiceOptions:
 
     run_arguments: tuple[str, ...] = ()
     """BatchSlicer's run options for ``install``, already checked."""
+
+    web: bool = False
+    """Whether ``install`` runs the web page with its watch (``batchslicer web``)."""
+
+
+@dataclass(frozen=True, slots=True)
+class WatchTarget:
+    """A folder an installed service watches."""
+
+    name: str
+    folder: Path
 
 
 def run_service(
@@ -83,13 +101,50 @@ def system_manager() -> ServiceManager:
     return Systemd()
 
 
-def service_command(run_arguments: Sequence[str], config: Path, python: str) -> list[str]:
-    """Return the command a service runs: BatchSlicer with absolute paths, watching, no prompts."""
+def service_command(
+    run_arguments: Sequence[str], config: Path, python: str, *, web: bool = False
+) -> list[str]:
+    """Return the command a service runs: BatchSlicer with absolute paths, watching, no prompts.
+
+    With ``web``, it runs ``batchslicer web``, which adds ``--watch`` itself.
+    """
     arguments = [argument for argument in run_arguments if argument not in _ADDED_OPTIONS]
     arguments = absolute_paths(arguments)
     if not any(argument == "--config" or argument.startswith("--config=") for argument in arguments):
         arguments = ["--config", str(config.expanduser().absolute()), *arguments]
+    if web:
+        return [python, "-m", "batchslicer", "web", *arguments, "--no-prompt"]
     return [python, "-m", "batchslicer", *arguments, *_ADDED_OPTIONS]
+
+
+def watch_targets(manager: ServiceManager | None = None) -> list[WatchTarget]:
+    """Return the folders the installed services watch, by service name.
+
+    A service whose command cannot be read, or whose configuration cannot be
+    loaded, is left out; nothing is raised.
+    """
+    from batchslicer.cli.arguments import RunOptions, parse_arguments
+
+    try:
+        services = (manager or system_manager()).installed()
+    except (ServiceError, OSError):
+        return []
+    targets = []
+    for service in services:
+        arguments = _batchslicer_arguments(service)
+        try:
+            with contextlib.redirect_stderr(io.StringIO()):  # a mistake is skipped, not shown
+                if arguments[:1] == ["web"]:
+                    page = parse_arguments(arguments)
+                    arguments = list(page.run_arguments) if isinstance(page, WebOptions) else []
+                options = parse_arguments([*arguments, "--watch", "--no-prompt"])
+            if not isinstance(options, RunOptions):
+                continue
+            folder = options.input or get_config(find_config_file(options.config)).get_path("paths", "incoming")
+        except (SystemExit, FileNotFoundError, KeyError, ValueError, OSError):
+            continue
+        targets.append(WatchTarget(service.name, folder.expanduser().absolute()))
+    return targets
 
 
 def absolute_paths(arguments: Sequence[str]) -> list[str]:
@@ -118,14 +173,16 @@ def _install(
     sleep: Callable[[float], None],
     python: str,
 ) -> int:
-    name = check_name(options.name or DEFAULT_NAME)
+    name = check_name(options.name or (WEB_DEFAULT_NAME if options.web else DEFAULT_NAME))
+    if options.web and missing_modules():
+        raise ServiceError(f"Missing: {', '.join(missing_modules())}. {INSTALL_HINT}")
     explicit = _option_value(options.run_arguments, "--config")
     config_path = find_config_file(Path(explicit) if explicit else None, environ=environ).absolute()
     config = get_config(config_path)
     working_directory = config.get_path("paths", "data")
     working_directory.mkdir(parents=True, exist_ok=True)
     log_file = config.get_path("paths", "logs") / f"service-{name}.log"
-    command = service_command(options.run_arguments, config_path, python)
+    command = service_command(options.run_arguments, config_path, python, web=options.web)
 
     path = manager.definition_path(name)
     replacing = path.exists()
@@ -146,6 +203,9 @@ def _install(
         return 1
     write("")
     write(f"The service '{name}' is watching, and starts again whenever you log in.")
+    if options.web:
+        port = _option_value(options.run_arguments, "--port") or str(DEFAULT_PORT)
+        write(f"Its web page: http://127.0.0.1:{port} (on this computer only)")
     for note in manager.notes():
         write(note)
     write(f"Check it with 'batchslicer service status --name {name}'; follow it live with "
@@ -209,10 +269,13 @@ def _status(options: ServiceOptions, manager: ServiceManager, write: Callable[[s
 
 def _shown_command(service: ServiceInfo) -> str:
     """Return a service's BatchSlicer options, without the Python and module in front."""
+    return shlex.join(_batchslicer_arguments(service))
+
+
+def _batchslicer_arguments(service: ServiceInfo) -> list[str]:
+    """Return what a service passes to BatchSlicer, without the Python and module in front."""
     command = list(service.command)
-    if command[1:3] == ["-m", "batchslicer"]:
-        command = command[3:]
-    return shlex.join(command)
+    return command[3:] if command[1:3] == ["-m", "batchslicer"] else command
 
 
 def _option_value(arguments: Sequence[str], option: str) -> str | None:

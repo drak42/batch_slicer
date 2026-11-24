@@ -234,12 +234,13 @@ def _service_parser() -> argparse.ArgumentParser:
     """Build the parser for ``batchslicer service`` (used for help and errors)."""
     parser = argparse.ArgumentParser(
         prog="batchslicer service",
-        usage="batchslicer service {install,status,uninstall} [--name NAME] [run options]",
+        usage="batchslicer service {install,status,uninstall} [--name NAME] [--web [--port PORT]] [run options]",
         description=(
             "Keep the watch folder running in the background: a systemd user service on "
             "Linux, a launchd agent on macOS, a scheduled task on Windows. 'install' takes the same options as a watch run, such as --profile, "
             "--input and --send, and adds --watch --no-prompt; it starts the service and "
-            "shows its first lines of output. 'status' shows the installed services, "
+            "shows its first lines of output. With --web it runs 'batchslicer web' instead: the "
+            "web page with its watch (default name: web). 'status' shows the installed services, "
             "'uninstall' stops and removes one."
         ),
         epilog=(
@@ -252,9 +253,14 @@ def _service_parser() -> argparse.ArgumentParser:
         "--name",
         metavar="NAME",
         help=(
-            "the service's name, to run several (default: watch; status without it shows "
-            "every service)"
+            "the service's name, to run several (default: watch, or web with --web; status "
+            "without it shows every service)"
         ),
+    )
+    parser.add_argument(
+        "--web",
+        action="store_true",
+        help="install: run the web page with the watch (batchslicer web); --port chooses its port",
     )
     return parser
 
@@ -273,6 +279,7 @@ def _parse_service(arguments: Sequence[str]) -> ServiceOptions:
         parser.print_help()
         raise SystemExit(0)
     name: str | None = None
+    web = False
     run_arguments: list[str] = []
     index = 0
     while index < len(rest):
@@ -285,20 +292,31 @@ def _parse_service(arguments: Sequence[str]) -> ServiceOptions:
             continue
         if argument.startswith("--name="):
             name = argument.partition("=")[2]
+        elif argument == "--web":
+            web = True
         else:
             run_arguments.append(argument)
         index += 1
     if action != "install":
-        if run_arguments:
-            parser.error(f"'{action}' takes only --name, not: {' '.join(run_arguments)}")
+        if run_arguments or web:
+            extra = [*run_arguments, *(["--web"] if web else [])]
+            parser.error(f"'{action}' takes only --name, not: {' '.join(extra)}")
         return ServiceOptions(action=action, name=name)
-    run = parse_arguments([*run_arguments, "--watch", "--no-prompt"])
+    checked = run_arguments
+    if web:
+        page = parse_arguments(["web", *run_arguments, "--no-prompt"])
+        if not isinstance(page, WebOptions):
+            parser.error("--web takes the web page's options and run options")
+        checked = list(page.run_arguments)
+    elif any(argument == "--port" or argument.startswith("--port=") for argument in run_arguments):
+        parser.error("--port is for the web page: add --web")
+    run = parse_arguments([*checked, "--watch", "--no-prompt"])
     if not isinstance(run, RunOptions) or not (run.profiles or run.slicer):
         parser.error(
             "install needs --profile NAME (or --slicer with --printer, --filament and "
             "--process), because the service cannot ask questions"
         )
-    return ServiceOptions(action=action, name=name, run_arguments=tuple(run_arguments))
+    return ServiceOptions(action=action, name=name, run_arguments=tuple(run_arguments), web=web)
 
 
 def _web_parser() -> argparse.ArgumentParser:
