@@ -109,7 +109,7 @@ BatchSlicer follows a layered architecture. As built today:
 ```
 
 Planned layers not built yet: a service registry, a database and history, an
-event system, a job queue and plugins. The web page's first two steps are
+event system, a job queue and plugins. The web page's first three steps are
 built (on the `feat/web` branch); the rest is planned in [WebPlan](WebPlan.md).
 
 Each layer has clearly defined responsibilities.
@@ -266,7 +266,9 @@ A web page served by Starlette (`batchslicer web`; see [WebPlan](WebPlan.md)).
 It shows the watch folder's queue and the results, read from the watched
 folder's status file and the output folder's reports and G-code; uploads go
 into the watched folder (`services/uploads.py`) and downloads come only from
-the output folder. It never slices: the watch run does.
+the output folder. The printers page and sending use the same printer
+clients and sending service as `--send`. It never slices (the watch run does)
+and never starts a print.
 
 Responsible only for presentation. It needs the optional `web` extra, and
 only `cli/web.py` starts it, so the command line works without it.

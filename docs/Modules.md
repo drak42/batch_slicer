@@ -60,7 +60,7 @@ docstring says more, including what it intentionally does not do.
 | `services/gcode_stats.py` | read print time and filament use from G-code |
 | `services/thumbnails.py` | draw preview pictures from G-code toolpaths and insert them as PNG blocks; read them back |
 | `services/filament_matching.py` | match multi-colour projects to the filaments loaded in the printer (`--loaded-filaments`) and write their filament files |
-| `services/sending.py` | plan where each G-code file goes on the printer and send them (`--send`, `--start`) |
+| `services/sending.py` | plan where each G-code file goes on the printer, for a run or a finished run in the output folder, and send them (`--send`, `--start`, the web page) |
 | `services/archives.py` | unpack the models of a zip file (`--input kit.zip`, zip drops) safely: model files only, no paths outside the folder, size limits |
 | `services/watching.py` | watch a folder (`--watch`): find drops that have finished copying and move them to `sliced` or `failed` once handled |
 | `services/watch_status.py` | write and read `.batchslicer-status.json`: what a watch run is doing, for the web page |
@@ -100,7 +100,7 @@ Needs the `web` extra (Starlette, Uvicorn, Jinja2); nothing else imports it.
 
 | Module | Purpose |
 |---|---|
-| `web/app.py` | the Starlette application: queue, results, preview pictures, uploads and downloads; answers only to `localhost` and `127.0.0.1`, and takes uploads only with the page's token from the page itself |
+| `web/app.py` | the Starlette application: queue, results, preview pictures, uploads, downloads, the printers and their CFS, and sending; answers only to `localhost` and `127.0.0.1`, and takes uploads and sends only with the page's token from the page itself |
 | `web/templates/` | the pages (Jinja2) |
 | `web/static/` | the stylesheet, `upload.js` (dragging and choosing files and folders) and htmx (shipped, never downloaded) |
 

@@ -16,8 +16,11 @@ All notable changes to BatchSlicer are recorded here. The format follows
   and the slicer's reason for failures. Drag models, zip files or folders
   onto the page (or choose them) to slice them, up to 2 GB at a time; they
   reach the watched folder only once complete. Download each G-code file and
-  the reports, or a whole run as a ZIP. It works only on this computer, and
-  takes uploads only from the page itself. `--port` chooses another port.
+  the reports, or a whole run as a ZIP. Send a run's G-code to a configured
+  printer, into the same folders as `--send` (it is never started), and see
+  on the Printers page whether each printer answers and what is loaded in
+  its CFS. It works only on this computer, and takes uploads and sends only
+  from the page itself. `--port` chooses another port.
 - A watch run keeps `.batchslicer-status.json` in the watched folder up to
   date with what it is doing, for the web page and your own scripts.
 
