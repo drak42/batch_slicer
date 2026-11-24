@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<section id="queue" hx-get="/queue" hx-trigger="every {{ refresh }}s" hx-swap="innerHTML">
+  {% include "_queue.html" %}
+</section>
+<h2>Results</h2>
+<section id="results" hx-get="/results" hx-trigger="every {{ refresh }}s" hx-swap="innerHTML">
+  {% include "_results.html" %}
+</section>
+{% endblock %}

@@ -49,6 +49,7 @@ from batchslicer.cli.send_prompt import prompt_for_printer
 from batchslicer.cli.service import ServiceOptions, run_service
 from batchslicer.cli.setup import SetupOptions, run_setup
 from batchslicer.cli.slicer_prompt import SlicerSelectionError, prompt_for_slicer
+from batchslicer.cli.web import WebOptions, run_web
 from batchslicer.core.config import Config, find_config_file, get_config
 from batchslicer.core.environment import EnvironmentService
 from batchslicer.core.logging import configure_logging, current_log_file
@@ -135,6 +136,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return EXIT_SUCCESS if run_doctor(options) == 0 else EXIT_FAILURE
         if isinstance(options, ServiceOptions):
             return EXIT_SUCCESS if run_service(options) == 0 else EXIT_FAILURE
+        if isinstance(options, WebOptions):
+            return run_web(options, run=_run_watch)
         return _run(options)
     except KeyboardInterrupt:
         _error("\nCancelled.")
@@ -145,6 +148,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     finally:
         _remove_unpacked()
         _restore_terminate(previous)
+
+
+def _run_watch(arguments: Sequence[str]) -> int:
+    """Run a watch for ``batchslicer web`` from its (already checked) run options."""
+    options = parse_arguments(arguments)
+    if not isinstance(options, RunOptions):
+        raise TypeError("batchslicer web runs a watch run")
+    return _run(options)
 
 
 def _stop_on_terminate() -> object:

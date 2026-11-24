@@ -18,6 +18,7 @@ from batchslicer.backends.slicers import SLICERS
 from batchslicer.cli.doctor import DoctorOptions
 from batchslicer.cli.service import SERVICE_ACTIONS, ServiceOptions
 from batchslicer.cli.setup import SetupOptions
+from batchslicer.cli.web import DEFAULT_PORT, WebOptions
 from batchslicer.core.locations import user_config_file
 from batchslicer.domain.options import (
     MAX_COPIES,
@@ -133,10 +134,10 @@ class RunOptions:
 
 def parse_arguments(
     argv: Sequence[str] | None = None,
-) -> RunOptions | SetupOptions | DoctorOptions | ServiceOptions:
+) -> RunOptions | SetupOptions | DoctorOptions | ServiceOptions | WebOptions:
     """Return the options in ``argv`` (default: the process arguments).
 
-    ``setup``, ``doctor`` or ``service`` as the first argument selects that
+    ``setup``, ``doctor``, ``service`` or ``web`` as the first argument selects that
     command. Invalid options print a usage message and exit with status 2.
     """
     arguments = list(sys.argv[1:] if argv is None else argv)
@@ -146,6 +147,8 @@ def parse_arguments(
         return _parse_doctor(arguments[1:])
     if arguments[:1] == ["service"]:
         return _parse_service(arguments[1:])
+    if arguments[:1] == ["web"]:
+        return _parse_web(arguments[1:])
     parser = _parser()
     namespace = parser.parse_args(arguments)
     if namespace.dry_run and namespace.watch:
@@ -298,6 +301,70 @@ def _parse_service(arguments: Sequence[str]) -> ServiceOptions:
     return ServiceOptions(action=action, name=name, run_arguments=tuple(run_arguments))
 
 
+def _web_parser() -> argparse.ArgumentParser:
+    """Build the parser for ``batchslicer web`` (used for help and errors)."""
+    parser = argparse.ArgumentParser(
+        prog="batchslicer web",
+        usage="batchslicer web [--port PORT] [run options]",
+        description=(
+            "Watch the folder and show what it is doing in a web page on this computer. "
+            "Takes the same options as a watch run, such as --profile, --input and --send, "
+            "and adds --watch; Ctrl+C stops both. Needs the web extra: "
+            "pipx install --force \"batchslicer[web]\"."
+        ),
+        epilog="Example: batchslicer web --profile k2-pla, then open http://127.0.0.1:8765",
+    )
+    parser.add_argument(
+        "--port",
+        type=_port,
+        default=DEFAULT_PORT,
+        help=f"the port the page is served on (default: {DEFAULT_PORT})",
+    )
+    return parser
+
+
+def _port(value: str) -> int:
+    """Return a --port value: a whole number from 1024 to 65535."""
+    port = int(value) if value.strip().isdigit() else 0
+    if not 1024 <= port <= 65535:
+        raise argparse.ArgumentTypeError("must be a whole number from 1024 to 65535")
+    return port
+
+
+def _parse_web(arguments: Sequence[str]) -> WebOptions:
+    """Return the options for ``batchslicer web``.
+
+    Everything except ``--port`` is passed to the watch run; it is checked
+    here as a watch run would be.
+    """
+    parser = _web_parser()
+    if "-h" in arguments or "--help" in arguments:
+        parser.print_help()
+        raise SystemExit(0)
+    port = DEFAULT_PORT
+    run_arguments: list[str] = []
+    index = 0
+    while index < len(arguments):
+        argument = arguments[index]
+        if argument == "--port" or argument.startswith("--port="):
+            value = argument.partition("=")[2] if "=" in argument else None
+            if value is None:
+                if index + 1 >= len(arguments):
+                    parser.error("--port needs a number")
+                value = arguments[index + 1]
+                index += 1
+            port = parser.parse_args(["--port", value]).port
+        elif argument == "--watch":
+            pass  # added anyway
+        else:
+            run_arguments.append(argument)
+        index += 1
+    run = parse_arguments([*run_arguments, "--watch"])
+    if not isinstance(run, RunOptions):
+        parser.error("the options after 'web' must be run options, not another command")
+    return WebOptions(port=port, run_arguments=tuple(run_arguments), input=run.input, config=run.config)
+
+
 def _parse_doctor(arguments: Sequence[str]) -> DoctorOptions:
     """Return the options for ``batchslicer doctor``."""
     parser = argparse.ArgumentParser(
@@ -376,7 +443,8 @@ def _parser() -> argparse.ArgumentParser:
             "for interactively, unless --no-prompt is used. First time? Run "
             "'batchslicer setup' to find your slicers and create the configuration. "
             "Something wrong? 'batchslicer doctor' checks your setup. "
-            "'batchslicer service' runs --watch in the background."
+            "'batchslicer service' runs --watch in the background; 'batchslicer web' "
+            "runs it with a web page."
         ),
         epilog=(
             "Example: batchslicer --slicer creality --printer 'Creality K2 Plus 0.4 nozzle' "
