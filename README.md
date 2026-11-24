@@ -840,7 +840,23 @@ printers:
 ```
 
 The address is the one you open in a browser for Fluidd or Mainsail, or the
-one in your slicer's "physical printer" or "send to printer" settings. Then:
+one in your slicer's "physical printer" or "send to printer" settings.
+
+**Keeping the key out of the file.** Instead of `api_key`, give
+`api_key_env` the name of an environment variable that holds the key; useful
+with systemd credentials, a secret manager, or a configuration file you
+share:
+
+```yaml
+printers:
+  k2plus:
+    url: "http://192.168.1.50:7125"
+    api_key_env: MOONRAKER_API_KEY    # the key is read from this variable
+```
+
+Set one of the two, not both. If the variable is not set when BatchSlicer
+runs, it says which one is missing; `batchslicer doctor` shows where each
+printer's key came from, never the key itself. Then:
 
 ```bash
 # slice a folder and put the results on the printer
@@ -1393,11 +1409,12 @@ Fluidd or Mainsail. Moonraker's own port is usually 7125.
 **"... refused access (HTTP 401)"**: Moonraker only accepts known clients.
 Add this computer's address (or its network, such as `192.168.1.0/24`) to
 `trusted_clients` in the `[authorization]` section of the printer's
-`moonraker.conf`, or set `api_key` to Moonraker's API key.
+`moonraker.conf`, or set `api_key` (or `api_key_env`) to Moonraker's API key.
 
 **"... refused access (HTTP 403); check its api_key ..."** (OctoPrint): the
 API key is wrong or was removed. Create a new one under **Settings >
-Application Keys** and put it in the printer's `api_key`.
+Application Keys** and put it in the printer's `api_key` (or the variable
+its `api_key_env` names).
 
 **"... cannot arrange models from its command line, so --plates cannot be
 used with it"** (or "**cannot make copies**", for `--copies`): Creality

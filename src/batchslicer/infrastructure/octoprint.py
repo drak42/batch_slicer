@@ -130,8 +130,8 @@ def _refusal(host: PrinterHost, error: HTTPError, body: Any) -> str:
     message = message if isinstance(message, str) else ""
     if error.code in (401, 403):
         return (
-            f"{host.describe()} refused access (HTTP {error.code}); check its api_key in "
-            "the configuration (OctoPrint: Settings > Application Keys)."
+            f"{host.describe()} refused access (HTTP {error.code}); check its api_key (or "
+            "api_key_env) in the configuration (OctoPrint: Settings > Application Keys)."
         )
     if error.code == 404 and not message:
         return (

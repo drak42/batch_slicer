@@ -175,8 +175,9 @@ def _refusal(host: PrinterHost, error: HTTPError, body: Any) -> str:
     message = str(details.get("message", "")) if isinstance(details, dict) else ""
     if error.code in (401, 403):
         return (
-            f"{host.describe()} refused access (HTTP {error.code}); set its api_key in the "
-            "configuration, or allow this computer in Moonraker's trusted_clients."
+            f"{host.describe()} refused access (HTTP {error.code}); set its api_key (or "
+            "api_key_env) in the configuration, or allow this computer in Moonraker's "
+            "trusted_clients."
         )
     if error.code == 404 and not message:
         return (

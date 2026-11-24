@@ -171,6 +171,30 @@ def test_printers_are_checked(
     )
 
 
+def test_doctor_says_where_an_api_key_came_from(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_moonraker: FakeMoonraker
+) -> None:
+    """The key's source is shown (the variable's name), never the key itself."""
+    fake_moonraker.api_key = "secret-from-env"
+    monkeypatch.setenv("K2_API_KEY", "secret-from-env")
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        yaml.safe_dump({
+            "creality_print": {
+                "executable": str(_program(tmp_path / "bin" / "creality")),
+                "datadir": str(_creality_data(tmp_path / "creality", printers=["K2 Plus"])),
+            },
+            "printers": {"k2": {"url": fake_moonraker.url, "api_key_env": "K2_API_KEY"}},
+        })
+    )
+
+    problems, lines = _report(DoctorOptions(config=path))
+
+    assert problems == 0, lines
+    assert any("api key:  from the environment variable K2_API_KEY" in line for line in lines)
+    assert not any("secret-from-env" in line for line in lines)
+
+
 def test_loaded_cfs_filaments_are_listed(tmp_path: Path, fake_moonraker: FakeMoonraker) -> None:
     """A printer with a CFS shows what is loaded in each slot."""
     from test_filaments import K2_STATUS

@@ -257,6 +257,10 @@ def _check_printers(config: Config, report: _Report) -> None:
             f"  {host.describe()}: answers, {status.state}"
             + (f", {status.software}" if status.software else "")
         )
+        if host.api_key_env:
+            report.line(f"    api key:  from the environment variable {host.api_key_env}")
+        elif host.api_key:
+            report.line("    api key:  from the configuration file")
         try:
             loaded = client.loaded_filaments()
         except PrinterError as error:

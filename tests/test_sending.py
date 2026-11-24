@@ -63,6 +63,40 @@ def test_unusable_printer_settings_are_explained(section: object, message: str) 
         printer_hosts(section)
 
 
+def test_api_key_can_come_from_an_environment_variable() -> None:
+    """api_key_env names the variable holding the key, so the file need not contain it."""
+    hosts = printer_hosts(
+        {
+            "k2plus": {"url": "192.168.1.50:7125", "api_key_env": "K2_KEY"},
+            "ender": {"type": "octoprint", "url": "octopi.local", "api_key_env": "OCTO_KEY"},
+        },
+        {"K2_KEY": " secret \n", "OCTO_KEY": "octo"},
+    )
+
+    assert hosts["k2plus"] == PrinterHost(
+        "k2plus", "http://192.168.1.50:7125", "secret", api_key_env="K2_KEY"
+    )
+    assert (hosts["ender"].api_key, hosts["ender"].api_key_env) == ("octo", "OCTO_KEY")
+
+
+@pytest.mark.parametrize(
+    ("values", "environ", "message"),
+    [
+        ({"api_key_env": "K2_KEY"}, {}, "names K2_KEY, but that environment variable is not set"),
+        ({"api_key_env": "K2_KEY"}, {"K2_KEY": "  "}, "is not set \\(or is empty\\)"),
+        ({"api_key_env": "K2_KEY", "api_key": "x"}, {"K2_KEY": "y"}, "both api_key and api_key_env"),
+        ({"api_key_env": "not a name"}, {}, "must be the name of an environment variable"),
+        ({"api_key_env": 5}, {}, "must be the name of an environment variable"),
+    ],
+)
+def test_unusable_api_key_variables_are_explained(
+    values: dict[str, object], environ: dict[str, str], message: str
+) -> None:
+    """A missing, empty or doubled-up key variable names the printer and the variable."""
+    with pytest.raises(PrinterHostError, match=message):
+        printer_hosts({"k2": {"url": "http://x", **values}}, environ)
+
+
 def test_octoprint_printers_are_read_from_the_configuration() -> None:
     """type: octoprint (in any case) gives an OctoPrint printer, shown as such."""
     hosts = printer_hosts({"ender": {"type": "OctoPrint", "url": "octopi.local", "api_key": "k"}})
