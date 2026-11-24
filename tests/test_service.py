@@ -7,8 +7,16 @@ from pathlib import Path
 
 import pytest
 
+from batchslicer.cli import service as service_module
 from batchslicer.cli.arguments import parse_arguments
-from batchslicer.cli.service import ServiceOptions, absolute_paths, run_service, service_command
+from batchslicer.cli.service import (
+    ServiceOptions,
+    absolute_paths,
+    run_service,
+    service_command,
+    watch_targets,
+)
+from batchslicer.infrastructure.service_manager import ServiceInfo
 from batchslicer.infrastructure.systemd import (
     Systemd,
     installed_services,
@@ -196,6 +204,10 @@ def test_service_command_line() -> None:
         (["service", "install", "--profile", "k2", "--start"], "--start cannot be used with --watch"),
         (["service", "status", "--profile", "k2"], "'status' takes only --name"),
         (["service", "restart"], "invalid choice"),
+        (["service", "status", "--web"], "'status' takes only --name"),
+        (["service", "install", "--profile", "k2", "--port", "9000"], "--port is for the web page"),
+        (["service", "install", "--web", "--port", "80", "--profile", "k2"], "1024 to 65535"),
+        (["service", "install", "--web", "--input", "drop"], "install needs --profile NAME"),
     ],
 )
 def test_service_command_line_mistakes(arguments: list[str], message: str, capsys: pytest.CaptureFixture[str]) -> None:
@@ -204,3 +216,65 @@ def test_service_command_line_mistakes(arguments: list[str], message: str, capsy
         parse_arguments(arguments)
     assert stopped.value.code == 2
     assert message in capsys.readouterr().err
+
+
+def test_a_web_service_runs_the_page_with_its_watch(setup_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """--web installs 'batchslicer web' (named web by default) and says where the page is."""
+    options = parse_arguments(["service", "install", "--web", "--port", "9000", "--profile", "k2 pla"])
+    assert options == ServiceOptions("install", run_arguments=("--port", "9000", "--profile", "k2 pla"), web=True)
+    monkeypatch.setattr(service_module, "missing_modules", lambda: [])
+    config = setup_home / "bs" / "config.yaml"
+    lines: list[str] = []
+
+    status = run_service(
+        ServiceOptions("install", run_arguments=("--config", str(config), "--port", "9000", "--profile", "k2"),
+                       web=True),
+        manager=Systemd(FakeSystemctl()), write=lines.append, sleep=lambda _: None, python="/py",
+    )
+
+    assert status == 0
+    [service] = installed_services()
+    assert service.name == "web"
+    assert service.command == ("/py", "-m", "batchslicer", "web", "--config", str(config), "--port", "9000",
+                               "--profile", "k2", "--no-prompt")
+    assert "Its web page: http://127.0.0.1:9000 (on this computer only)" in lines
+
+
+def test_a_web_service_needs_the_web_extra(setup_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Without Starlette and the rest nothing is installed, and the install command is shown."""
+    monkeypatch.setattr(service_module, "missing_modules", lambda: ["starlette"])
+    lines: list[str] = []
+    options = ServiceOptions("install", run_arguments=("--config", str(setup_home / "bs" / "config.yaml"),
+                                                       "--profile", "k2"), web=True)
+    assert run_service(options, manager=Systemd(FakeSystemctl()), write=lines.append) == 1
+    assert 'batchslicer[web]' in lines[0]
+    assert installed_services() == []
+
+
+class _Installed:
+    """A service manager that only lists services."""
+
+    def __init__(self, services: list[ServiceInfo]) -> None:
+        self.services = services
+
+    def installed(self) -> list[ServiceInfo]:
+        return self.services
+
+
+def test_watch_targets_are_the_folders_services_watch(tmp_path: Path) -> None:
+    """--input, or the configured incoming folder; web services too; unreadable ones are left out."""
+    config = tmp_path / "bs" / "config.yaml"
+    write_config(tmp_path / "bs", {"paths": {"incoming": tmp_path / "incoming"}})
+    py = ("/py", "-m", "batchslicer")
+    services = [
+        ServiceInfo("ender", tmp_path / "a", (*py, "--config", str(config), "--profile", "x",
+                                              "--input", str(tmp_path / "drop"), "--watch", "--no-prompt")),
+        ServiceInfo("web", tmp_path / "b", (*py, "web", "--config", str(config), "--port", "9000",
+                                            "--profile", "x", "--no-prompt")),
+        ServiceInfo("broken", tmp_path / "c", (*py, "--config", str(tmp_path / "missing.yaml"), "--profile", "x")),
+        ServiceInfo("odd", tmp_path / "d", (*py, "--no-such-option")),
+    ]
+    targets = watch_targets(_Installed(services))  # type: ignore[arg-type]
+    assert [(target.name, target.folder) for target in targets] == [
+        ("ender", tmp_path / "drop"), ("web", tmp_path / "incoming"),
+    ]
