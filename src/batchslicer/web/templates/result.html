@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ result.name }} · BatchSlicer{% endblock %}
+{% block content %}
+<p><a href="/">← All results</a></p>
+<h1>{{ result.name }}</h1>
+<p class="muted">Finished {{ result.finished | when }} ·
+  {{ result.succeeded }} sliced{% if result.failed %}, <span class="failed">{{ result.failed }} failed</span>{% endif %}
+  {% if result.print_time %} · {{ result.print_time }} to print{% endif %}
+  {% if result.filament_g is not none %} · {{ result.filament_g | grams }} of filament{% endif %}</p>
+<p class="muted small"><code>{{ result.folder }}</code></p>
+
+{% for row in result.rows %}
+<article class="row">
+  <div class="pictures">
+    {% for gcode in row.gcode %}
+      <figure>
+        <img src="{{ preview_url(result, gcode) }}" alt="Preview of {{ gcode }}" loading="lazy">
+        <figcaption class="small muted">{{ gcode }}</figcaption>
+      </figure>
+    {% endfor %}
+  </div>
+  <div>
+    <h3>{{ row.model }}
+      <span class="tag {{ 'tag-ok' if row.success else 'tag-failed' }}">{{ 'sliced' if row.success else 'failed' }}</span></h3>
+    {% if row.success %}
+      <dl>
+        {% if row.model_count > 1 %}<dt>Models</dt><dd>{{ row.model_count }} on {{ row.gcode | length }} plate{{ '' if row.gcode | length == 1 else 's' }}</dd>{% endif %}
+        {% if row.copies > 1 %}<dt>Copies</dt><dd>{{ row.copies }}</dd>{% endif %}
+        {% if row.print_time %}<dt>Print time</dt><dd>{{ row.print_time }}</dd>{% endif %}
+        {% if row.filament_g is not none %}<dt>Filament</dt><dd>{{ row.filament_g | grams }}
+          {% if row.filament_g_each %}({% for grams in row.filament_g_each %}slot {{ loop.index }}: {{ grams | grams }}{{ ', ' if not loop.last }}{% endfor %}){% endif %}</dd>{% endif %}
+        {% if row.filament_changes %}<dt>Filament changes</dt><dd>{{ row.filament_changes }}</dd>{% endif %}
+      </dl>
+    {% else %}
+      <p class="failed">{{ row.message or "The slicer gave no reason." }}</p>
+    {% endif %}
+  </div>
+</article>
+{% endfor %}
+{% endblock %}

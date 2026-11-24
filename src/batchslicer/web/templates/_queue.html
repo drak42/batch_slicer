@@ -1,0 +1,39 @@
+<div class="panel">
+  <p class="state">
+    {% if status is none %}
+      <span class="dot dot-idle"></span> Waiting for the watcher to start…
+    {% elif status.state == "slicing" %}
+      <span class="dot dot-busy"></span> Slicing <strong>{{ status.drop }}</strong>
+      {% if status.count > 1 %} — model {{ status.number }} of {{ status.count }}{% if status.model %}: {{ status.model }}{% endif %}{% endif %}
+    {% elif status.state == "watching" %}
+      <span class="dot dot-ok"></span> Watching for models
+    {% else %}
+      <span class="dot dot-idle"></span> The watcher has stopped ({{ status.updated | when }})
+    {% endif %}
+  </p>
+  <p class="muted small">Drop models in <code>{{ watched }}</code>; G-code goes to <code>{{ output }}</code>.</p>
+
+  <div class="columns">
+    <div>
+      <h3>Waiting</h3>
+      {% if waiting %}
+        <ul class="plain">{% for name in waiting %}<li>{{ name }}</li>{% endfor %}</ul>
+      {% else %}
+        <p class="muted">Nothing waiting.</p>
+      {% endif %}
+    </div>
+    <div>
+      <h3>Finished</h3>
+      {% if status and status.recent %}
+        <ul class="plain">
+        {% for drop in status.recent[:10] %}
+          <li><span class="tag {{ 'tag-ok' if drop.success else 'tag-failed' }}">{{ 'sliced' if drop.success else 'failed' }}</span>
+              {{ drop.name }} <span class="muted small">{{ drop.finished | when }}</span></li>
+        {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">Nothing finished since the watcher started.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>

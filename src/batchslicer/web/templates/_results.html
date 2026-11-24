@@ -1,0 +1,22 @@
+{% if results %}
+<div class="cards">
+  {% for result in results %}
+  <a class="card" href="/results/{{ result.name | url_path }}">
+    <div class="picture">
+      {% if result.gcode %}<img src="{{ preview_url(result, result.gcode[0]) }}" alt="" loading="lazy">{% endif %}
+    </div>
+    <div class="card-text">
+      <strong class="name">{{ result.name }}</strong>
+      <span class="muted small">{{ result.finished | when }}</span>
+      <span class="small">
+        {{ result.succeeded }} sliced{% if result.failed %}, <span class="failed">{{ result.failed }} failed</span>{% endif %}
+        {% if result.print_time %} · {{ result.print_time }}{% endif %}
+        {% if result.filament_g is not none %} · {{ result.filament_g | grams }}{% endif %}
+      </span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<p class="muted">Nothing sliced yet.</p>
+{% endif %}
