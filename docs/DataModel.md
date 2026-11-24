@@ -45,3 +45,5 @@ lists them under `targets` (`infrastructure/profiles.py`).
 | `<job>/presets/*.json` | each run | the complete printer, process and filament settings used |
 | `<run>/report.csv`, `report.json` | each run | one row per model (see the README's "Reports") |
 | `slicer-profiles/<key>/` in the cache | first use of an OrcaSlicer version | built-in presets unpacked as JSON |
+| `.batchslicer-status.json` in a watched folder | a watch run | what it is doing (waiting or slicing, which drop and model), its output folder and the drops it finished; read by the web page |
+| `.batchslicer-upload-*/` in a watched folder | the web page, during an upload | the files of an upload until all have arrived; removed then (or after a day) |

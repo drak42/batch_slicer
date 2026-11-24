@@ -26,3 +26,10 @@ Useful context when judging a problem:
   print it. A printer's API key (`api_key`, or the environment variable its
   `api_key_env` names) is sent only to that printer, and never shown by
   `batchslicer doctor`.
+- `batchslicer web` serves a page on `127.0.0.1` only (no option to listen
+  elsewhere) and answers only to the host names `localhost` and `127.0.0.1`.
+  Uploads, sending and running `doctor` need the page's own token and a
+  same-origin request; uploaded names are cleaned and kept inside the watched
+  folder, and downloads come only from the output folder. A way around any of
+  this (for example another website or another user on the computer making
+  the page act) is a security problem worth reporting.

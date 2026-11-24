@@ -411,6 +411,10 @@ output/
 `report.csv` opens in any spreadsheet. For multi-colour prints it also lists
 the grams of each filament and the number of filament changes.
 
+With `batchslicer web` (step 9), the same results are in the browser: each
+run with its preview picture, print time and filament, its G-code to download
+(one file or a ZIP), and a **Send** button for your printers.
+
 ## 11. When something goes wrong
 
 1. **Read the summary.** A failed part shows the slicer's own reason, and often
@@ -447,6 +451,8 @@ the grams of each filament and the number of filament changes.
 | See what a run would do, without doing it | add `--dry-run` |
 | Slice what I drop into a folder | `--watch` |
 | Keep watching in the background | `batchslicer service install ...` |
+| Watch with a web page | `batchslicer web --profile NAME`, then open http://127.0.0.1:8765 |
+| Keep the web page running in the background | `batchslicer service install --web ...` |
 | See preset names for scripts | `batchslicer --slicer orca --list-presets` |
 | See every option | `batchslicer --help` |
 

@@ -137,6 +137,10 @@ takes models dropped onto the page.
 - **Runs unattended.** Every choice can be given as a command-line option or a
   profile, so it can be scripted or scheduled. With `--watch` it keeps running
   and slices every model or folder you drop into a folder.
+- **Has a web page.** `batchslicer web` shows the watch folder in a browser on
+  the same computer: drop models onto the page, follow the slicing, see every
+  result with its picture, download the G-code, send it to a printer and see
+  what is loaded in the CFS. It is optional, and can run in the background.
 - **Leaves your slicers alone.** BatchSlicer only reads the slicers' settings
   folders; it never changes them.
 
@@ -212,6 +216,8 @@ takes about a second; on Windows the first time can take a minute or two.
   portable copies) on Windows, the apps in Applications on macOS.
 - Optional, for sending G-code: a printer running Klipper with Moonraker (such
   as the Creality K1 and K2 series), or OctoPrint, on your network.
+- Optional, for the [web page](#following-it-in-a-web-page): its extra
+  libraries, installed with `pipx install --force "batchslicer[web]"`.
 
 ## Installation
 
@@ -276,7 +282,12 @@ Use PowerShell or Command Prompt, with Windows paths
 
 ### Upgrading
 
-`pipx upgrade batchslicer`, on every system.
+`pipx upgrade batchslicer`, on every system. To add the web page, or if
+`batchslicer web` says its libraries are missing after an upgrade, run
+`pipx install --force "batchslicer[web]"`; it keeps your configuration and
+profiles. A background service keeps running the old version until it is
+installed again: run the same `batchslicer service install ...` command once
+more.
 
 ### From a release file
 
@@ -1014,6 +1025,9 @@ terminal, starting it again at every login. It takes the same options as a
 watch run and adds `--watch --no-prompt`, so it needs a profile (or
 `--slicer`, `--printer`, `--filament` and `--process`):
 
+To run the [web page](#following-it-in-a-web-page) with the watch, add
+`--web` (see the end of that section).
+
 ```bash
 batchslicer service install --profile k2-pla --plates --send k2plus
 ```
@@ -1623,6 +1637,28 @@ escape"**: a Windows path with backslashes was written in double quotes; use
 forward slashes or single quotes (see
 [Editing it by hand](#editing-it-by-hand)).
 
+### The web page
+
+**"Missing: starlette, ..."** from `batchslicer web` or `service install --web`:
+the web page's libraries are not installed. Run
+`pipx install --force "batchslicer[web]"`.
+
+**"port 8765 cannot be used"**: another program, or another `batchslicer web`
+(perhaps a service), already uses it. Open that one, stop it, or choose
+another port with `--port 8770`.
+
+**The page says "Waiting for the watcher to start"** for long: the watch run
+is still asking questions in its terminal, or could not start; look at the
+terminal (or `batchslicer service status --name web`).
+
+**A printer or setting you changed does not show**: the page reads the
+configuration when it starts. Stop it and start it again, or for a service run
+the same `batchslicer service install --web ...` command again.
+
+**Opening it from a phone or another computer does not work**: that is
+intended for now. It only answers on the computer it runs on; access from the
+local network, with a password, is planned.
+
 ### On macOS
 
 **`batchslicer` is not found** after installing: open a new Terminal window
@@ -1690,7 +1726,8 @@ Windows and macOS):
 
 The tests never touch your real BatchSlicer folders or configuration, and
 never contact a real printer: sending is tested against a stand-in Moonraker
-that runs on your computer during the test.
+that runs on your computer during the test. The web page's tests need its
+libraries (`pip install -e '.[dev,web]'`); without them they are skipped.
 
 Some tests run your real slicers (checking that every option BatchSlicer uses
 is accepted, reading OrcaSlicer's packed `.opc` preset files, and slicing a
@@ -1735,6 +1772,10 @@ the Actions tab ("Latest slicers").
   (LAN mode) and Creality printers without Moonraker are not supported yet.
 - **Flatpak installs are not detected** by `batchslicer setup`; configure them
   by hand.
+- **The web page works only on the computer it runs on.** There is no
+  password yet, so it cannot be opened from a phone or another computer;
+  that is planned. It does not edit presets or profiles, and never starts a
+  print.
 - **Zip files from the command line or the watch folder only.** The
   interactive file menu lists models and folders, not zip files; give a zip
   with `--input` or drop it into the watch folder.
