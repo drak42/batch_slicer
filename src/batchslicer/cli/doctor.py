@@ -21,6 +21,7 @@ from batchslicer.backends.orca import OrcaBackend
 from batchslicer.backends.presets import PresetError, PresetLibrary
 from batchslicer.backends.profiles import find_system_profiles
 from batchslicer.backends.slicers import SLICERS, SlicerDefinition, is_configured
+from batchslicer.core import locations
 from batchslicer.core.config import Config, find_config_file
 from batchslicer.core.locations import CONFIG_ENVIRONMENT_VARIABLE, default_paths
 from batchslicer.domain.printers import PrinterHostError, printer_hosts
@@ -184,6 +185,11 @@ def _check_slicer(
     help_text = result.stdout + result.stderr
     if result.success and "--slice" in help_text:
         report.line(f"    runs:     yes ({result.elapsed:.1f}s)")
+    elif result.success and locations.is_windows():
+        # Windows slicers are window programs: they run, but their help text
+        # never reaches BatchSlicer (only start-up messages such as OpenGL
+        # checks do), so only the exit status can be checked.
+        report.line(f"    runs:     yes ({result.elapsed:.1f}s; Windows shows no command-line help)")
     else:
         detail = (result.stderr.strip().splitlines() or ["no output"])[-1]
         report.problem(
