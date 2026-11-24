@@ -1414,6 +1414,14 @@ printer preset (for example a different nozzle size).
 slicers are window programs on Windows, so their help text never reaches
 BatchSlicer; doctor only checks that the program starts and exits cleanly.
 
+**Bambu Studio hangs, or doctor says it "timed out after 120 seconds"**:
+on Windows, Bambu Studio's command line needs a signed-in desktop session.
+Run BatchSlicer in a terminal on the desktop; over SSH, as a scheduled task
+that runs whether or not you are signed in, or as a Windows service, Bambu
+Studio waits at start-up and never slices. OrcaSlicer and Creality Print work
+either way. Open Bambu Studio once and finish its setup wizard before the
+first run, so it has your printers.
+
 **Setup shows an older version than the slicer's About box**: a slicer that
 updates itself in place (Creality Print does) can leave its old version in
 Windows' list of installed programs, which setup reads. Only the label is
@@ -1487,7 +1495,8 @@ the Actions tab ("Latest slicers").
 
 - **Linux and Windows.** macOS is not supported yet. On Windows, the
   watch folder has no background service (run `--watch` in a terminal
-  window instead).
+  window instead), and Bambu Studio works only from a signed-in desktop
+  session, not over SSH or as a background task.
 - **Loaded filaments from Creality's CFS only.** Reading a Bambu AMS needs the
   Bambu connection, which is not built yet.
 - **Creality Print and 3MF projects.** Creality Print's command line cannot
