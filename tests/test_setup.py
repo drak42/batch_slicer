@@ -162,6 +162,8 @@ def test_new_configuration_shows_this_systems_default_folders(
     """On Windows the commented defaults are the AppData folders, not the Linux ones."""
     for variable in ("XDG_STATE_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME"):
         monkeypatch.delenv(variable, raising=False)
+    # A home folder apart from tmp_path, which is inside the real one on Windows.
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path / "home"))
     monkeypatch.setenv("APPDATA", str(tmp_path / "Roaming"))
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "Local"))
 
