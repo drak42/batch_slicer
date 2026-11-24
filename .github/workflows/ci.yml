@@ -11,8 +11,9 @@ permissions:
 
 jobs:
   checks:
-    # Linux jobs keep the names "Python 3.12" / "Python 3.13", which branch
-    # protection on main requires; Windows and macOS jobs are named separately.
+    # Branch protection on main requires every job by name: "Python 3.x" (Linux),
+    # "Windows, Python 3.x" and "macOS, Python 3.x". Renaming a job means
+    # updating the required checks too.
     name: ${{ matrix.os == 'windows-latest' && format('Windows, Python {0}', matrix.python-version) || matrix.os == 'macos-latest' && format('macOS, Python {0}', matrix.python-version) || format('Python {0}', matrix.python-version) }}
     runs-on: ${{ matrix.os }}
     strategy:
