@@ -178,8 +178,9 @@ None waiting: the last two (#18, #19) shipped in 0.19.0. New ideas come in as
 
 ## Later: platform
 
-- **Web interface** (in progress on the `feat/web` branch: step 1, the queue
-  and results pages, is built; see [WebPlan](WebPlan.md)):
+- **Web interface** (in progress on the `feat/web` branch: steps 1 and 2,
+  the queue and results pages, uploads and downloads, are built; see
+  [WebPlan](WebPlan.md)):
   `batchslicer web` in a browser on this computer, with upload, queue,
   results, download, sending and the printers' CFS; network access with a
   password in the release after; Docker after that.

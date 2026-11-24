@@ -1082,17 +1082,25 @@ another port.
 
 The page shows, refreshing every few seconds:
 
+- an upload area: drag model files, zip files or whole folders onto it, or
+  use **Choose files** or **Choose a folder**. STL, 3MF and OBJ files are
+  taken (zip files as drops of their own), up to 2 GB at a time; anything
+  else is skipped and listed. An upload is moved into the watched folder only
+  once all of it has arrived, so it is sliced like anything you put there;
 - what is waiting in the watched folder, what is being sliced (model *n* of
   *m* for a folder), and the drops finished since it started;
 - the results in the output folder, newest first, each with its preview
   picture, print time and filament; open one for each model's details: every
   plate's picture, filament per slot for a multi-colour print, filament
-  changes, and the slicer's reason for a failure.
+  changes, and the slicer's reason for a failure. Download each G-code file
+  and the reports, or **Download all (ZIP)** for the run's G-code and reports
+  with their folders.
 
-For now it only shows: drop models into the folder as before. Uploading,
-downloading and sending from the page come next (see the
-[web plan](docs/WebPlan.md)). The page can only be opened on the computer it
-runs on, and it answers only to `localhost` and `127.0.0.1`.
+Sending to a printer from the page, and a page for the printers' CFS, come
+next (see the [web plan](docs/WebPlan.md)). The page can only be opened on
+the computer it runs on, and it answers only to `localhost` and `127.0.0.1`;
+uploads are only accepted from the page itself, never from another website
+open in the same browser.
 
 The watcher writes what it is doing to a hidden file in the watched folder,
 `.batchslicer-status.json`; the page reads it, and so can your own scripts.
