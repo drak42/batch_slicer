@@ -9,13 +9,14 @@ reads; it does not slice, move or delete anything.
 """
 
 import json
+import zipfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import IO, Any
 
 from batchslicer.services.gcode_stats import format_duration
-from batchslicer.services.report import REPORT_JSON
+from batchslicer.services.report import REPORT_CSV, REPORT_JSON
 
 _DEPTHS = ("*/" + REPORT_JSON, "*/*/" + REPORT_JSON)
 
@@ -135,6 +136,29 @@ def inside(base: Path, relative: str) -> Path | None:
     except (OSError, ValueError):
         return None
     return path if path.is_relative_to(root) and path != root else None
+
+
+def downloadable(path: Path) -> bool:
+    """Return whether a file of a run may be downloaded: its G-code and its reports."""
+    return path.suffix.casefold() == ".gcode" or path.name in (REPORT_CSV, REPORT_JSON)
+
+
+def write_zip(result: RunResult, target: IO[bytes]) -> int:
+    """Write a run's G-code files and reports into a ZIP file, keeping their folders.
+
+    Everything sits in a folder named after the run. Returns how many files were written.
+    """
+    names = [*result.gcode, REPORT_CSV, REPORT_JSON]
+    top = PurePosixPath(result.name).name
+    written = 0
+    with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+        for name in dict.fromkeys(names):
+            path = inside(result.folder, name)
+            if path is None or not path.is_file():
+                continue
+            archive.write(path, f"{top}/{name}")
+            written += 1
+    return written
 
 
 def _read(output: Path, folder: Path) -> RunResult | None:

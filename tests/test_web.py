@@ -1,8 +1,11 @@
 """Tests for the web page and ``batchslicer web``."""
 
+import io
 import json
+import re
 import socket
 import urllib.request
+import zipfile
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -120,6 +123,82 @@ def test_the_page_ships_its_own_htmx(folders: tuple[Path, Path]) -> None:
     """htmx is served from the package, not downloaded."""
     script = _client(folders).get("/static/htmx.min.js")
     assert script.status_code == 200 and "htmx" in script.text
+
+
+# --- upload and download ---------------------------------------------------------
+
+
+def _token(client: TestClient) -> str:
+    match = re.search(r'name="batchslicer-token" content="([^"]+)"', client.get("/").text)
+    assert match is not None
+    return match.group(1)
+
+
+def _files(*pairs: tuple[str, bytes]) -> tuple[dict[str, list[str]], list[tuple[str, tuple[str, bytes]]]]:
+    return {"path": [name for name, _ in pairs]}, [("file", (name.rpartition("/")[2], data)) for name, data in pairs]
+
+
+def test_uploads_go_into_the_watched_folder(folders: tuple[Path, Path]) -> None:
+    """Files and folders keep their shape; other files are skipped; ../ cannot escape."""
+    watched = folders[0]
+    client = _client(folders)
+    data, files = _files(("cube.stl", b"solid"), ("set/a.stl", b"solid"), ("set/notes.txt", b"x"),
+                         ("../../escape.stl", b"solid"))
+
+    answer = client.post("/upload", data=data, files=files, headers={"x-batchslicer-token": _token(client)})
+
+    assert answer.status_code == 200
+    assert answer.json() == {"added": ["cube (2).stl", "escape.stl", "set"], "skipped": ["set/notes.txt"]}
+    assert (watched / "set" / "a.stl").read_bytes() == b"solid"
+    assert (watched / "escape.stl").is_file() and not (watched.parent.parent / "escape.stl").exists()
+    assert not list(watched.glob(".batchslicer-upload-*"))
+    assert "cube (2).stl" in client.get("/queue").text
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [{}, {"x-batchslicer-token": "wrong"}, {"origin": "http://evil.example"}, {"sec-fetch-site": "cross-site"}],
+)
+def test_uploads_from_elsewhere_are_refused(folders: tuple[Path, Path], headers: dict[str, str]) -> None:
+    """Without the page's token, or from another website, nothing is stored."""
+    client = _client(folders)
+    full = {"x-batchslicer-token": _token(client), **headers} if headers and "x-batchslicer-token" not in headers else headers
+    data, files = _files(("sneaky.stl", b"solid"))
+    assert client.post("/upload", data=data, files=files, headers=full).status_code == 403
+    assert not (folders[0] / "sneaky.stl").exists()
+
+
+def test_uploads_that_are_too_large_are_refused(folders: tuple[Path, Path]) -> None:
+    """The size the request announces is checked before anything is read."""
+    client = _client(folders)
+    data, files = _files(("cube.stl", b"solid"))
+    headers = {"x-batchslicer-token": _token(client), "content-length": str(50 * 1024**3)}
+    answer = client.post("/upload", data=data, files=files, headers=headers)
+    assert answer.status_code == 413 and "Too large" in answer.json()["error"]
+
+
+def test_gcode_and_reports_can_be_downloaded(folders: tuple[Path, Path]) -> None:
+    """One file at a time, only G-code and reports, only from the output folder."""
+    client = _client(folders)
+    run = "bracket%20set-20261124-100000"
+    gcode = client.get(f"/download/{run}/bracket/bracket.gcode")
+    assert gcode.status_code == 200
+    assert "attachment" in gcode.headers["content-disposition"] and "bracket.gcode" in gcode.headers["content-disposition"]
+    assert gcode.text.startswith("; HEADER_BLOCK_START")
+    assert client.get(f"/download/{run}/report.json").json()["models"][0]["model"] == "bracket.stl"
+    (folders[1] / "bracket set-20261124-100000" / "secret.txt").write_text("no")
+    assert client.get(f"/download/{run}/secret.txt").status_code == 404
+    assert client.get(f"/download/{run}/../../in/cube.stl").status_code == 404
+
+
+def test_a_run_downloads_as_a_zip(folders: tuple[Path, Path]) -> None:
+    """The ZIP holds the run's G-code and report in a folder named after the run."""
+    answer = _client(folders).get("/zip/bracket%20set-20261124-100000")
+    assert answer.status_code == 200
+    assert answer.headers["content-type"] == "application/zip"
+    names = zipfile.ZipFile(io.BytesIO(answer.content)).namelist()
+    assert names == ["bracket set-20261124-100000/bracket/bracket.gcode", "bracket set-20261124-100000/report.json"]
+    assert _client(folders).get("/zip/../in").status_code == 404
 
 
 # --- batchslicer web -----------------------------------------------------------

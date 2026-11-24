@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
-_REQUIRED_MODULES = ("starlette", "uvicorn", "jinja2")
+_REQUIRED_MODULES = ("starlette", "python_multipart", "uvicorn", "jinja2")
 INSTALL_HINT = (
     "The web page needs BatchSlicer's web extra. Install it with:\n"
     "  pipx install --force \"batchslicer[web]\"\n"

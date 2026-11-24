@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
-<section id="queue" hx-get="/queue" hx-trigger="every {{ refresh }}s" hx-swap="innerHTML">
+<section id="upload" class="drop-zone" data-max-mb="{{ max_upload_mb }}" data-max="{{ max_upload }}">
+  <p class="drop-title">Drop models, zip files or folders here</p>
+  <p class="muted small">STL, 3MF and OBJ files, and zip files of them; up to {{ max_upload }} at a time.
+    They go into the watched folder and are sliced like anything you put there.</p>
+  <p class="drop-buttons">
+    <label class="button">Choose files<input type="file" name="files" multiple accept=".stl,.3mf,.obj,.zip" hidden></label>
+    <label class="button">Choose a folder<input type="file" name="folder" webkitdirectory hidden></label>
+  </p>
+  <p class="upload-status small" role="status" aria-live="polite"></p>
+</section>
+<section id="queue" hx-get="/queue" hx-trigger="every {{ refresh }}s, refresh" hx-swap="innerHTML">
   {% include "_queue.html" %}
 </section>
 <h2>Results</h2>
