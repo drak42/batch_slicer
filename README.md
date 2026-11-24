@@ -50,6 +50,10 @@ A dry run, then a two-colour project matched to the spools loaded in a
 Creality CFS and sent to the printer, then a downloaded kit's zip unpacked
 onto one plate. Recorded with [`docs/demo/demo.sh`](https://github.com/drak42/batch_slicer/blob/main/docs/demo/demo.sh).
 
+Prefer a browser? [`batchslicer web`](#following-it-in-a-web-page) shows the
+watch folder, every result with its picture, and your printers' CFS, and
+takes models dropped onto the page.
+
 ---
 
 ## Contents
@@ -1080,6 +1084,8 @@ takes the same options as a watch run (it adds `--watch`), asks the same
 questions in the terminal, and Ctrl+C stops both. `--port PORT` serves it on
 another port.
 
+![The web page: an area to drop models on, the watch folder's queue, and the results with their preview pictures, print time and filament](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/web-home.png)
+
 The page shows, refreshing every few seconds:
 
 - an upload area: drag model files, zip files or whole folders onto it, or
@@ -1098,9 +1104,15 @@ The page shows, refreshing every few seconds:
   [configured printers](#sending-g-code-to-a-printer); it goes into the same
   folders as with `--send`. The page never starts a print: start it on the
   printer;
+
+  ![A result: four models on one plate, with the preview picture, print time, filament, downloads and Send to the K2 Plus](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/web-result.png)
+
 - a **Printers** page: whether each configured printer answers and its
   state, and for a Creality printer with a CFS, what is loaded in each slot,
   with its colour. It refreshes every 10 seconds;
+
+  ![The Printers page: a K2 Plus that answers, with the filaments loaded in its CFS and their colours](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/web-printers.png)
+
 - an **About** page: the version, the configuration file, the options the
   page's watch runs with, the folders and printers, and a **Run the checks**
   button that shows the report of `batchslicer doctor`.
