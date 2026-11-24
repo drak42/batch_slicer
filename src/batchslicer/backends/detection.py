@@ -30,6 +30,8 @@ SEARCH_FOLDERS = ("Apps", "Applications", "AppImages", "Downloads", "Desktop", "
 
 _SYSTEM_FOLDERS = (Path("/opt"),)
 _VERSION_PATTERN = re.compile(r"[vV]?(\d+(?:\.\d+)+)")
+_VERSION_FOLDER = re.compile(r"\d+(?:\.\d+)+")
+"""A Creality Print settings folder name, such as 7.3."""
 _PRERELEASE_PATTERN = re.compile(r"alpha|beta|[-_.]rc\d*|nightly|dev", re.IGNORECASE)
 
 
@@ -138,8 +140,10 @@ def find_data_directory(
     if not signature.versioned_data:
         return base if base.is_dir() else None
 
+    # Only folders named just a version: Creality Print 7.3 also leaves
+    # ".7.3.staging-<number>" and ".migration-7.3" folders while it moves settings.
     versions = sorted(
-        (path for path in base.glob("*") if path.is_dir() and _parse_version(path.name)),
+        (path for path in base.glob("*") if path.is_dir() and _VERSION_FOLDER.fullmatch(path.name)),
         key=lambda path: _parse_version(path.name),
         reverse=True,
     )

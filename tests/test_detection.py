@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from batchslicer.backends import detection
-from batchslicer.backends.detection import find_data_directory, find_installations
+from batchslicer.backends.detection import Installation, find_data_directory, find_installations
 from conftest import fake_program
 
 
@@ -157,3 +157,20 @@ def test_installed_programs_list_wins_over_a_placeholder_file_version(
     monkeypatch.setattr(detection, "_uninstall_entries", list)
     assert detection._windows_installation(program).version == (2, 0, 0)
 
+
+@pytest.mark.usefixtures("windows")
+def test_creality_print_updated_in_place_uses_its_newest_settings(tmp_path: Path) -> None:
+    """Seen on a real machine: Windows lists 7.2, settings are in 7.0 (old) and 7.3 (in use).
+
+    Creality Print's hidden migration folders also contain "7.3" but are not settings.
+    """
+    base = tmp_path / "Roaming" / "Creality" / "Creality Print"
+    for version in ("7.0", "7.3", ".7.3.staging-17913297740142173", ".migration-7.3"):
+        (base / version).mkdir(parents=True)
+    installation = Installation(executable=tmp_path / "CrealityPrint.exe", version=(7, 2, 0), prerelease=False)
+
+    found = find_data_directory(
+        "creality_print", installation, home=tmp_path, environ={"APPDATA": str(tmp_path / "Roaming")}
+    )
+
+    assert found == base / "7.3"
