@@ -1410,6 +1410,7 @@ Fluidd or Mainsail. Moonraker's own port is usually 7125.
 Add this computer's address (or its network, such as `192.168.1.0/24`) to
 `trusted_clients` in the `[authorization]` section of the printer's
 `moonraker.conf`, or set `api_key` (or `api_key_env`) to Moonraker's API key.
+`batchslicer doctor --printer ADDRESS` checks again in a second.
 
 **"... refused access (HTTP 403); check its api_key ..."** (OctoPrint): the
 API key is wrong or was removed. Create a new one under **Settings >
@@ -1520,6 +1521,23 @@ When reporting a problem, please include the output of `batchslicer doctor`
 ([open an issue](https://github.com/drak42/batch_slicer/issues/new/choose); the
 bug report form asks for it). Security problems: see `SECURITY.md`.
 Use `--config PATH` to check a specific configuration file.
+
+**Checking only a printer.** `--printer` skips everything else and checks
+just that printer: a name from the configuration, or any address, configured
+or not. It is quick, so it suits setting up Moonraker's `trusted_clients` or
+an API key:
+
+```bash
+batchslicer doctor --printer k2plus
+batchslicer doctor --printer 192.168.1.50:7125 --printer k1max
+```
+
+For each printer it shows whether it answers, which software and version
+answered (Moonraker or OctoPrint), where its API key came from, and what is
+loaded in a Creality CFS; a refusal says whether to look at the API key or
+`trusted_clients`. An address is checked as a Moonraker printer (port 7125
+when none is given); an OctoPrint printer needs its name from the
+configuration, which holds its key.
 
 ## Testing
 

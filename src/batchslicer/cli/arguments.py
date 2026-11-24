@@ -308,7 +308,19 @@ def _parse_doctor(arguments: Sequence[str]) -> DoctorOptions:
         ),
     )
     parser.add_argument("--config", type=Path, metavar="PATH", help="configuration file to check")
-    return DoctorOptions(config=parser.parse_args(arguments).config)
+    parser.add_argument(
+        "--printer",
+        action="append",
+        default=[],
+        metavar="NAME|ADDRESS",
+        help=(
+            "check only this printer: a name from the configuration's printers, or an "
+            "address such as 192.168.1.50 or k2.local:4408. Repeat for several. Nothing "
+            "else is checked."
+        ),
+    )
+    parsed = parser.parse_args(arguments)
+    return DoctorOptions(config=parsed.config, printers=tuple(parsed.printer))
 
 
 def _parse_setup(arguments: Sequence[str]) -> SetupOptions:

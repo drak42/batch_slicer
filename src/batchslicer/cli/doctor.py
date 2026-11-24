@@ -6,7 +6,8 @@ program runs and accepts BatchSlicer's commands, whether its settings folder
 exists, and how many printers it offers, then whether each networked printer
 (the ``printers`` section, for --send) answers. Problems are listed with what to do
 about them. The report is meant for both fixing a setup and reporting bugs.
-This module only checks and reports; it does not change anything except that
+With ``--printer NAME|ADDRESS`` only those printers are checked, including
+addresses that are not in the configuration. This module only checks and reports; it does not change anything except that
 OrcaSlicer's built-in presets may be extracted into the cache, as for a run.
 """
 
@@ -24,7 +25,12 @@ from batchslicer.backends.slicers import SLICERS, SlicerDefinition, is_configure
 from batchslicer.core import locations
 from batchslicer.core.config import Config, find_config_file
 from batchslicer.core.locations import CONFIG_ENVIRONMENT_VARIABLE, default_paths
-from batchslicer.domain.printers import PrinterHostError, printer_hosts
+from batchslicer.domain.printers import (
+    PrinterHost,
+    PrinterHostError,
+    host_from_address,
+    printer_hosts,
+)
 from batchslicer.infrastructure.printer_api import PrinterError
 from batchslicer.infrastructure.printer_clients import client_for
 from batchslicer.infrastructure.profiles import ProfileError, ProfileStore
@@ -39,6 +45,8 @@ class DoctorOptions:
     """Options for ``batchslicer doctor``."""
 
     config: Path | None = None
+    printers: tuple[str, ...] = ()
+    """Names or addresses given with --printer: check only these printers."""
 
 
 @dataclass
@@ -68,13 +76,20 @@ def run_doctor(
     report.line(f"{get_version_string()} (Python {platform.python_version()}, {platform.platform()})")
     report.line("")
 
+    if options.printers:
+        _check_chosen_printers(options, report)
+        return _finish(report)
     config = _check_configuration(options, report)
     _check_folders(config, report)
     if config is not None:
         _check_slicers(config, report)
         _check_printers(config, report)
         _check_profiles(config, report)
+    return _finish(report)
 
+
+def _finish(report: _Report) -> int:
+    """Write the list of problems (or that there are none) and return how many there were."""
     if report.problems:
         count = len(report.problems)
         report.line(f"{count} problem{'s' if count != 1 else ''} found:")
@@ -246,31 +261,69 @@ def _check_printers(config: Config, report: _Report) -> None:
     if not hosts:
         report.line("  none configured")
     for host in hosts.values():
-        client = client_for(host, timeout_seconds=5.0)
-        try:
-            status = client.status()
-        except PrinterError as error:
-            report.line(f"  {host.describe()}")
-            report.problem(f"{error} (Is the printer on and on this network?)")
-            continue
-        report.line(
-            f"  {host.describe()}: answers, {status.state}"
-            + (f", {status.software}" if status.software else "")
-        )
-        if host.api_key_env:
-            report.line(f"    api key:  from the environment variable {host.api_key_env}")
-        elif host.api_key:
-            report.line("    api key:  from the configuration file")
-        try:
-            loaded = client.loaded_filaments()
-        except PrinterError as error:
-            report.line(f"    loaded filaments: could not be read ({error})")
-            continue
-        if loaded:
-            report.line("    loaded filaments (for --loaded-filaments):")
-            for filament in loaded:
-                report.line(f"      {filament.describe()}  ({filament.colour})")
+        _check_printer(host, report)
     report.line("")
+
+
+def _check_chosen_printers(options: DoctorOptions, report: _Report) -> None:
+    """Check only the printers given with --printer: configured names or plain addresses.
+
+    Nothing else is checked. A configuration is used only to look names up, so
+    an address works without one.
+    """
+    report.line("Printers:")
+    hosts: dict[str, PrinterHost] = {}
+    config_problem = ""
+    try:
+        config = Config(find_config_file(options.config))
+        config.load()
+        hosts = printer_hosts(config.section("printers"))
+    except (FileNotFoundError, ValueError) as error:  # PrinterHostError is a ValueError
+        config_problem = str(error)
+    for name in options.printers:
+        host = next((host for key, host in hosts.items() if key.casefold() == name.casefold()), None)
+        try:
+            host = host or host_from_address(name)
+        except PrinterHostError as error:
+            report.problem(str(error))
+            continue
+        if host is None:
+            known = f"configured: {', '.join(sorted(hosts))}" if hosts else "none are configured"
+            report.problem(
+                f"No printer named '{name}' ({config_problem or known}). Give its address "
+                "instead, for example --printer 192.168.1.50"
+            )
+            continue
+        _check_printer(host, report)
+    report.line("")
+
+
+def _check_printer(host: PrinterHost, report: _Report) -> None:
+    """Report whether one printer answers, where its API key came from, and what is loaded in its CFS."""
+    client = client_for(host, timeout_seconds=5.0)
+    try:
+        status = client.status()
+    except PrinterError as error:
+        report.line(f"  {host.describe()}")
+        report.problem(f"{error} (Is the printer on and on this network?)")
+        return
+    report.line(
+        f"  {host.describe()}: answers, {status.state}"
+        + (f", {status.software}" if status.software else "")
+    )
+    if host.api_key_env:
+        report.line(f"    api key:  from the environment variable {host.api_key_env}")
+    elif host.api_key:
+        report.line("    api key:  from the configuration file")
+    try:
+        loaded = client.loaded_filaments()
+    except PrinterError as error:
+        report.line(f"    loaded filaments: could not be read ({error})")
+        return
+    if loaded:
+        report.line("    loaded filaments (for --loaded-filaments):")
+        for filament in loaded:
+            report.line(f"      {filament.describe()}  ({filament.colour})")
 
 
 def _check_profiles(config: Config, report: _Report) -> None:

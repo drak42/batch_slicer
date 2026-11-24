@@ -13,6 +13,10 @@ All notable changes to BatchSlicer are recorded here. The format follows
   file. A missing or empty variable, or setting both `api_key` and
   `api_key_env`, is explained; `batchslicer doctor` shows where each key
   came from, never the key (#18).
+- `batchslicer doctor --printer NAME|ADDRESS` checks only that printer (a
+  configured name, or any address, even without a configuration): whether it
+  answers, which software answered, where its key came from and what is
+  loaded in its CFS. Repeat it for several printers (#19).
 
 ## [0.18.0] - 2026-11-24
 

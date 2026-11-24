@@ -120,11 +120,14 @@ def test_profile_and_last_cannot_be_combined(capsys: pytest.CaptureFixture[str])
 
 
 def test_doctor_command_options() -> None:
-    """'doctor' selects the doctor command, optionally with --config."""
+    """'doctor' selects the doctor command, optionally with --config and --printer."""
     from batchslicer.cli.doctor import DoctorOptions
 
     assert parse_arguments(["doctor"]) == DoctorOptions()
     assert parse_arguments(["doctor", "--config", "c.yaml"]) == DoctorOptions(config=Path("c.yaml"))
+    assert parse_arguments(["doctor", "--printer", "k2", "--printer", "192.168.1.60"]) == DoctorOptions(
+        printers=("k2", "192.168.1.60")
+    )
 
 
 def test_slicing_options() -> None:
