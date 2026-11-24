@@ -154,3 +154,19 @@ def test_new_configuration_shows_a_printers_example(tmp_path: Path) -> None:
 
     assert '#     url: "http://192.168.1.50:7125"' in text
     assert "\nprinters:" not in text
+
+
+def test_new_configuration_shows_this_systems_default_folders(
+    windows: None, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """On Windows the commented defaults are the AppData folders, not the Linux ones."""
+    for variable in ("XDG_STATE_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME"):
+        monkeypatch.delenv(variable, raising=False)
+    monkeypatch.setenv("APPDATA", str(tmp_path / "Roaming"))
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "Local"))
+
+    text = render_config({}, home=tmp_path)
+
+    assert f"(default {(tmp_path / 'Local' / 'BatchSlicer' / 'logs').as_posix()})" in text
+    assert f"(default {(tmp_path / 'Roaming' / 'BatchSlicer' / 'profiles.yaml').as_posix()})" in text
+    assert ".local/state" not in text

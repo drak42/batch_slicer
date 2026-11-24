@@ -215,15 +215,24 @@ def render_config(
             f'  datadir: "{show(datadir) if datadir else ""}"',
             "",
         ]
+    defaults = default_paths()
+
+    def default(key: str) -> str:
+        # The defaults depend on the system (XDG folders on Linux, AppData on Windows).
+        path = defaults[key]
+        try:
+            return "~/" + path.relative_to(Path.home()).as_posix()
+        except ValueError:
+            return path.as_posix()
+
     lines += [
         "# Folders. Leave empty to use the defaults shown.",
         "paths:",
-        '  incoming: ""       # models offered for slicing   (default ~/BatchSlicer/incoming)',
-        '  output: ""         # default output folder        (default ~/BatchSlicer/output)',
-        '  logs: ""           # log files                    (default ~/.local/state/batchslicer)',
-        '  data: ""           # BatchSlicer\'s working cache  (default ~/.cache/batchslicer)',
-        '  profiles: ""       # saved profiles file          '
-        "(default ~/.local/share/batchslicer/profiles.yaml)",
+        f'  incoming: ""       # models offered for slicing   (default {default("incoming")})',
+        f'  output: ""         # default output folder        (default {default("output")})',
+        f'  logs: ""           # log files                    (default {default("logs")})',
+        f'  data: ""           # BatchSlicer\'s working cache  (default {default("data")})',
+        f'  profiles: ""       # saved profiles file          (default {default("profiles")})',
         "",
         *PRINTERS_COMMENT,
     ]
