@@ -1005,8 +1005,7 @@ batchslicer --profile k2-pla --input ~/drop --plates --send k2plus --watch
 ### Running it in the background
 
 `batchslicer service install` keeps the watch folder running without a
-terminal, as a systemd user service (Linux only; on Windows and macOS, see
-the end of this section). It takes the same options as a
+terminal, starting it again at every login. It takes the same options as a
 watch run and adds `--watch --no-prompt`, so it needs a profile (or
 `--slicer`, `--printer`, `--filament` and `--process`):
 
@@ -1023,28 +1022,36 @@ Wrote /home/you/.config/systemd/user/batchslicer-watch.service
 The service 'watch' is watching, and starts again whenever you log in.
 ```
 
-- It starts right away, shows its first lines of output, and starts again at
-  every login. If it stops at once (a profile name misspelled, a printer that
-  does not answer), install says so and shows why.
+- It starts right away and shows its first lines of output. If it stops at
+  once (a profile name misspelled, a printer that does not answer), install
+  says so and shows why.
 - The configuration file in use, and the `--input` and `--output` folders,
   are written with their full paths, so the service works the same whatever
   folder you installed it from.
 - `batchslicer service status` shows each service, whether it is running and
-  what it runs, with its latest output. `journalctl --user -u
-  batchslicer-watch.service -f` follows it live.
+  what it runs, with its latest output, and how to follow it live.
 - `batchslicer service uninstall` stops and removes it. Stopping works like
   Ctrl+C: the slicer is stopped, and a drop being sliced stays in the folder.
 - `--name NAME` runs several, for example one folder per printer:
   `batchslicer service install --name ender --profile ender-pla --input ~/drop-ender`.
   Installing again with the same name replaces it.
-- A user service stops when you log out. To keep it running then, and start
-  it at boot, run `loginctl enable-linger` once.
-- The slicers run without a window, so no desktop session is needed (tested
-  with OrcaSlicer, Bambu Studio and Creality Print AppImages).
 
-Without systemd, run `batchslicer --watch ...` in a `tmux` or `screen`
-session instead. On Windows and macOS, run it in a terminal window and leave
-the window open (minimised is fine); Ctrl+C in that window stops it.
+How it works on each system:
+
+- **Linux**: a systemd user service (`~/.config/systemd/user/batchslicer-NAME.service`);
+  `journalctl --user -u batchslicer-NAME.service -f` follows it. A user
+  service stops when you log out; to keep it running then, and start it at
+  boot, run `loginctl enable-linger` once. The slicers run without a window,
+  so no desktop session is needed. Without systemd, run `batchslicer --watch
+  ...` in a `tmux` or `screen` session instead.
+- **macOS**: a launchd agent
+  (`~/Library/LaunchAgents/io.github.drak42.batchslicer.NAME.plist`) that
+  runs while you are signed in, with its output in
+  `~/Library/Logs/BatchSlicer/service-NAME.log`. Installing needs you to be
+  signed in at the Mac (not only connected over SSH).
+- **Windows**: no background service yet. Run `batchslicer --watch ...` in a
+  terminal window and leave it open (minimised is fine); Ctrl+C in that
+  window stops it.
 
 ## Multi-colour projects
 
@@ -1602,9 +1609,9 @@ the Actions tab ("Latest slicers").
 
 ## Current limitations
 
-- **No background service on Windows and macOS.** `batchslicer service`
-  uses systemd, so it is Linux-only; run `--watch` in a terminal window
-  instead.
+- **No background service on Windows.** `batchslicer service` works on Linux
+  (systemd) and macOS (launchd); on Windows, run `--watch` in a terminal
+  window instead.
 - **Bambu Studio on Windows** works only from a signed-in desktop session,
   not over SSH or as a background task.
 - **Loaded filaments from Creality's CFS only.** Reading a Bambu AMS needs the

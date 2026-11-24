@@ -797,9 +797,9 @@ def _how_to_stop() -> str:
         interactive = False
     if interactive:
         return "Press Ctrl+C to stop."
-    if locations.is_windows() or locations.is_macos():  # the service is systemd, Linux only
+    if locations.is_windows():  # no background service on Windows
         return "It runs until it is stopped (Ctrl+C in its window, or end the batchslicer process)."
-    return "It runs until it is stopped (for a service: batchslicer service uninstall, or systemctl --user stop)."
+    return "It runs until it is stopped (for a background service: batchslicer service uninstall)."
 
 
 def _ask_watch_plates(profiles: ProfileStore) -> bool:

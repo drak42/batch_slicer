@@ -1,8 +1,8 @@
 """``batchslicer service``: keep the watch folder running in the background.
 
-``install`` writes a systemd user service that runs BatchSlicer with the
-given options plus ``--watch --no-prompt``, starts it and shows its first
-lines of output; ``status`` lists the installed services and what they are
+``install`` writes a background service (a systemd user service on Linux, a
+launchd agent on macOS) that runs BatchSlicer with the given options plus
+``--watch --no-prompt``, starts it and shows its first lines of output; ``status`` lists the installed services and what they are
 doing; ``uninstall`` stops and removes one. Paths in the options are made
 absolute, and the configuration file in use now is named explicitly, so the
 service does not depend on the folder it was installed from. The options
@@ -16,18 +16,17 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from batchslicer.core import locations
 from batchslicer.core.config import find_config_file, get_config
-from batchslicer.infrastructure.systemd import (
+from batchslicer.infrastructure.launchd import Launchd
+from batchslicer.infrastructure.service_manager import (
     DEFAULT_NAME,
     ServiceError,
     ServiceInfo,
-    Systemd,
+    ServiceManager,
     check_name,
-    installed_services,
-    render_unit,
-    unit_folder,
-    unit_name,
 )
+from batchslicer.infrastructure.systemd import Systemd
 
 SERVICE_ACTIONS = ("install", "status", "uninstall")
 _PATH_OPTIONS = ("--input", "--output", "--config")
@@ -54,24 +53,31 @@ class ServiceOptions:
 def run_service(
     options: ServiceOptions,
     *,
-    systemd: Systemd | None = None,
+    manager: ServiceManager | None = None,
     write: Callable[[str], None] = print,
     environ: Mapping[str, str] | None = None,
     sleep: Callable[[float], None] = time.sleep,
     python: str | None = None,
 ) -> int:
     """Carry out ``options`` and return an exit status (0 when all went well)."""
-    systemd = systemd or Systemd()
+    manager = manager or system_manager()
     try:
-        systemd.check_available()
+        manager.check_available()
         if options.action == "install":
-            return _install(options, systemd, write, environ, sleep, python or sys.executable)
+            return _install(options, manager, write, environ, sleep, python or sys.executable)
         if options.action == "uninstall":
-            return _uninstall(options, systemd, write, environ)
-        return _status(options, systemd, write, environ)
+            return _uninstall(options, manager, write)
+        return _status(options, manager, write)
     except (ServiceError, FileNotFoundError, OSError) as error:
         write(f"BatchSlicer service {options.action} failed: {error}")
         return 1
+
+
+def system_manager() -> ServiceManager:
+    """Return this system's service manager: launchd on macOS, systemd elsewhere."""
+    if locations.is_macos():
+        return Launchd()
+    return Systemd()
 
 
 def service_command(run_arguments: Sequence[str], config: Path, python: str) -> list[str]:
@@ -103,31 +109,29 @@ def absolute_paths(arguments: Sequence[str]) -> list[str]:
 
 def _install(
     options: ServiceOptions,
-    systemd: Systemd,
+    manager: ServiceManager,
     write: Callable[[str], None],
     environ: Mapping[str, str] | None,
     sleep: Callable[[float], None],
     python: str,
 ) -> int:
     name = check_name(options.name or DEFAULT_NAME)
-    unit = unit_name(name)
     explicit = _option_value(options.run_arguments, "--config")
     config_path = find_config_file(Path(explicit) if explicit else None, environ=environ).absolute()
     config = get_config(config_path)
     working_directory = config.get_path("paths", "data")
     working_directory.mkdir(parents=True, exist_ok=True)
+    log_file = config.get_path("paths", "logs") / f"service-{name}.log"
     command = service_command(options.run_arguments, config_path, python)
 
-    path = unit_folder(environ) / unit
+    path = manager.definition_path(name)
     replacing = path.exists()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(render_unit(name, command, working_directory), encoding="utf-8")
+    manager.write(name, command, working_directory, log_file)
     write(f"{'Replaced' if replacing else 'Wrote'} {path}")
     write(f"  runs: batchslicer {shlex.join(command[3:])}")
-    systemd.reload()
-    systemd.enable_and_restart(unit)
+    manager.start(name)
 
-    state, log = _wait_until_watching(systemd, unit, sleep)
+    state, log = _wait_until_watching(manager, name, sleep)
     for line in log:
         write(f"  | {line}")
     if state != "active" or not any(_STARTED_MARK in line for line in log):
@@ -139,24 +143,21 @@ def _install(
         return 1
     write("")
     write(f"The service '{name}' is watching, and starts again whenever you log in.")
-    if systemd.lingering() is False:
-        write(
-            "It stops when you log out. To keep it running then (and start it at boot), "
-            "run once: loginctl enable-linger"
-        )
+    for note in manager.notes():
+        write(note)
     write(f"Check it with 'batchslicer service status --name {name}'; follow it live with "
-          f"'journalctl --user -u {unit} -f'.")
+          f"'{manager.follow_hint(name)}'.")
     return 0
 
 
 def _wait_until_watching(
-    systemd: Systemd, unit: str, sleep: Callable[[float], None]
+    manager: ServiceManager, name: str, sleep: Callable[[float], None]
 ) -> tuple[str, list[str]]:
     """Wait until the service watches or stops; return its state and recent output."""
     waited = 0.0
     while True:
-        state = systemd.state(unit)
-        log = systemd.recent_log(unit)
+        state = manager.state(name)
+        log = manager.recent_log(name)
         started = any(_STARTED_MARK in line for line in log)
         if started or state in ("failed", "inactive") or waited >= _STARTUP_WAIT_SECONDS:
             return state, log
@@ -164,35 +165,22 @@ def _wait_until_watching(
         waited += 0.5
 
 
-def _uninstall(
-    options: ServiceOptions,
-    systemd: Systemd,
-    write: Callable[[str], None],
-    environ: Mapping[str, str] | None,
-) -> int:
+def _uninstall(options: ServiceOptions, manager: ServiceManager, write: Callable[[str], None]) -> int:
     name = check_name(options.name or DEFAULT_NAME)
-    unit = unit_name(name)
-    path = unit_folder(environ) / unit
+    path = manager.definition_path(name)
     if not path.exists():
-        names = ", ".join(service.name for service in installed_services(environ)) or "none"
+        names = ", ".join(service.name for service in manager.installed()) or "none"
         raise ServiceError(f"No service named '{name}' (installed: {names}).")
     try:
-        systemd.disable_and_stop(unit)
+        manager.stop_and_remove(name)
     except ServiceError as error:
         write(f"Note: {error}")
-    path.unlink()
-    systemd.reload()
     write(f"Stopped and removed the service '{name}' ({path}).")
     return 0
 
 
-def _status(
-    options: ServiceOptions,
-    systemd: Systemd,
-    write: Callable[[str], None],
-    environ: Mapping[str, str] | None,
-) -> int:
-    services = installed_services(environ)
+def _status(options: ServiceOptions, manager: ServiceManager, write: Callable[[str], None]) -> int:
+    services = manager.installed()
     if options.name is not None:
         check_name(options.name)
         services = [service for service in services if service.name == options.name]
@@ -203,16 +191,16 @@ def _status(
         return 0
     healthy = True
     for service in services:
-        state = systemd.state(service.unit)
+        state = manager.state(service.name)
         healthy = healthy and state == "active"
         write(f"{service.name}: {state}")
         write(f"  runs: batchslicer {_shown_command(service)}")
         if options.name is not None or len(services) == 1:
-            for line in systemd.recent_log(service.unit):
+            for line in manager.recent_log(service.name):
                 write(f"  | {line}")
-        write(f"  log:  journalctl --user -u {service.unit} -f")
-    if systemd.lingering() is False:
-        write("Services stop when you log out; 'loginctl enable-linger' keeps them running.")
+        write(f"  log:  {manager.follow_hint(service.name)}")
+    for note in manager.notes():
+        write(note)
     return 0 if healthy else 1
 
 
