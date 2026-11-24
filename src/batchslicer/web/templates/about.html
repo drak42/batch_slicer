@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}About · BatchSlicer{% endblock %}
+{% block content %}
+<h1>About</h1>
+<div class="panel">
+  <dl>
+    <dt>Version</dt><dd>BatchSlicer {{ version }} (Python {{ python }}, {{ system }})</dd>
+    <dt>Configuration</dt><dd><code>{{ config or "not known" }}</code></dd>
+    <dt>This page runs</dt><dd><code>{{ command }}</code></dd>
+    <dt>Watched folder</dt><dd><code>{{ watched }}</code>{% if status %} ({{ status.state }}){% endif %}</dd>
+    <dt>Output folder</dt><dd><code>{{ output }}</code></dd>
+    {% for target in targets %}
+    <dt>Service {{ target.name }}</dt><dd><code>{{ target.folder }}</code></dd>
+    {% endfor %}
+    <dt>Printers</dt><dd>{% for name, host in printers.items() %}{{ host.describe() }}{{ ", " if not loop.last }}{% else %}none configured{% endfor %}</dd>
+  </dl>
+</div>
+<h2>Check the setup</h2>
+<p class="muted">Runs <code>batchslicer doctor</code>: checks the configuration, folders, slicers and printers.
+  It can take a minute, because it starts each slicer. Include its report when you report a problem.</p>
+<form hx-post="/about/doctor" hx-target="#doctor" hx-disabled-elt="find button">
+  <button class="button" type="submit">Run the checks</button>
+</form>
+<div id="doctor" role="status" aria-live="polite"></div>
+{% endblock %}

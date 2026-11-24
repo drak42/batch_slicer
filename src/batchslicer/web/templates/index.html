@@ -4,6 +4,13 @@
   <p class="drop-title">Drop models, zip files or folders here</p>
   <p class="muted small">STL, 3MF and OBJ files, and zip files of them; up to {{ max_upload }} at a time.
     They go into the watched folder and are sliced like anything you put there.</p>
+  {% if targets %}
+  <p><label>Put them in
+    <select name="target">
+      <option value="">this page's watched folder</option>
+      {% for target in targets %}<option value="{{ target.name }}">the folder of service {{ target.name }}</option>{% endfor %}
+    </select></label></p>
+  {% endif %}
   <p class="drop-buttons">
     <label class="button">Choose files<input type="file" name="files" multiple accept=".stl,.3mf,.obj,.zip" hidden></label>
     <label class="button">Choose a folder<input type="file" name="folder" webkitdirectory hidden></label>

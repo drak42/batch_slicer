@@ -36,4 +36,14 @@
       {% endif %}
     </div>
   </div>
+  {% if others %}
+  <h3>Watched by services</h3>
+  <ul class="plain small">
+    {% for other in others %}
+    <li><strong>{{ other.target.name }}</strong>: <code>{{ other.target.folder }}</code> ·
+      {% if other.status is none %}not reported yet{% elif other.status.state == "slicing" %}slicing {{ other.status.drop }}{% else %}{{ other.status.state }}{% endif %}
+      · {{ other.waiting }} waiting</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 </div>
