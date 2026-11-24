@@ -18,6 +18,13 @@ All notable changes to BatchSlicer are recorded here. The format follows
   answers, which software answered, where its key came from and what is
   loaded in its CFS. Repeat it for several printers (#19).
 
+### Documentation
+
+- The README and User Guide give Linux, Windows and macOS their own
+  installation steps, and the README has one table per system for where
+  BatchSlicer keeps its configuration, folders, logs and the slicers'
+  settings, instead of mixing the three in the same paragraphs.
+
 ## [0.18.0] - 2026-11-24
 
 macOS: BatchSlicer runs on macOS with OrcaSlicer, Creality Print and Bambu

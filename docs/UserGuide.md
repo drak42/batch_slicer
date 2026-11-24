@@ -47,8 +47,11 @@ on the same network.
 
 ## 2. Install BatchSlicer
 
-The easiest way is [pipx](https://pipx.pypa.io), which installs command-line
-tools in their own space:
+BatchSlicer is installed with [pipx](https://pipx.pypa.io), which installs
+command-line tools in their own space. Follow the steps for your system; after
+that, every command in this guide works the same everywhere.
+
+### On Linux
 
 ```bash
 sudo apt install pipx        # Debian, Ubuntu, Mint; see the pipx site for others
@@ -57,22 +60,25 @@ pipx install batchslicer
 batchslicer --version
 ```
 
-Later, `pipx upgrade batchslicer` updates it.
+### On Windows
 
-**On Windows**, install Python from [python.org](https://www.python.org/downloads/windows/)
+Install Python from [python.org](https://www.python.org/downloads/windows/)
 first, then in PowerShell:
 
 ```powershell
 py -m pip install --user pipx
-py -m pipx ensurepath        # then open a new terminal
+py -m pipx ensurepath        # then open a new PowerShell window
 pipx install batchslicer
 batchslicer --version
 ```
 
-Every command in this guide works the same in PowerShell or Command Prompt.
+Use PowerShell or Command Prompt. Where this guide shows `~/BatchSlicer`, that
+is `C:\Users\<you>\BatchSlicer`.
 
-**On a Mac**, install Python from [python.org](https://www.python.org/downloads/macos/)
-first, then in Terminal:
+### On a Mac
+
+Install Python from [python.org](https://www.python.org/downloads/macos/)
+first (the `python3` that comes with macOS is too old), then in Terminal:
 
 ```bash
 python3 -m pip install --user pipx
@@ -83,9 +89,10 @@ batchslicer --version
 
 If macOS asks whether Terminal may access your Downloads or Desktop folder,
 allow it so BatchSlicer can read models there.
-Where it shows `~/BatchSlicer`, that is `C:\Users\<you>\BatchSlicer` on
-Windows.
 
+### Updating
+
+`pipx upgrade batchslicer` updates it, on every system.
 ## 3. Let BatchSlicer find your slicers
 
 ```bash
@@ -93,11 +100,9 @@ batchslicer setup
 ```
 
 Setup looks for your slicers and their settings folders, shows what it found,
-and asks which copy to use when you have several. It writes the configuration
-to `~/.config/batchslicer/config.yaml` (on Windows,
-`%APPDATA%\BatchSlicer\config.yaml`; on a Mac,
-`~/Library/Application Support/BatchSlicer/config.yaml`) and creates two
-folders:
+and asks which copy to use when you have several. It writes BatchSlicer's
+configuration file (it prints where; `batchslicer doctor` shows it too) and
+creates two folders:
 
 - `~/BatchSlicer/incoming`: where BatchSlicer looks for models first;
 - `~/BatchSlicer/output`: where the G-code goes.
@@ -230,10 +235,8 @@ their address straight away:
 batchslicer --profile k2-petg --input ~/BatchSlicer/incoming/rc-boat --send 192.168.1.50
 ```
 
-To give the printer a name, add it to BatchSlicer's configuration file
-(`~/.config/batchslicer/config.yaml`; on Windows
-`%APPDATA%\BatchSlicer\config.yaml`; on a Mac
-`~/Library/Application Support/BatchSlicer/config.yaml`):
+To give the printer a name, add it to BatchSlicer's configuration file (the
+one setup wrote; `batchslicer doctor` shows where it is):
 
 ```yaml
 printers:

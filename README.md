@@ -33,11 +33,9 @@ batchslicer                                      # answer a few questions, get G
 Results appear in `~/BatchSlicer/output`. Next time, `batchslicer --last`
 repeats the same run.
 
-On macOS the steps are the same in Terminal (see
-[Installing on macOS](#installing-on-macos) for Python and pipx). On Windows
-they are the same in PowerShell or Command Prompt (see
-[Installing on Windows](#installing-on-windows) for pipx); the folders are
-`%USERPROFILE%\BatchSlicer\incoming` and `%USERPROFILE%\BatchSlicer\output`.
+The same four commands work on Linux, Windows (PowerShell) and macOS
+(Terminal). Need Python or pipx first? See [Installation](#installation),
+which has the steps for each system.
 
 New to BatchSlicer? The **[User Guide](docs/UserGuide.md)** walks through
 everything step by step: installing, your first slice, profiles, folders and
@@ -60,8 +58,8 @@ onto one plate. Recorded with [`docs/demo/demo.sh`](https://github.com/drak42/ba
 - [What it does](#what-it-does)
 - [How it works](#how-it-works)
 - [Requirements](#requirements)
-- [Installation](#installation) (including [on Windows](#installing-on-windows) and [on macOS](#installing-on-macos))
-- [Configuration](#configuration)
+- [Installation](#installation): [Linux](#installing-on-linux), [Windows](#installing-on-windows), [macOS](#installing-on-macos)
+- [Configuration](#configuration) (including [where BatchSlicer keeps things](#where-batchslicer-keeps-things))
 - [Using BatchSlicer interactively](#using-batchslicer-interactively)
 - [Using the command line](#using-the-command-line)
 - [Profiles](#profiles)
@@ -196,42 +194,45 @@ built-in presets in packed `.opc` files. BatchSlicer takes the vendors you use
 plain files, 2.5 as `.opc` files, which BatchSlicer reads), or from the `.opc`
 files in OrcaSlicer's settings folder for vendors the program does not ship.
 They are unpacked once into the `slicer-profiles` folder of BatchSlicer's
-cache (`~/.cache/batchslicer/` on Linux), and again automatically when
-OrcaSlicer or those files change. This usually takes about a second; on
-Windows the first time can take a minute or two.
+working cache (see [Where BatchSlicer keeps things](#where-batchslicer-keeps-things)),
+and again automatically when OrcaSlicer or those files change. This usually
+takes about a second; on Windows the first time can take a minute or two.
 
 ## Requirements
 
-- Linux (the slicers are used as AppImages, or a regular install for
-  OrcaSlicer), Windows 10 or 11 (the slicers' regular installers, or
-  portable copies), or macOS (the slicer apps in Applications)
-- Python 3.12 or newer
-- At least one of OrcaSlicer, Creality Print or Bambu Studio installed, and
+- **Linux, Windows 10 or 11, or macOS**, with **Python 3.12 or newer**.
+- **At least one slicer**: OrcaSlicer, Creality Print or Bambu Studio,
   **opened at least once** so it has created its settings folder and you have
-  added your printers in it
+  added your printers in it. How it is installed depends on the system:
+  AppImages (or a regular install) on Linux, the slicers' installers (or
+  portable copies) on Windows, the apps in Applications on macOS.
 - Optional, for sending G-code: a printer running Klipper with Moonraker (such
-  as the Creality K1 and K2 series), or OctoPrint, on your network
+  as the Creality K1 and K2 series), or OctoPrint, on your network.
 
 ## Installation
 
-### From PyPI (recommended)
+BatchSlicer is installed with [pipx](https://pipx.pypa.io/), which keeps it in
+its own environment and puts the `batchslicer` command on your PATH. The steps
+for each system are below; after them, every command in this README works the
+same everywhere.
 
-Install it with [pipx](https://pipx.pypa.io/), which keeps BatchSlicer in its
-own environment and puts the `batchslicer` command on your PATH:
+### Installing on Linux
 
 ```bash
+sudo apt install pipx            # Debian, Ubuntu, Mint; see the pipx site for others
+pipx ensurepath                  # then open a new terminal
 pipx install batchslicer
-batchslicer --version
+batchslicer setup
 ```
 
-To upgrade: `pipx upgrade batchslicer`. (`python3 -m pip install --user
-batchslicer` works too.)
+(`python3 -m pip install --user batchslicer` works too.)
 
 ### Installing on Windows
 
-1. Install Python 3.12 or newer from [python.org](https://www.python.org/downloads/windows/)
-   (or with `winget install Python.Python.3.13`).
-2. Install pipx and put its folder on your PATH, then open a **new** terminal:
+1. Install Python 3.12 or newer from
+   [python.org](https://www.python.org/downloads/windows/), or with
+   `winget install Python.Python.3.13`.
+2. In PowerShell, install pipx, then open a **new** PowerShell window:
 
    ```powershell
    py -m pip install --user pipx
@@ -245,23 +246,22 @@ batchslicer` works too.)
    batchslicer setup
    ```
 
-Use PowerShell or Command Prompt; every command in this README works the same
-way, with Windows paths (`C:\Users\you\Models`) where it shows Linux ones.
+Use PowerShell or Command Prompt, with Windows paths
+(`C:\Users\you\Models`) where this README shows Linux ones.
 
 ### Installing on macOS
 
-1. Install Python 3.12 or newer from [python.org](https://www.python.org/downloads/macos/)
-   (or with Homebrew: `brew install python`). The `python3` that comes with
-   macOS is too old.
-2. Install pipx and put its folder on your PATH, then open a **new** Terminal
-   window:
+1. Install Python 3.12 or newer from
+   [python.org](https://www.python.org/downloads/macos/), or with Homebrew
+   (`brew install python`). The `python3` that comes with macOS is too old.
+2. In Terminal, install pipx, then open a **new** Terminal window:
 
    ```bash
    python3 -m pip install --user pipx
    python3 -m pipx ensurepath
    ```
 
-   (With Homebrew, `brew install pipx` does both.)
+   With Homebrew, `brew install pipx` does both.
 
 3. Install BatchSlicer and let it find your slicers:
 
@@ -270,7 +270,9 @@ way, with Windows paths (`C:\Users\you\Models`) where it shows Linux ones.
    batchslicer setup
    ```
 
-Every command in this README works the same in Terminal.
+### Upgrading
+
+`pipx upgrade batchslicer`, on every system.
 
 ### From a release file
 
@@ -306,10 +308,8 @@ batchslicer setup
 
 ### Setting up with `batchslicer setup`
 
-`setup` looks for slicer AppImages in `~/Apps`, `~/Applications`,
-`~/AppImages`, `~/Downloads`, `~/Desktop` and `~/.local/bin` (and one folder
-below each), in `/opt`, and for slicer programs on your PATH. For each slicer
-it shows what it found and recommends the newest stable version:
+`setup` finds your slicers, shows what it found, and recommends the newest
+stable version of each:
 
 ```
 OrcaSlicer:
@@ -322,12 +322,13 @@ Enter for 1, or a number 1-4:
 
 Press Enter for the recommendation, pick another version, or skip the slicer.
 Setup also finds each slicer's settings folder (for Creality Print, the one
-matching the program's version). A slicer that has never been opened is
-skipped with a note: open it once, add your printers, and run setup again.
+it uses now). A slicer that has never been opened is skipped with a note: open
+it once, add your printers, and run setup again.
 
-Setup writes `~/.config/batchslicer/config.yaml` and creates
-`~/BatchSlicer/incoming` and `~/BatchSlicer/output`. If a configuration already
-exists it asks before replacing it and keeps the old one as `config.yaml.bak`.
+Setup writes the configuration file and creates the `incoming` and `output`
+folders (see [Where BatchSlicer keeps things](#where-batchslicer-keeps-things)).
+If a configuration already exists it asks before replacing it and keeps the
+old one as `config.yaml.bak`.
 
 | Option | Meaning |
 |---|---|
@@ -335,19 +336,21 @@ exists it asks before replacing it and keeps the old one as `config.yaml.bak`.
 | `--no-prompt` | accept the recommended version of each slicer without asking |
 | `--force` | replace an existing configuration (needed with `--no-prompt`) |
 
-Flatpak installs are not detected; point the configuration at the slicer
-program yourself if you use one.
+**Where setup looks for slicers:**
 
-**On Windows**, setup looks in `Program Files`, `Program Files (x86)` and
-`%LOCALAPPDATA%\Programs` (where the slicers' installers put them), and for
-portable copies in the same home folders as above (`Downloads`, `Desktop`...,
-up to two folders deep). The version comes from Windows' list of installed
-programs. The settings folders are under `%APPDATA%` (see the table below).
-
-**On macOS**, setup looks for `OrcaSlicer.app`, `BambuStudio.app` and
-`Creality Print.app` in `/Applications` and `~/Applications`, uses the program
-inside the app (`Contents/MacOS`), and reads the version from the app's
-`Info.plist`. The settings folders are under `~/Library/Application Support`.
+- **Linux**: AppImages in `~/Apps`, `~/Applications`, `~/AppImages`,
+  `~/Downloads`, `~/Desktop` and `~/.local/bin` (and one folder below each),
+  in `/opt`, and slicer programs on your PATH. The version comes from the file
+  name. Flatpak installs are not detected; point the configuration at the
+  slicer program yourself if you use one.
+- **Windows**: `Program Files`, `Program Files (x86)` and
+  `%LOCALAPPDATA%\Programs` (where the slicers' installers put them), and
+  portable copies in `Downloads`, `Desktop` and the other folders above (up to
+  two folders deep). The version comes from Windows' list of installed
+  programs.
+- **macOS**: `OrcaSlicer.app`, `BambuStudio.app` and `Creality Print.app` in
+  `/Applications` and `~/Applications`. Setup uses the program inside the app
+  (`Contents/MacOS`) and reads the version from the app's `Info.plist`.
 
 ### Where the configuration lives
 
@@ -357,18 +360,61 @@ BatchSlicer uses the first of these that applies:
 2. the file named by the `BATCHSLICER_CONFIG` environment variable
 3. `config/config.yaml` in the current folder (handy when working in a copy of
    this project)
-4. `~/.config/batchslicer/config.yaml` (where `setup` writes it), or
-   `%APPDATA%\BatchSlicer\config.yaml` on Windows and
-   `~/Library/Application Support/BatchSlicer/config.yaml` on macOS
+4. the standard configuration file for your system, where `setup` writes it
+   (see the next section)
+
+### Where BatchSlicer keeps things
+
+The defaults for each system. The five `paths` settings in the configuration
+(`incoming`, `output`, `logs`, `data`, `profiles`) move them, and an `XDG_*`
+environment variable, when set, moves the matching folder on every system.
+
+**Linux**
+
+| What | Where |
+|---|---|
+| Configuration | `~/.config/batchslicer/config.yaml` |
+| Models to slice (`incoming`), results (`output`) | `~/BatchSlicer/incoming`, `~/BatchSlicer/output` |
+| Logs (`logs`) | `~/.local/state/batchslicer` |
+| Working cache (`data`) | `~/.cache/batchslicer` |
+| Saved profiles (`profiles`) | `~/.local/share/batchslicer/profiles.yaml` |
+| Slicer settings (`datadir`) | `~/.config/OrcaSlicer`, `~/.config/BambuStudio`, `~/.config/Creality/Creality Print/<version>` |
+
+**Windows**
+
+| What | Where |
+|---|---|
+| Configuration | `%APPDATA%\BatchSlicer\config.yaml` |
+| Models to slice, results | `%USERPROFILE%\BatchSlicer\incoming`, `%USERPROFILE%\BatchSlicer\output` |
+| Logs | `%LOCALAPPDATA%\BatchSlicer\logs` |
+| Working cache | `%LOCALAPPDATA%\BatchSlicer\cache` |
+| Saved profiles | `%APPDATA%\BatchSlicer\profiles.yaml` |
+| Slicer settings | `%APPDATA%\OrcaSlicer`, `%APPDATA%\BambuStudio`, `%APPDATA%\Creality\Creality Print\<version>` |
+
+**macOS**
+
+| What | Where |
+|---|---|
+| Configuration | `~/Library/Application Support/BatchSlicer/config.yaml` |
+| Models to slice, results | `~/BatchSlicer/incoming`, `~/BatchSlicer/output` |
+| Logs | `~/Library/Logs/BatchSlicer` |
+| Working cache | `~/Library/Caches/BatchSlicer` |
+| Saved profiles | `~/Library/Application Support/BatchSlicer/profiles.yaml` |
+| Slicer settings | `~/Library/Application Support/OrcaSlicer`, `.../BambuStudio`, `.../Creality/Creality Print/<version>` |
+
+`batchslicer doctor` shows the folders in use on your computer.
 
 ### Editing it by hand
 
 `config/config.example.yaml` is a commented template. Each slicer you use needs
 two paths; leave both empty for a slicer you do not use:
 
-- `executable`: the slicer program (for example its AppImage, or just a program
-  name such as `orca-slicer` if it is on your PATH)
-- `datadir`: the folder where the slicer keeps its settings and presets
+- `executable`: the slicer program. On Linux its AppImage, or just a program
+  name such as `orca-slicer` if it is on your PATH; on Windows the `.exe`; on
+  macOS the program inside the app, such as
+  `/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer`.
+- `datadir`: the folder where the slicer keeps its settings and presets (see
+  the tables above).
 
 ```yaml
 orca:
@@ -383,7 +429,7 @@ bambu_studio:
   executable: "~/Apps/BambuStudio_ubu24-v02.09.01.70-20261103183404.AppImage"
   datadir: "~/.config/BambuStudio"
 
-paths:              # all optional; empty means the default (see "Folders" below)
+paths:              # all optional; empty means the default for your system
   incoming: ""      # models offered for slicing
   output: ""        # default output folder
   logs: ""          # log files
@@ -404,35 +450,11 @@ Paths may start with `~` for your home folder. Relative paths are relative to
 the folder the configuration file is in, so BatchSlicer behaves the same
 whichever folder you run it from. Folders are created when needed.
 
-Typical slicer settings folders:
-
-| Slicer | `datadir` on Linux | `datadir` on Windows | `datadir` on macOS |
-|---|---|---|---|
-| OrcaSlicer | `~/.config/OrcaSlicer` | `~/AppData/Roaming/OrcaSlicer` | `~/Library/Application Support/OrcaSlicer` |
-| Creality Print | `~/.config/Creality/Creality Print/<version>` (for example `7.3`) | `~/AppData/Roaming/Creality/Creality Print/<version>` | `~/Library/Application Support/Creality/Creality Print/<version>` |
-| Bambu Studio | `~/.config/BambuStudio` | `~/AppData/Roaming/BambuStudio` | `~/Library/Application Support/BambuStudio` |
-
-On macOS the `executable` is the program inside the app, for example
-`/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer`.
-
-**Windows paths in the configuration.** Write them with forward slashes, as
-setup does (`"C:/Program Files/OrcaSlicer/orca-slicer.exe"`); Windows accepts
-them. Inside double quotes a backslash starts an escape (`"C:\Program
-Files"` is an error, and BatchSlicer says so), so a path with backslashes
-goes in single quotes: `'C:\Program Files\OrcaSlicer\orca-slicer.exe'`.
-
-**Folders.** The defaults for the `paths` settings:
-
-| Setting | Linux | Windows | macOS |
-|---|---|---|---|
-| `incoming` | `~/BatchSlicer/incoming` | `%USERPROFILE%\BatchSlicer\incoming` | `~/BatchSlicer/incoming` |
-| `output` | `~/BatchSlicer/output` | `%USERPROFILE%\BatchSlicer\output` | `~/BatchSlicer/output` |
-| `logs` | `~/.local/state/batchslicer` | `%LOCALAPPDATA%\BatchSlicer\logs` | `~/Library/Logs/BatchSlicer` |
-| `data` | `~/.cache/batchslicer` | `%LOCALAPPDATA%\BatchSlicer\cache` | `~/Library/Caches/BatchSlicer` |
-| `profiles` | `~/.local/share/batchslicer/profiles.yaml` | `%APPDATA%\BatchSlicer\profiles.yaml` | `~/Library/Application Support/BatchSlicer/profiles.yaml` |
-
-On Linux an `XDG_*` environment variable, when set, moves the matching folder
-(and on Windows and macOS too, if you set one).
+**Windows paths** are written with forward slashes, as setup does
+(`"C:/Program Files/OrcaSlicer/orca-slicer.exe"`); Windows accepts them.
+Inside double quotes a backslash starts an escape (`"C:\Program Files"` is an
+error, and BatchSlicer says so), so a path with backslashes goes in single
+quotes: `'C:\Program Files\OrcaSlicer\orca-slicer.exe'`.
 
 ## Using BatchSlicer interactively
 
@@ -1340,9 +1362,9 @@ what was done and what was not sliced.
 bug), it prints one line describing it and the location of the log; the full
 technical details are in the log. Please include them when reporting a problem.
 
-A log of every run is written to `batchslicer.log` in the logs folder
-(`~/.local/state/batchslicer/` by default, `%LOCALAPPDATA%\BatchSlicer\logs`
-on Windows, `~/Library/Logs/BatchSlicer` on macOS), including the choices
+A log of every run is written to `batchslicer.log` in the logs folder (see
+[Where BatchSlicer keeps things](#where-batchslicer-keeps-things); `doctor`
+shows it too), including the choices
 made, each slicer command and its result, and the slicer's error output when a
 model fails. When it reaches about 1 MB it is renamed `batchslicer.log.1` and a
 new one is started; the three most recent old logs are kept.
