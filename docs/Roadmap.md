@@ -145,6 +145,15 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
   slicing, plates, zips, Ctrl+C and the watch folder, checked on a real Mac;
   CI runs on macOS too.
 
+### 0.19.0 (2026-11-24): service everywhere, user suggestions
+
+- `batchslicer service` on macOS (launchd) and Windows (Task Scheduler, in
+  the signed-in session so Bambu Studio works), checked on a real Mac and
+  Windows machine.
+- `api_key_env` reads a printer's API key from an environment variable (#18).
+- `batchslicer doctor --printer NAME|ADDRESS` checks only a printer (#19).
+- The README and User Guide give each system its own steps.
+
 ## Next
 
 - Multi-colour: the Bambu AMS.
@@ -164,10 +173,8 @@ These need a decision from the project owner before work starts.
 
 Ideas from users, kept for a later release.
 
-| Feature | Why | Issue |
-|---|---|---|
-| API key from an environment variable (`api_key_env`) | the key need not be stored in the configuration file (systemd credentials, secret managers) | [#18](https://github.com/drak42/batch_slicer/issues/18) |
-| Printers-only check (`batchslicer doctor --printer NAME\|ADDRESS`) | check access and Moonraker's `trusted_clients` quickly, without checking the slicers, for any address | [#19](https://github.com/drak42/batch_slicer/issues/19) |
+None waiting: the last two (#18, #19) shipped in 0.19.0. New ideas come in as
+[feature requests](https://github.com/drak42/batch_slicer/issues/new/choose).
 
 ## Later: platform
 
