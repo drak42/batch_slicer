@@ -1897,6 +1897,14 @@ def test_watch_says_how_to_stop(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "batchslicer service uninstall" in app._how_to_stop()
 
 
+@pytest.mark.usefixtures("windows")
+def test_watch_on_windows_does_not_mention_systemd(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Windows has no systemd service, so the hint says how to stop it there."""
+    monkeypatch.setattr(app.sys.stdin, "isatty", lambda: False, raising=False)
+    assert "systemctl" not in app._how_to_stop()
+    assert "Ctrl+C" in app._how_to_stop()
+
+
 def test_slots_are_checked_before_slicing() -> None:
     """A slot beyond the filaments given, or a loaded slot without the printer's filaments, stops the run."""
     from batchslicer.domain.options import SliceOptions
