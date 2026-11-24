@@ -1897,11 +1897,12 @@ def test_watch_says_how_to_stop(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "batchslicer service uninstall" in app._how_to_stop()
 
 
-@pytest.mark.parametrize(("system", "hint"), [("windows", "Ctrl+C"), ("macos", "batchslicer service uninstall")])
+@pytest.mark.parametrize(("system", "hint"), [("windows", "batchslicer service uninstall"),
+                                              ("macos", "batchslicer service uninstall")])
 def test_watch_stop_hint_fits_the_system(
     monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest, system: str, hint: str
 ) -> None:
-    """Without a terminal: Windows (no service) says Ctrl+C; macOS has services, like Linux."""
+    """Without a terminal it is a service on every system, so the hint says how to remove it."""
     request.getfixturevalue(system)
     monkeypatch.setattr(app.sys.stdin, "isatty", lambda: False, raising=False)
     assert "systemctl" not in app._how_to_stop()
