@@ -4,6 +4,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/batchslicer)](https://pypi.org/project/batchslicer/)
 [![Python](https://img.shields.io/pypi/pyversions/batchslicer)](https://pypi.org/project/batchslicer/)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/batchslicer?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/batchslicer)
 [![CI](https://github.com/drak42/batch_slicer/actions/workflows/ci.yml/badge.svg)](https://github.com/drak42/batch_slicer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/drak42/batch_slicer/blob/main/LICENSE)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/drak42)
