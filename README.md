@@ -78,6 +78,7 @@ takes models dropped onto the page.
 - [Checking your setup: `batchslicer doctor`](#checking-your-setup-batchslicer-doctor)
 - [Testing](#testing)
 - [Current limitations](#current-limitations)
+- [Companion projects](#companion-projects)
 - [Support](#support)
 
 ---
@@ -1783,6 +1784,23 @@ the Actions tab ("Latest slicers").
 
 See `docs/Roadmap.md` for planned features, `docs/Architecture.md` for the
 design, and `CHANGELOG.md` for what has changed.
+
+## Companion projects
+
+Two more free tools from the same author, for the steps before slicing:
+
+- **[stljoiner](https://github.com/drak42/stljoiner)** puts split parts back
+  together: a model cut to fit the bed, or a download that came in pieces,
+  becomes one watertight solid by matching the cut faces. It can also keep
+  the pieces as separate objects in a 3MF, to print each in its own colour.
+  `pipx install stljoiner`.
+- **[BlendSVG](https://github.com/drak42/blendsvg)** cuts SVG artwork into a
+  model as flush colour inlays, as a 3MF with one part per colour (see
+  [Designing your own multi-colour parts](#designing-your-own-multi-colour-parts)).
+  A Blender add-on, with a command line.
+
+Together: join a model with stljoiner, add your logo with BlendSVG, then
+slice it and send it to the printer with BatchSlicer.
 
 ## Support
 
