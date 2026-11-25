@@ -159,7 +159,12 @@ A feature is not complete until tests pass.
    top of `docs/Architecture.md` to match.
 3. In `CHANGELOG.md`, move the entries under `[Unreleased]` into a new
    `## [X.Y.Z] - YYYY-MM-DD` section and update the comparison links at the
-   bottom. A test checks that the current version has a section. In
+   bottom. A test checks that the current version has a section. Start the
+   section with a one-line summary of the release; when it has something to
+   see, follow it with a picture or GIF (an absolute
+   `raw.githubusercontent.com` link, so it shows in the release notes) and how
+   to try it. People watching the repository's releases get these notes, so
+   lead with what is new for them. In
    `docs/Roadmap.md`, move the release's items to **Done**.
 4. Commit (`chore(release): X.Y.Z`) and merge to `main`.
 5. Tag and push: `git tag -a vX.Y.Z -m "BatchSlicer X.Y.Z"` then

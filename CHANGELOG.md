@@ -11,6 +11,12 @@ All notable changes to BatchSlicer are recorded here. The format follows
 The web page: upload, follow, download and send from a browser on this
 computer.
 
+![The web page: an area to drop models on, the watch folder's queue, and the results with their preview pictures, print time and filament](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/web-home.png)
+
+Install or upgrade with the web page: `pipx install --force "batchslicer[web]"`,
+then `batchslicer web --profile NAME` and open <http://127.0.0.1:8765>. See
+[Following it in a web page](https://github.com/drak42/batch_slicer#following-it-in-a-web-page).
+
 ### Added
 
 - `batchslicer web` (first step of the web page, needs the new `web` extra:
