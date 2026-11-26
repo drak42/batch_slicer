@@ -45,7 +45,7 @@ This README is the full reference.
 
 ### See it in action
 
-![A 38-second terminal demo: a dry run, a two-colour 3MF matched to the spools in a Creality CFS and sent to the printer, and a kit zip unpacked onto one plate](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/demo.gif)
+![A 40-second terminal demo: a dry run, a two-colour 3MF matched to the spools in a Creality CFS and sent to the printer, and a kit zip unpacked onto one plate](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/demo.gif)
 
 A dry run, then a two-colour project matched to the spools loaded in a
 Creality CFS and sent to the printer, then a downloaded kit's zip unpacked
@@ -133,7 +133,9 @@ takes models dropped onto the page.
   folders.
 - **Sends the G-code to your printer.** With `--send`, the G-code goes straight
   to a Klipper printer (Moonraker) or an OctoPrint server over the network,
-  keeping the folder structure; `--start` starts printing a single model.
+  a batch in one folder the printer's screen lists in full (or keeping its
+  folder structure, with `--folders`); `--start` starts printing a single
+  model.
 - **Remembers your choices.** Save a run as a named profile, or repeat the last
   run with `--last`.
 - **Runs unattended.** Every choice can be given as a command-line option or a
@@ -174,9 +176,8 @@ profile if you gave it there, and is asked for otherwise.
    printer to slice for.
 6. **Choose what to slice:** one model file, every model in a folder and its
    subfolders, or (with `--input`) a zip file, whose models are unpacked first.
-   For a folder whose subfolders hold several loose models, BatchSlicer asks
-   whether to put each folder's models together on plates; for a single
-   model, it asks how many copies to make.
+   For a single model, it asks how many copies to make. (A folder's models
+   share plates only with `--plates`.)
 7. **Send to a printer (optional).** If a printer is configured or the last
    run sent to one, BatchSlicer asks whether to send the G-code there. It
    checks that the printer answers before slicing anything.
@@ -901,10 +902,10 @@ batchslicer --profile k2-pla --input bracket.stl --send k2plus --start
 
 - Before slicing, BatchSlicer checks that the printer answers, so a long
   batch doesn't run only to find the printer switched off.
-- The files go into the printer's G-code folder. A batch keeps its folder
-  structure inside a folder named like the batch
-  (`kit-20261122-073000/arms/left.gcode`), and a single model goes to the top
-  folder. A file already on the printer with the same name is replaced.
+- The files go into the printer's G-code folder. A batch goes into one folder
+  named like the batch (`kit-20261122-073000/left.gcode`); with `--folders` it
+  keeps its folder structure inside it (`kit-20261122-073000/arms/left.gcode`).
+  A single model goes to the top folder. A file already on the printer with the same name is replaced.
 - Only models that sliced are sent. A file the printer refuses is listed,
   and makes the run end with status 1.
 - `--start` works for one model that gives one G-code file. If the printer is

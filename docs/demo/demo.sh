@@ -71,7 +71,7 @@ config["paths"] = {**(config.get("paths") or {}),
 with open(f"{demo}/config.yaml", "w", encoding="utf-8") as file:
     yaml.safe_dump(config, file, sort_keys=False)
 profile = {"slicer": slicer, "printer": printer, "filament": filament, "process": process,
-           "plates": True, "output": f"{demo}/output"}
+           "output": f"{demo}/output"}
 if send:
     profile.update(send=send, loaded_filaments=True)
 with open(f"{demo}/profiles.yaml", "w", encoding="utf-8") as file:
@@ -113,7 +113,7 @@ comment "What would happen? --dry-run slices nothing and sends nothing"
 run batchslicer --profile k2 --input kits/bumper.3mf --dry-run
 comment "A two-colour project, matched to the spools loaded in the CFS"
 run batchslicer --profile k2 --input kits/bumper.3mf
-comment "A downloaded kit, zip and all: unpacked, put on one plate"
-run batchslicer --profile k2 --input kits/boat-kit.zip
+comment "A downloaded kit, zip and all: unpacked, and with --plates put on one plate"
+run batchslicer --profile k2 --input kits/boat-kit.zip --plates
 comment "Done. github.com/drak42/batch_slicer"
 sleep 2

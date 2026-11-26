@@ -7,7 +7,7 @@ printing in several colours and sending G-code to your printer, one step at a
 time. Every step builds on the one before, but you can stop after any of them.
 For every option and detail, see the [README](../README.md).
 
-![A 38-second terminal demo: a dry run, a two-colour 3MF matched to the spools in a Creality CFS and sent to the printer, and a kit zip unpacked onto one plate](images/demo.gif)
+![A 40-second terminal demo: a dry run, a two-colour 3MF matched to the spools in a Creality CFS and sent to the printer, and a kit zip unpacked onto one plate](images/demo.gif)
 
 **Contents**
 
@@ -184,7 +184,7 @@ from a script: add `--no-prompt` to make sure it never waits for an answer.
 ## 6. Slice a whole folder, and put kits on plates
 
 Point BatchSlicer at a folder and it slices every model in it and its
-subfolders, keeping your folder names:
+subfolders, and puts all the G-code in one folder, named after yours:
 
 ```bash
 batchslicer --profile k2-petg --input ~/BatchSlicer/incoming/rc-boat
@@ -204,8 +204,8 @@ as few plates as they fit, one G-code file per plate:
 batchslicer --profile k2-petg --input ~/BatchSlicer/incoming/rc-boat --plates
 ```
 
-Interactively, BatchSlicer asks "Put the models in each folder together on
-plates?" when a folder could use it.
+BatchSlicer doesn't ask about plates: without `--plates` (or a profile that
+saved it), each model is sliced on its own.
 
 A few more options for folders:
 
