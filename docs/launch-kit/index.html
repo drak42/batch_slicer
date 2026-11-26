@@ -1,0 +1,495 @@
+<title>BatchSlicer Launch Kit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: one reading column; each draft is a "card" with a copy button, like a slicer's plate list */
+:root {
+  --bg: #f6f7f5;
+  --surface: #ffffff;
+  --fg: #1d2420;
+  --muted: #5d6862;
+  --line: #d9dfdb;
+  --accent: #1f7a5a;      /* filament green */
+  --accent-fg: #ffffff;
+  --code-bg: #eef2ef;
+  --font-display: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131815; --surface: #1a211d; --fg: #e4ebe6; --muted: #9aa8a0;
+    --line: #2c3631; --accent: #5cc79a; --accent-fg: #0d1511; --code-bg: #212a25;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131815; --surface: #1a211d; --fg: #e4ebe6; --muted: #9aa8a0;
+  --line: #2c3631; --accent: #5cc79a; --accent-fg: #0d1511; --code-bg: #212a25;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 16px/1.6 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+main { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+header { display: flex; flex-direction: column; gap: 8px; }
+.eyebrow { font: 500 12px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font: 700 2rem/1.15 var(--font-display); margin: 0; text-wrap: balance; }
+h2 { font: 600 1.35rem/1.25 var(--font-display); margin: 0; text-wrap: balance; }
+h3 { font: 600 1rem/1.3 var(--font-body); margin: 0; }
+p { margin: 0; max-width: 65ch; }
+.lede { color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 14px; }
+.draft { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.draft-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.draft-head .where { font: 400 13px/1.4 var(--font-mono); color: var(--muted); }
+.draft pre {
+  margin: 0; padding: 16px; overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+  font: 400 13.5px/1.6 var(--font-mono); color: var(--fg); background: transparent;
+}
+button.copy {
+  font: 500 13px/1 var(--font-body); padding: 8px 12px; border-radius: 6px; cursor: pointer;
+  background: var(--accent); color: var(--accent-fg); border: 1px solid var(--accent);
+}
+button.copy:hover { filter: brightness(1.08); }
+button.copy:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+ul, ol { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; max-width: 65ch; }
+code { font: 400 .9em var(--font-mono); background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+.steps li::marker { font-family: var(--font-mono); color: var(--accent); }
+.note { font-size: 14px; color: var(--muted); }
+a { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<main>
+  <header>
+    <span class="eyebrow">BatchSlicer 0.21.0 · web page · Linux, Windows, macOS · ready to post</span>
+    <h1>BatchSlicer Launch Kit</h1>
+    <p class="lede">Drafts for announcing BatchSlicer, the pictures and demo to use, and where to post. Edit the wording to sound like you before posting; every number below is from real runs. Everything the drafts describe is in 0.21.0 on PyPI. 0.20.0 added a web page (<code>batchslicer web</code>); 0.21.0 puts a batch's G-code in one folder by default, so the K2's screen lists whole kits, and puts models on shared plates only with <code>--plates</code>. It has been tried on real printers (a Creality K2 Plus with a CFS on Klipper, and an Ender-3 V3 SE on OctoPrint) and with all three slicers on a real Windows 11 machine and a real Mac.</p>
+  </header>
+
+  <section>
+    <h2>Done so far</h2>
+    <ul>
+      <li><strong>Listed in <a href="https://github.com/hypery11/awesome-bambu-lab">Awesome Bambu Lab</a></strong>, under &ldquo;Slicers, profiles &amp; G-code&rdquo; and in &ldquo;Recently added&rdquo;. <a href="https://github.com/hypery11/awesome-bambu-lab/pull/7">Pull request #7</a> was merged on 24 November 2026, so both entries now say Linux, Windows and macOS. Mention the listing where it helps: people who use Bambu Studio know the list.</li>
+      <li><strong>Posted on the Klipper Discourse forum</strong>: <a href="https://klipper.discourse.group/t/batch-slicing-straight-to-moonraker-a-watch-folder-that-slices-with-your-orcaslicer-presets-and-uploads-the-g-code/26655">Batch slicing straight to Moonraker</a> (the Klipper Discourse draft below).</li>
+      <li><strong>Posted on the Creality forum</strong>: <a href="https://forum.creality.com/t/i-made-a-free-tool-that-slices-multi-colour-models-with-whatever-is-loaded-in-your-cfs-and-your-k2s-screen-picks-the-right-slots-by-itself/54900">I made a free tool that slices multi-colour models with whatever is loaded in your CFS</a> (the CFS post below), with a follow-up reply saying it now runs on Windows and macOS.</li>
+      <li><strong>BlendSVG on <a href="https://extensions.blender.org/add-ons/blendsvg/">Blender Extensions</a></strong>: approved, and 0.1.5 is live there, so Blender users can install it from inside Blender. It now qualifies for awesome-blender (entry below).</li>
+      <li><strong>0.20.0 follow-ups, to post</strong>: a reply in each forum thread about the new web page (drafts in &ldquo;0.20.0: the web page&rdquo;), and the answer to the colour-matching question in the Creality thread (in &ldquo;How it's going&rdquo;).</li>
+      <li><strong>0.21.0 follow-up, to post</strong>: a short reply in the Creality thread about whole kits now showing on the K2's screen (draft in &ldquo;0.21.0: kits on the K2's screen&rdquo;). Combine it with the 0.20.0 reply if neither is posted yet.</li>
+      <li><strong>Still to post</strong>: r/Creality and the K2 and CFS Facebook groups, then the main post in r/OrcaSlicer and r/klippers, then r/3Dprinting and OrcaSlicer's GitHub Discussions. Watch the two forum threads for questions first: early answers there are the best material for the later posts.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>How it's going</h2>
+    <p class="note">Checked on 25 November 2026, two days after the first posts.</p>
+    <ul>
+      <li><strong>GitHub, last 14 days</strong>: 50 unique visitors (321 views) and 2 stars. Where visitors came from: GitHub itself and PyPI, plus one each from the Creality forum and the Klipper forum. The &ldquo;137 unique clones&rdquo; GitHub also reports are mostly the automated checks, not people. No issues from users yet; the two open ones are the Windows (#16) and macOS (#17) help-wanted requests.</li>
+      <li><strong>Klipper Discourse thread</strong>: 33 views, no likes. Post #2 (someone's suggestion, which reply #3 thanks) is gone, probably deleted by its author or removed; nothing is left to answer. The 0.20.0 web page reply is not posted yet.</li>
+      <li><strong>Creality forum thread</strong>: 15 views, 2 likes, and a question from hentop10 about how close colours are matched, still to answer (the reply is below). A specific question means someone read it closely: answer it first.</li>
+      <li><strong>Reddit</strong>: every post, even requests for help, is removed by Reddit's filters. The account needs checking (shadowban, appeal at reddit.com/appeal) and some ordinary comments before posting again; don't repost or start a new account.</li>
+      <li><strong>Awesome Bambu Lab</strong>: the update was merged on 24 November; both entries now say Linux, Windows and macOS.</li>
+      <li><strong>GitHub repository</strong>: the description now mentions the web page (&ldquo;a watch folder with a web page&rdquo;), and the <code>web-interface</code> topic replaced <code>python</code> (20 topics, the most GitHub allows).</li>
+      <li><strong>What to try next</strong>, easiest first: answer the Creality question; post the 0.20.0 and 0.21.0 replies (a day apart from the answer); post the OrcaSlicer GitHub Discussions draft; share the short post in the Klipper, OrcaSlicer and Creality Discord servers; record a 20&ndash;30 second clip of dropping a kit on the web page. Quiet is normal this early for a niche tool.</li>
+    </ul>
+    <div class="draft">
+      <div class="draft-head"><h3>Reply to hentop10 in the Creality thread</h3><span class="where">to post</span><button class="copy" id="copy-match-reply" data-target="match-reply">Copy</button></div>
+      <pre id="match-reply">Good question. It's a bit more than plain colour distance, and material does more than break ties.
+
+Each pair of project colour and loaded spool gets a score:
+
+- Colour difference, weighted the way eyes see it (green counts most, and reds and blues are weighted by how red the colour is), rather than plain RGB distance.
+- Plus a fixed penalty if the material differs (PLA in the project, PETG in the slot). It's big enough that a PETG spool of a slightly different shade beats a PLA spool of the exact colour, but a very different colour still loses even if the material matches.
+
+Then it pairs the best matches first across the whole project, so two similar colours can't both grab the same spool. Each spool is used once while there are spools left; only after that is the closest one reused. If two spools score exactly the same, the earlier slot wins (1A before 1B).
+
+When it's that close, you can check and steer it:
+
+- --dry-run shows which spool each colour would get, before slicing anything.
+- --slot "PATTERN=1C" forces a part onto a slot.
+- And it never starts a multi-colour print by itself, so the K2's slot-mapping screen is still there to change it before you print.</pre>
+    </div>
+    <p class="note">How the matching works is in <code>domain/filaments.py</code> (scoring and pairing) and <code>domain/colours.py</code> (the colour difference), if a follow-up asks for details.</p>
+  </section>
+
+  <section>
+    <h2>Promoting on GitHub</h2>
+    <p class="note">Set up on 25 November 2026 for all three projects: BatchSlicer, stljoiner and BlendSVG.</p>
+    <ul>
+      <li><strong>Done</strong>: downloads badges on all three READMEs; a &ldquo;Companion projects&rdquo; section with the how-they-fit-together diagram in each; stljoiner's description, PyPI link and 14 topics; BatchSlicer's description mentions the web page; the v0.20.0 release notes open with the web page screenshot and how to try it, and CONTRIBUTING asks for the same in every release; BlendSVG listed on Blender Extensions, with a badge and install-from-Blender steps in its README and user guide.</li>
+      <li><strong>Profile README, to publish</strong>: written, with the three projects (banners, one line each, install commands) and the diagram. Creating the public <code>drak42/drak42</code> repository needs your go-ahead.</li>
+      <li><strong>Social previews, to upload</strong> (GitHub only allows this in the browser: the repository's Settings &rarr; General &rarr; Social preview &rarr; Edit &rarr; Upload an image): stljoiner's <code>docs/images/banner.png</code> (1280&times;640) and BlendSVG's <code>docs/images/hero.png</code> (1600&times;800). BatchSlicer already has one.</li>
+    </ul>
+    <h3>Awesome lists: when each project qualifies</h3>
+    <ul>
+      <li><strong><a href="https://github.com/ad-si/awesome-3d-printing">ad-si/awesome-3d-printing</a></strong> (2,100 stars): a project must be at least 4 months old <em>and</em> have 100 stars or independent coverage (reviews, articles, or forum discussions not written by its author), linked in the pull request. Say you are the author, write the description yourself and say how you use it. BatchSlicer is 4 months old on <strong>6 December 2026</strong> (repository created 6 August); stljoiner not before <strong>late March 2027</strong>. Coverage is the hard part: a review, a video or someone else's forum post about it.</li>
+      <li><strong><a href="https://github.com/agmmnn/awesome-blender">agmmnn/awesome-blender</a></strong> (7,700 stars): no brand-new repositories unless they have releases, real-world testing and adoption, or an approved Blender Extensions listing. <strong>BlendSVG qualifies now</strong>: its listing was approved in November 2026. Link the listing in the pull request, and check the exact badge format in the list's CONTRIBUTING.md before submitting.</li>
+    </ul>
+    <div class="draft">
+      <div class="draft-head"><h3>awesome-3d-printing entry (Control Software)</h3><span class="where">when eligible</span><button class="copy" id="copy-awesome-3dp" data-target="awesome-3dp">Copy</button></div>
+      <pre id="awesome-3dp">- [BatchSlicer] - Slices whole folders of models with your own OrcaSlicer, Bambu Studio or Creality Print presets, matches multi-colour parts to the filaments in a Creality CFS, and sends the G-code to Klipper or OctoPrint.
+
+[BatchSlicer]: https://github.com/drak42/batch_slicer</pre>
+    </div>
+    <div class="draft">
+      <div class="draft-head"><h3>awesome-3d-printing entry for stljoiner (CAD Tools)</h3><span class="where">from late March 2027</span><button class="copy" id="copy-awesome-stl" data-target="awesome-stl">Copy</button></div>
+      <pre id="awesome-stl">- [stljoiner] - Puts split parts back together by matching the faces where they were cut, and saves one watertight solid (STL, 3MF, OBJ, PLY, OFF, GLB).
+
+[stljoiner]: https://github.com/drak42/stljoiner</pre>
+    </div>
+    <div class="draft">
+      <div class="draft-head"><h3>awesome-blender entry for BlendSVG (Add-ons)</h3><span class="where">ready to submit</span><button class="copy" id="copy-awesome-blend" data-target="awesome-blend">Copy</button></div>
+      <pre id="awesome-blend">- [BlendSVG](https://github.com/drak42/blendsvg) : Cuts SVG artwork into a model as flush colour inlays, wrapped like a sticker, for multi-colour 3D printing. [![][repo]](https://github.com/drak42/blendsvg) ![][gpl]</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>0.21.0: kits on the K2's screen</h2>
+    <p>New in 0.21.0: a batch's G-code goes into one folder by default, here and on the printer. The K2's screen hides a folder whose G-code is four or more levels deep (Fluidd and Mainsail still show it), so a kit sent with its folders mirrored could lose whole sections on the screen. <code>--folders</code> keeps the old layout. Models now share plates only with <code>--plates</code>; runs no longer ask, so an earlier &ldquo;yes&rdquo; can't carry over unnoticed.</p>
+    <div class="draft">
+      <div class="draft-head"><h3>Reply in the Creality forum thread</h3><span class="where">to post</span><button class="copy" id="copy-k2-folders" data-target="k2-folders">Copy</button></div>
+      <pre id="k2-folders">Update: whole kits now show on the K2's screen (0.21)
+
+A heads-up for anyone sending kits to a K2: its screen hides a folder when all the G-code in it is four or more levels deep. Fluidd and Mainsail still show it, so it's easy to miss. I sent a kit with four sections and the screen only listed three.
+
+BatchSlicer 0.21 now puts all of a batch's G-code in one folder on the printer, named after the kit, so the screen lists everything. If you prefer your folder structure, add --folders.
+
+Also changed: parts only go on shared plates when you add --plates. It used to ask, and pressing Enter repeated the last answer.
+
+    pipx upgrade batchslicer
+
+Changelog: https://github.com/drak42/batch_slicer/releases/tag/v0.21.0</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>0.20.0: the web page</h2>
+    <p>New in 0.20.0: <code>batchslicer web</code> runs the watch folder with a page in the browser, on the computer it runs on. Drop models on the page, follow the slicing, see each result with its picture, download the G-code (one file or a ZIP), send it to a printer, and see what is loaded in the CFS. <code>batchslicer service install --web</code> keeps it running in the background. It is optional: <code>pipx install --force "batchslicer[web]"</code>.</p>
+    <ul>
+      <li><strong>Screenshots, ready</strong> (in the README): <a href="https://github.com/drak42/batch_slicer/blob/main/docs/images/web-home.png">the page</a> (drop area, queue, results), <a href="https://github.com/drak42/batch_slicer/blob/main/docs/images/web-result.png">a result</a> (a kit on one plate, downloads, Send), <a href="https://github.com/drak42/batch_slicer/blob/main/docs/images/web-printers.png">the Printers page</a> (the K2 Plus and its CFS). Attach the first to every post about it; the Printers one to Creality posts.</li>
+      <li><strong>Lead with it where people avoid the command line</strong>: the Creality forum and Facebook groups especially. It is still installed from the command line, so keep the install lines.</li>
+      <li><strong>Ask about network access</strong>: opening the page from a phone, with a password, is the next step. Replies about how people want that (their own port, behind Fluidd or Mainsail, a phone on the same Wi-Fi) shape it.</li>
+    </ul>
+    <div class="draft">
+      <div class="draft-head"><h3>Reply in the Klipper Discourse thread</h3><button class="copy" id="copy-klipper-update" data-target="klipper-update">Copy</button></div>
+      <pre id="klipper-update">Update: BatchSlicer 0.20 adds a web page
+
+Since this post, 0.20.0 added batchslicer web: the watch folder with a page in your browser, on the machine it runs on.
+
+- Drop models, kit folders or zip files onto the page. They reach the watched folder only once the upload is complete.
+- Follow the slicing (model n of m), see each result with its preview picture, print time and filament, and download the G-code, or a whole run as a ZIP.
+- Send a run to a printer from your configuration, through Moonraker's file API, into the same folders as --send. It never starts a print.
+- A Printers page shows whether each Moonraker answers, and on a Creality what is loaded in the CFS.
+- batchslicer service install --web ... keeps it running in the background (systemd user service on Linux).
+
+It's optional:
+
+    pipx install --force "batchslicer[web]"
+    batchslicer web --profile k2-petg --plates
+
+then open http://127.0.0.1:8765.
+
+For now it only listens on 127.0.0.1. Access from other devices, with a password, is next, and I'd like to hear how you would want it: its own port, behind the nginx that already serves Fluidd or Mainsail, or something else?
+
+Screenshots: https://github.com/drak42/batch_slicer#following-it-in-a-web-page</pre>
+    </div>
+    <div class="draft">
+      <div class="draft-head"><h3>Reply in the Creality forum thread</h3><button class="copy" id="copy-cfs-web" data-target="cfs-web">Copy</button></div>
+      <pre id="cfs-web">Update: now with a web page (0.20)
+
+For anyone who'd rather not live in the terminal: BatchSlicer 0.20 has a web page.
+
+- Drag a model, a kit folder or a zip onto the page, and it's sliced with your presets.
+- Each result shows its preview picture, print time and filament (per colour for multi-colour prints). Download the G-code, or send it to your K2 with one click. It's never started: you start it on the printer's screen, where the slot mapping is already filled in.
+- The Printers page shows what's loaded in each CFS slot and on the external spool, with the colours, read straight from the K2.
+- It can run in the background, so the page is always there.
+
+Install or upgrade, then start it:
+
+    pipx install --force "batchslicer[web]"
+    batchslicer web --profile k2-petg --plates
+
+and open http://127.0.0.1:8765 on the same computer. (Opening it from a phone is the next step.)
+
+[screenshot: the page with the results]
+[screenshot: the Printers page with the CFS]
+
+Screenshots and details: https://github.com/drak42/batch_slicer#following-it-in-a-web-page</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>OrcaSlicer GitHub Discussions</h2>
+    <p class="note">Post in the <strong>General</strong> category of github.com/OrcaSlicer/OrcaSlicer/discussions (there is no show-and-tell category). Your GitHub account is established, so there are no new-account filters. The audience knows OrcaSlicer well, so this one is about using its command line with your own presets.</p>
+    <div class="draft">
+      <div class="draft-head"><h3>Title</h3><button class="copy" id="copy-orca-title" data-target="orca-title">Copy title</button></div>
+      <pre id="orca-title">BatchSlicer: batch slicing with OrcaSlicer's CLI and your own presets (plates, copies, multi-colour, CFS)</pre>
+    </div>
+    <div class="draft">
+      <div class="draft-head"><h3>Body</h3><button class="copy" id="copy-orca-body" data-target="orca-body">Copy body</button></div>
+      <pre id="orca-body">I've been building a free, open-source (MIT) tool around OrcaSlicer's command line, and thought people here might find it useful, or tell me what I'm doing wrong.
+
+BatchSlicer slices one model, a whole folder tree, or a kit's zip file with the printer, filament and process presets you already have in OrcaSlicer (2.4 and 2.5), including your own. Bambu Studio and Creality Print work too.
+
+Some things it does with the CLI:
+
+- Resolves your user presets (the inherits chain) into complete files the CLI accepts, and reads the built-in presets from the program or the .opc files.
+- Puts each folder's parts on plates (--arrange), makes copies (--clone-objects), and gives STL parts their own filament slot (--load-filament-ids).
+- Gives a multi-colour 3MF a filament for every slot it lists. Before, the CLI kept the project's own filaments for the slots it wasn't given, which made many downloaded projects fail.
+- Can match each colour to the filaments loaded in a Creality CFS, and writes the real colours into the G-code.
+- Adds preview pictures, which the CLI doesn't, drawn from the G-code itself in each filament's colour.
+- Retries parts that fail as they were saved with auto-orient (--orient 1). In a test on 1,719 downloaded models this fixed 97 of 115 failures.
+- Sends the G-code to Klipper (Moonraker) or OctoPrint, or watches a folder and slices whatever is dropped in, with an optional web page to drop models on and follow the results.
+
+It runs on Linux, Windows and macOS (pipx install batchslicer).
+
+If you use the CLI yourself, I'd like to hear about edge cases it should handle: https://github.com/drak42/batch_slicer</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>Klipper Discourse</h2>
+    <p class="note"><strong>Posted:</strong> <a href="https://klipper.discourse.group/t/batch-slicing-straight-to-moonraker-a-watch-folder-that-slices-with-your-orcaslicer-presets-and-uploads-the-g-code/26655">the thread</a>. Kept here as posted, for reference and for answering replies; since 0.21.0 a batch goes into one folder on the printer unless you give <code>--folders</code>, so don't reuse the first bullet as it is. Post in <strong>General Discussion</strong> on klipper.discourse.group (the Developers category is for code using Klipper's own API; BatchSlicer only talks to Moonraker). The forum focuses on standard Klipper and the K2 runs Creality's own build, so this leads with what works on any Moonraker printer. Read the forum's guidelines before posting.</p>
+    <div class="draft">
+      <div class="draft-head"><h3>Title</h3><button class="copy" id="copy-klipper-title" data-target="klipper-title">Copy title</button></div>
+      <pre id="klipper-title">Batch slicing straight to Moonraker: a watch folder that slices with your OrcaSlicer presets and uploads the G-code</pre>
+    </div>
+    <div class="draft">
+      <div class="draft-head"><h3>Body</h3><button class="copy" id="copy-klipper-body" data-target="klipper-body">Copy body</button></div>
+      <pre id="klipper-body">I wrote a free, open-source (MIT) command-line tool that may be useful to people who print a lot of parts on Klipper printers.
+
+BatchSlicer slices a model, a folder tree or a kit's zip file with OrcaSlicer, Bambu Studio or Creality Print, using the presets you already have, and uploads the G-code to Moonraker:
+
+- Uploads through Moonraker's file API, keeping your folder structure under the gcodes folder, and replacing files with the same name.
+- Checks that the printer answers before it starts slicing a long batch; batchslicer doctor --printer 192.168.1.50 checks one printer on its own, handy while setting up trusted_clients or an API key.
+- The API key can come from an environment variable (api_key_env), so it need not sit in the configuration file.
+- Can start a single print (--start); never a batch, and never a multi-colour print.
+- Adds preview pictures to the G-code (the slicer CLIs don't), as PNG thumbnail blocks in the format OrcaSlicer and PrusaSlicer write.
+- Watch folder: leave it running (or as a background service on Linux, Windows or macOS), drop models or a zip in, and they are sliced and uploaded.
+- --dry-run shows what it would slice and where it would send it, without doing it.
+
+I've tested it with a Creality K2 Plus (Creality's Klipper build, Moonraker on ports 7125 and 4408) and with OctoPrint on an Ender-3 V3 SE. I'd like to hear how it behaves on other Moonraker setups, for example with an API key or trusted_clients.
+
+https://github.com/drak42/batch_slicer</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>If Reddit's filters remove a post</h2>
+    <p class="note">Don't repost straight away: repeated removals can get an account flagged. First message the moderators ("Message the mods" in the subreddit's sidebar), then use the filter-friendly version below: one link, at the end, no install commands. Where a subreddit has a weekly self-promotion or show-off thread, post there instead.</p>
+    <div class="draft">
+      <div class="draft-head"><h3>Message to the moderators</h3><button class="copy" id="copy-modmail" data-target="modmail">Copy</button></div>
+      <pre id="modmail">Subject: Could you look at my removed post?
+
+Hi, my post "[post title]" was removed by the automatic filter.
+
+It's about BatchSlicer, a free, open-source (MIT) command-line tool I wrote that slices whole folders of models with your own OrcaSlicer, Bambu Studio or Creality Print presets, and can match multi-colour models to the filaments loaded in a Creality CFS. I'm not selling anything; I'm looking for feedback from people who print.
+
+If it fits the rules, could you approve it? If posts like this belong in a weekly thread instead, or need changes, tell me and I'll post it there or edit it.
+
+Thanks!</pre>
+    </div>
+    <div class="draft">
+      <div class="draft-head"><h3>Filter-friendly title</h3><button class="copy" id="copy-ff-title" data-target="ff-title">Copy title</button></div>
+      <pre id="ff-title">Slicing multi-colour models with whatever is loaded in my CFS: the K2's screen now picks the right spools by itself</pre>
+    </div>
+    <div class="draft">
+      <div class="draft-head"><h3>Filter-friendly body</h3><button class="copy" id="copy-ff-body" data-target="ff-body">Copy body</button></div>
+      <pre id="ff-body">I print a lot of RC kits on a K2 Plus with a CFS, and got tired of setting up each part and each colour by hand. So I wrote a small command-line tool that drives OrcaSlicer (or Bambu Studio / Creality Print) with the presets I already have.
+
+What it does for me now:
+
+- Slices a whole kit folder, or the zip it came in, with the parts arranged on plates.
+- Reads what is loaded in the CFS and the external spool, and gives each colour of a multi-colour 3MF the loaded filament that looks most like it. A black-and-white bumper became dark blue PETG from slot 1B plus white PETG from the external spool.
+- Puts preview pictures in the G-code, in the real colours, and sends it to the printer. When I tap the file, the slot-mapping screen already has each colour on the right spool; I just confirm.
+
+It's free and open source. I'd really like to hear from other CFS owners whether the matching works on your setup, and what's missing.
+
+[photo: the K2 file list with the colour preview]
+[photo: the slot-mapping screen with the spools already picked]
+
+Code and guide: https://github.com/drak42/batch_slicer</pre>
+    </div>
+    <p class="note">Some subreddits prefer no link in the post at all: then leave out the last line and put the GitHub link in the first comment.</p>
+  </section>
+
+  <section>
+    <h2>CFS post</h2>
+    <p class="note"><strong>Posted on the Creality forum:</strong> <a href="https://forum.creality.com/t/i-made-a-free-tool-that-slices-multi-colour-models-with-whatever-is-loaded-in-your-cfs-and-your-k2s-screen-picks-the-right-slots-by-itself/54900">the thread</a>. Still to post for Creality K2 / K1 owners: r/Creality and the K2 and CFS Facebook groups. It is BatchSlicer's most distinctive feature, so lead with it and a photo. The body below is updated for 0.21.0 (one folder per kit on the printer).</p>
+    <div class="draft">
+      <div class="draft-head"><h3>Title</h3><button class="copy" id="copy-cfs-title" data-target="cfs-title">Copy title</button></div>
+      <pre id="cfs-title">I made a free tool that slices multi-colour models with whatever is loaded in your CFS, and your K2's screen picks the right slots by itself</pre>
+    </div>
+    <div class="draft">
+      <div class="draft-head"><h3>Body</h3><button class="copy" id="copy-cfs-body" data-target="cfs-body">Copy body</button></div>
+      <pre id="cfs-body">BatchSlicer is a command-line tool that drives OrcaSlicer, Bambu Studio or Creality Print with your own presets. The newest part is made for the CFS:
+
+- It reads what is loaded in your CFS and on the external spool, straight from the printer (colour and material).
+- Each colour of a multi-colour 3MF project gets the loaded filament that looks most like it, sliced with a preset of that material and in the real colour. A black-and-white bumper became "black → CFS 1B dark blue PETG, white → external spool white PETG".
+- The G-code and its preview picture show the real colours, and when you tap the file on a K2 Plus, the slot-mapping screen already has every colour on the right slot. I tested exactly this on my K2 Plus.
+- STL kits work too: --slot "*_lens.stl=external" --slot "*=1B" puts the lenses on the external spool and the rest on CFS 1B, all on one plate with --plates.
+- It sends the G-code to the printer, a whole kit in one folder that the K2's screen lists in full, and never starts a multi-colour print by itself, so you can check the slots on the screen first.
+
+    pipx install batchslicer
+    batchslicer setup
+    batchslicer --profile k2-petg --input bumper.3mf --send 192.168.1.50 --loaded-filaments
+
+It also slices whole folders or a downloaded kit's zip file as it is, puts kits on plates, watches a folder and slices whatever you drop in (zip files too), runs in the background as a service (Linux, Windows and macOS), and with --dry-run shows what it would do before slicing anything. It uses OrcaSlicer or Bambu Studio for 3MF projects (Creality Print's command line cannot apply presets to them). Runs on Linux, Windows and macOS. Free and open source (MIT): https://github.com/drak42/batch_slicer
+
+New to it? The step-by-step guide: https://github.com/drak42/batch_slicer/blob/main/docs/UserGuide.md</pre>
+    </div>
+    <p class="note"><strong>Follow-up reply, posted</strong> in the Creality forum thread: the first post said &ldquo;Linux for now&rdquo;, so this reply brings it up to date (0.17&ndash;0.19). Reuse it, adjusted, where an older post says Linux only.</p>
+    <div class="draft">
+      <div class="draft-head"><h3>Follow-up reply</h3><button class="copy" id="copy-cfs-update" data-target="cfs-update">Copy</button></div>
+      <pre id="cfs-update">Update: it now runs on Windows and macOS too
+
+When I posted this it was Linux-only. Since then BatchSlicer 0.17–0.19 added:
+
+- Windows 10/11 and macOS. Tested on a real Windows 11 machine and a Mac with Creality Print 7.3, OrcaSlicer 2.5 and Bambu Studio 2.9. "batchslicer setup" finds Creality Print where its installer puts it (or in Applications on a Mac), and picks the settings folder it actually uses.
+- The watch folder as a background service on all three systems. Drop a model, a kit folder or a zip in, and it's sliced and sent to the K2 while you do something else. On Windows it runs without a window while you're signed in.
+- "batchslicer doctor --printer 192.168.1.50", a quick check of just the printer: whether it answers, and what's loaded in each CFS slot and on the external spool. That's what --loaded-filaments matches against.
+
+Installing on Windows needs Python first (python.org), then in PowerShell:
+
+    py -m pip install --user pipx
+    py -m pipx ensurepath
+    pipx install batchslicer
+    batchslicer setup
+
+On a Mac it's the same with "python3 -m" instead of "py -m" (macOS's own Python is too old, so get one from python.org). On Linux it's "pipx install batchslicer" as before. The step-by-step guide covers all three: https://github.com/drak42/batch_slicer/blob/main/docs/UserGuide.md
+
+If you try the CFS matching on your K2 or K1, I'd like to hear how it picked the slots, especially with spools whose colours are close together.</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>Main post</h2>
+    <p class="note">For Reddit (r/OrcaSlicer, r/klippers, r/3Dprinting). Title first, then the body.</p>
+    <div class="draft">
+      <div class="draft-head"><h3>Title</h3><button class="copy" id="copy-title" data-target="post-title">Copy title</button></div>
+      <pre id="post-title">I made a free tool that slices whole folders of models with your own OrcaSlicer / Bambu Studio / Creality Print presets, handles multi-colour, and sends the G-code to your Klipper or OctoPrint printer</pre>
+    </div>
+    <div class="draft">
+      <div class="draft-head"><h3>Body</h3><button class="copy" id="copy-body" data-target="post-body">Copy body</button></div>
+      <pre id="post-body">I got tired of opening RC kits part by part in the slicer, so I wrote BatchSlicer: a command-line tool that drives the slicer you already use, with the printer, filament and process presets you already tuned.
+
+What it does:
+
+- Slices one model or a whole folder tree (STL, 3MF, OBJ), keeping your file names. A kit downloaded as a .zip works as it is: its models are unpacked safely and sliced like a folder.
+- --dry-run shows what a run would do (each part or plate, which filament or CFS spool it uses, where the G-code goes) without slicing or sending anything.
+- Uses your presets from OrcaSlicer (2.4 and 2.5), Bambu Studio (2.8 and 2.9) or Creality Print (7.3), including your own custom ones. It only reads the slicer's settings; it never changes them.
+- Puts the parts of each folder together on plates (--plates): 8 small kit parts became one plate in 10 seconds; 31 parts became two plates.
+- Multi-colour: 3MF projects get a filament for every colour (yours, one per slot, or matched to what is loaded in a Creality CFS), and STL kits can print in several colours with --slot "*_lens.stl=2".
+- Adds preview pictures to the G-code, in each filament's colour, so your printer's screen shows what each file is (slicers only do this in their windows).
+- Sends the G-code to a Klipper printer through Moonraker or to OctoPrint, a whole batch in one folder that the printer's screen lists in full (or keeping your folder structure with --folders), and can start a single print. Tested on my Creality K2 Plus and on an Ender-3 V3 SE running OctoPrint.
+- Watch folder (--watch): leave it running, drop a model, a kit folder or a kit's zip file in, and it slices it once the copy has finished and moves it to sliced/ (or failed/). "batchslicer service install" keeps it running in the background on Linux, Windows and macOS.
+- Has a web page (batchslicer web): drop models onto it, follow the slicing, see each result with its picture, download the G-code or send it to the printer, and see what's loaded in the CFS.
+- Writes a report with print time, filament (per colour) and cost for every model.
+- Rescues badly saved models: --orient retry re-slices rejected parts with auto-orient. In a test on 1,719 downloaded models it fixed 97 of 115 "failed slicing" errors.
+- Asks a few questions the first time, then repeats the run with --last or a saved profile, or runs fully unattended.
+
+Try it (Linux, Windows or macOS; Python 3.12+):
+
+    pipx install batchslicer
+    batchslicer setup      # finds your slicers and their settings
+    batchslicer --dry-run  # see what a run would do
+    batchslicer            # answer a few questions, get G-code
+
+Limits: the web page only opens on the computer it runs on (phone access is next); sending works with Klipper/Moonraker and OctoPrint (tested with OctoPrint 2.0.1), not Bambu printers yet; loaded filaments are read from a Creality CFS, not a Bambu AMS yet.
+
+It's free and open source (MIT): https://github.com/drak42/batch_slicer
+Step-by-step guide: https://github.com/drak42/batch_slicer/blob/main/docs/UserGuide.md
+
+I'd love to hear what breaks on your setup. "batchslicer doctor" prints a report you can paste into an issue.</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>Short post</h2>
+    <p class="note">For the Klipper forum, Discord servers or a comment where a long post would be too much.</p>
+    <div class="draft">
+      <div class="draft-head"><h3>Short version</h3><button class="copy" id="copy-short" data-target="post-short">Copy</button></div>
+      <pre id="post-short">BatchSlicer: slice a whole folder of models with your own OrcaSlicer / Bambu Studio / Creality Print presets from the command line, put each kit's parts on plates, slice multi-colour models with what is loaded in your CFS, add colour preview pictures, and send the G-code straight to your printer (Klipper/Moonraker or OctoPrint). Or leave it watching a folder in the background: drop models or a downloaded kit's zip in, get G-code on the printer. --dry-run shows what it would do first, and batchslicer web shows it all in a browser.
+
+    pipx install batchslicer
+    batchslicer --profile k2-pla --input ~/kits --plates --send 192.168.1.50
+    batchslicer service install --profile k2-pla --plates --send 192.168.1.50
+
+Linux, Windows and macOS; free, MIT. Tested on a Creality K2 Plus with a CFS and with OctoPrint. Guide: https://github.com/drak42/batch_slicer/blob/main/docs/UserGuide.md · Feedback and bug reports welcome: https://github.com/drak42/batch_slicer</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>Pictures and demo</h2>
+    <p>The demo GIF, the banner and the web page screenshots are ready; only the two printer photos are left.</p>
+    <ol class="steps">
+      <li><strong>Web page screenshots, ready</strong>: <a href="https://github.com/drak42/batch_slicer/blob/main/docs/images/web-home.png">web-home.png</a>, <a href="https://github.com/drak42/batch_slicer/blob/main/docs/images/web-result.png">web-result.png</a> and <a href="https://github.com/drak42/batch_slicer/blob/main/docs/images/web-printers.png">web-printers.png</a>, taken with the real K2 Plus. Use them with the 0.20.0 replies and wherever the web page is mentioned.</li>
+      <li><strong>The demo GIF, ready</strong>: <a href="https://github.com/drak42/batch_slicer/blob/main/docs/images/demo.gif">docs/images/demo.gif</a> (40 seconds, 1.6 MB, recorded with 0.21.0): a dry run, the two-colour bumper matched to the CFS spools and sent to the K2, then a kit zip unpacked onto one plate with <code>--plates</code> and sent as one file. It is already at the top of the README. Attach it to the main post, the OrcaSlicer and Klipper posts, and Discord; Reddit, GitHub Discussions and Discourse all show GIFs directly.</li>
+      <li><strong>The banner, ready</strong>: <a href="https://github.com/drak42/batch_slicer/blob/main/docs/images/banner.png">docs/images/banner.png</a> (1280×640). Use it as the repository's social preview (GitHub: Settings → General → Social preview) so every shared link shows it, and as the image for Mastodon or Bluesky posts.</li>
+      <li><strong>Photo 1, the file list</strong> (still to take): the K2 Plus showing a multi-colour file with its colour preview picture. The demo sent a fresh <code>bumper.gcode</code> to the printer for this.</li>
+      <li><strong>Photo 2, the mapping screen</strong> (still to take): the same file's slot-mapping screen with the spools already picked. Phone camera, screen brightness up, shot straight on and slightly from below to avoid reflections, no flash, cropped to the screen.</li>
+      <li><strong>Post</strong> the photos at the top of the CFS post and the filter-friendly Reddit post; the GIF at the top of the others.</li>
+    </ol>
+    <div class="draft">
+      <div class="draft-head"><h3>Recording the demo again</h3><span class="where">run in a terminal</span><button class="copy" id="copy-demo" data-target="demo-cmds">Copy</button></div>
+      <pre id="demo-cmds"># needs: pipx install asciinema, and agg from https://github.com/asciinema/agg/releases
+cd ~/projects/batch_slicer/docs/demo
+asciinema rec demo.cast --cols 100 --rows 30 --idle-time-limit 2 -c ./demo.sh
+agg --font-size 18 --speed 1.5 demo.cast demo.gif
+
+# without sending to the printer:   SEND= ./demo.sh
+# remove the demo folder:           ./demo.sh --reset</pre>
+    </div>
+    <p class="note">Optional: a screen recording of the watch folder (GNOME: Ctrl+Shift+Alt+R, saved to ~/Videos/Screencasts) showing a zip dragged into ~/BatchSlicer/incoming and moved to sliced/ once done.</p>
+  </section>
+
+  <section>
+    <h2>Where and how to post</h2>
+    <ul>
+      <li><strong>Before the first post</strong>: upload the banner as the GitHub social preview, and take the two K2 screen photos.</li>
+      <li><strong>Link the User Guide</strong> for newcomers and the README for details; ask people to paste <code>batchslicer doctor</code> output into bug reports (it now lists what is loaded in their CFS).</li>
+      <li><strong>Read each community's rules first.</strong> Several 3D-printing subreddits and groups limit self-promotion or ask for it in a weekly thread.</li>
+      <li><strong>Start with the CFS post</strong> where K2 and K1 owners gather (the Creality forum: done; r/Creality and the K2 and CFS Facebook groups next), then the main post in r/OrcaSlicer and r/klippers, then r/3Dprinting (the Klipper Discourse forum: done). The OctoPrint community forum and r/octoprint fit too: sending is tested with OctoPrint 2.0.1.</li>
+      <li><strong>Lead with the watch folder</strong> where people run print farms or batch jobs.</li>
+      <li><strong>Space the posts out</strong> by a few days, and post each in one place only.</li>
+      <li><strong>Stay for the first day</strong> to answer questions; early replies decide how a post does.</li>
+      <li><strong>Say it runs everywhere now</strong>: earlier posts said Linux only. Point Windows and Mac users to the README's &ldquo;Installing on Windows&rdquo; and &ldquo;Installing on macOS&rdquo; sections, and ask for their test reports on issues #16 (Windows) and #17 (macOS).</li>
+      <li><strong>Mention the web page</strong> to people who say the command line puts them off: it is still installed from a terminal, but used from the browser afterwards.</li>
+      <li><strong>Point bug reports to GitHub issues</strong>, where the form asks for <code>batchslicer doctor</code> output.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+  document.querySelectorAll("button.copy").forEach((button) => {
+    button.addEventListener("click", () => {
+      const source = document.getElementById(button.dataset.target);
+      const text = source.textContent;
+      const label = button.textContent;
+      const done = (message) => {
+        button.textContent = message;
+        setTimeout(() => { button.textContent = label; }, 1600);
+      };
+      const selectText = () => {
+        const range = document.createRange();
+        range.selectNodeContents(source);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        done("Selected; press Ctrl+C");
+      };
+      try {
+        navigator.clipboard.writeText(text).then(() => done("Copied"), selectText);
+      } catch (error) {
+        selectText();
+      }
+    });
+  });
+</script>
