@@ -52,7 +52,7 @@ from batchslicer.domain.options import (
 )
 from batchslicer.domain.presets import PresetSelection
 from batchslicer.services.filament_matching import FilamentMatcher
-from batchslicer.services.gcode_stats import GcodeStats, total_stats
+from batchslicer.services.gcode_stats import GcodeStats, name_details, read_gcode_stats, total_stats
 from batchslicer.services.thumbnails import ThumbnailError, add_thumbnails
 
 _RESULT_FILE_NAME = "result.json"
@@ -680,6 +680,8 @@ class SlicingService:
             if detail and detail not in message and not (message and message in detail):
                 message = f"{message} ({detail})" if message else detail
         _remove_status_files(job_directory)
+        if success and self._options.name_details:
+            gcode_files = _add_name_details(gcode_files)
         if success and self._options.thumbnails:
             self._add_thumbnails(gcode_files)
         if success:
@@ -769,6 +771,22 @@ def _read_result_message(path: Path) -> str:
         return ""
     message = data.get("error_string") if isinstance(data, dict) else None
     return message if isinstance(message, str) else ""
+
+
+def _add_name_details(gcode_files: tuple[Path, ...]) -> tuple[Path, ...]:
+    """Add each file's material and print time to its name: ``bracket_PETG_2h50m.gcode``.
+
+    A file whose G-code says neither, or whose new name is taken, keeps its name.
+    """
+    named = []
+    for path in gcode_files:
+        details = name_details(read_gcode_stats(path))
+        target = path.with_name(f"{path.stem}_{details}{path.suffix}") if details else path
+        if target != path and not target.exists():
+            path.rename(target)
+            path = target
+        named.append(path)
+    return tuple(sorted(named))
 
 
 def _name_gcode_after(name: str, job_directory: Path) -> tuple[Path, ...]:

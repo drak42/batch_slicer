@@ -225,6 +225,7 @@ def _run(options: RunOptions) -> int:
             orient=options.orient or "off",
             allow_newer_files=bool(options.allow_newer_files),
             thumbnails=options.thumbnails is not False,
+            name_details=options.name_details is not False,
             plates=bool(options.plates),
             copies=options.copies or 1,
             slots=options.slots or (),
@@ -433,6 +434,9 @@ def _plan_targets(
             jobs=options.jobs if options.jobs is not None else plan.jobs,
             exclude=options.exclude if options.exclude is not None else plan.exclude,
             thumbnails=options.thumbnails if options.thumbnails is not None else plan.thumbnails,
+            name_details=(
+                options.name_details if options.name_details is not None else plan.name_details
+            ),
             plates=options.plates if options.plates is not None else plan.plates,
             copies=options.copies if options.copies is not None else plan.copies,
             loaded_filaments=(
@@ -656,6 +660,7 @@ def _remember_choices(
         jobs=options.jobs,
         exclude=options.exclude,
         thumbnails=options.thumbnails,
+        name_details=options.name_details,
         plates=options.plates,
         copies=options.copies,
         loaded_filaments=options.loaded_filaments,

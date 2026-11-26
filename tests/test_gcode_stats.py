@@ -7,6 +7,7 @@ import pytest
 from batchslicer.services.gcode_stats import (
     GcodeStats,
     format_duration,
+    name_details,
     parse_duration,
     read_gcode_stats,
     total_stats,
@@ -140,3 +141,29 @@ def test_single_material_files_are_not_scanned_for_changes(tmp_path: Path) -> No
     single.write_text("; total filament weight [g] : 7.4\nT0\nT1\n")
     assert read_gcode_stats(single).filament_changes is None
     assert count_filament_changes(tmp_path / "missing.gcode") is None
+
+
+def test_filament_types_are_read_per_slot(tmp_path: Path) -> None:
+    """The slicer's ``filament_type`` settings line gives each slot's material."""
+    gcode = tmp_path / "part.gcode"
+    gcode.write_text("G1 X1\n; filament used [g] = 13.78, 0.39\n; filament_type = PETG;PLA\n")
+
+    assert read_gcode_stats(gcode).filament_types == ("PETG", "PLA")
+
+
+@pytest.mark.parametrize(
+    ("stats", "expected"),
+    [
+        (GcodeStats(print_seconds=10_253, filament_types=("PETG",)), "PETG_2h51m"),
+        (GcodeStats(print_seconds=2_700, filament_types=("PETG", "PETG"),
+                    grams_per_filament=(14.2, 0.4)), "PETG_45m"),
+        (GcodeStats(print_seconds=60, filament_types=("PLA", "TPU", "PETG"),
+                    grams_per_filament=(3.0, 1.0, 0.0)), "PLA-TPU_1m"),
+        (GcodeStats(filament_types=("PETG HF",)), "PETG-HF"),
+        (GcodeStats(print_seconds=93_600), "1d2h0m"),
+        (GcodeStats(), ""),
+    ],
+)
+def test_name_details_give_the_materials_used_and_the_print_time(stats: GcodeStats, expected: str) -> None:
+    """Only the slots a print uses count, each material once, made safe for a file name."""
+    assert name_details(stats) == expected

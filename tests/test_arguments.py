@@ -232,3 +232,10 @@ def test_flat_output_can_be_turned_on_and_off() -> None:
     assert parse_arguments(["--no-flat"]).flat is False  # type: ignore[union-attr]
     assert parse_arguments(["--folders"]).flat is False  # type: ignore[union-attr]
     assert parse_arguments([]).flat is None  # type: ignore[union-attr]
+
+
+def test_name_details_can_be_turned_on_and_off() -> None:
+    """--name-details and --no-name-details set the option; leaving both out keeps the profile's choice."""
+    assert parse_arguments(["--name-details"]).name_details is True  # type: ignore[union-attr]
+    assert parse_arguments(["--no-name-details"]).name_details is False  # type: ignore[union-attr]
+    assert parse_arguments([]).name_details is None  # type: ignore[union-attr]

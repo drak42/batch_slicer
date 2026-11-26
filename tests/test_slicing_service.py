@@ -387,7 +387,7 @@ def test_orient_retry_slices_a_failed_model_again_with_auto_orient(tmp_path: Pat
     assert outcome.auto_oriented
     assert outcome.elapsed == 4.0
     assert [call.kwargs["orient"] for call in backend.slice.call_args_list] == [False, True]
-    assert sorted(path.name for path in outcome.job_directory.iterdir()) == ["part.gcode"]
+    assert sorted(path.name for path in outcome.job_directory.iterdir()) == ["part_1h2m.gcode"]
 
 
 def test_orient_off_does_not_retry(tmp_path: Path) -> None:
@@ -838,3 +838,36 @@ def test_flat_output_puts_all_gcode_in_the_batch_folder(tmp_path: Path) -> None:
         (folder / "arm.gcode",), (folder / "b-arm.gcode",), (folder / "arm (2).gcode",), (folder / "rest.gcode",),
     ]
     assert sorted(path.name for path in folder.iterdir()) == ["arm (2).gcode", "arm.gcode", "b-arm.gcode", "rest.gcode"]
+
+
+def _backend_writing_stats() -> Mock:
+    """Return a backend whose G-code says its material and print time, as slicers write them."""
+    backend = Mock()
+    backend.resolves_inherits.return_value = False
+
+    def slice_(model: Path, job: Path, **kwargs: object) -> OrcaResult:
+        (job / "plate_1.gcode").write_text(
+            "G1\n; estimated printing time (normal mode) = 2h 50m 53s\n; filament_type = PETG\n"
+        )
+        return OrcaResult(True, 0, "", "", 1.0, ())
+
+    backend.slice.side_effect = slice_
+    return backend
+
+
+@pytest.mark.parametrize(("name_details", "expected"), [(True, "bracket_PETG_2h51m.gcode"), (False, "bracket.gcode")])
+def test_gcode_name_gets_the_material_and_print_time(tmp_path: Path, name_details: bool, expected: str) -> None:
+    """By default the G-code is named bracket_PETG_2h51m.gcode; --no-name-details keeps bracket.gcode."""
+    from batchslicer.domain.options import SliceOptions
+
+    model = tmp_path / "bracket.stl"
+    model.write_text("solid")
+    service = SlicingService(
+        _backend_writing_stats(), logger=Mock(), clock=lambda: NOW,
+        options=SliceOptions(thumbnails=False, name_details=name_details),
+    )
+
+    outcome = service.slice(model, tmp_path / "out")
+
+    assert [path.name for path in outcome.gcode_files] == [expected]
+    assert outcome.gcode_files[0].is_file()

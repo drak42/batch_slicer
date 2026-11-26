@@ -6,6 +6,17 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- G-code file names now include the filament type and print time the slicer
+  wrote into them, as Creality Print names its own files:
+  `bracket_PETG_2h50m.gcode`. A multi-material print lists the materials of
+  the slots it uses (`bumper_PLA-TPU_1h17m.gcode`); plates keep their number
+  in front (`kit_plate_1_PETG_45m.gcode`). On by default; `--no-name-details`
+  (or `name_details: false` in a profile) keeps `bracket.gcode`. Re-slicing a
+  model with another material or settings now gives a new file on the
+  printer instead of replacing the old one.
+
 ## [0.21.1] - 2026-11-27
 
 A fresh demo and screenshots, and a launch kit for anyone who wants to help

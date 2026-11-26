@@ -31,6 +31,9 @@ _EACH_GRAMS_NAMES = ("filament used [g]", "total filament weight [g]")
 _MAX_TOOLS = 64
 """Tool numbers from here on are not filament slots (Bambu uses ``T255`` and ``T1000``)."""
 _CHANGES_NAMES = ("total filament change", "total filament changes")
+_FILAMENT_TYPE = re.compile(r"^;\s*filament_type\s*=\s*(.+?)\s*$", re.MULTILINE)
+"""The slicer's settings line listing each slot's material, ``; filament_type = PETG;PLA``."""
+_NAME_UNSAFE = re.compile(r"[^A-Za-z0-9+.]+")
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +50,9 @@ class GcodeStats:
     filament_changes: int | None = None
     """How many times the printer changes filament (multi-material prints)."""
 
+    filament_types: tuple[str, ...] = ()
+    """The material of each filament slot (``PETG``), in slot order; empty when not given."""
+
     def __add__(self, other: "GcodeStats") -> "GcodeStats":
         """Return the totals of two files (for example the plates of one project)."""
         size = max(len(self.grams_per_filament), len(other.grams_per_filament))
@@ -60,6 +66,7 @@ class GcodeStats:
             _add(self.filament_cost, other.filament_cost),
             tuple(a + b for a, b in zip(mine, theirs, strict=True)),
             int(changes) if changes is not None else None,
+            self.filament_types or other.filament_types,
         )
 
     def used_filaments(self) -> tuple[tuple[int, float], ...]:
@@ -91,6 +98,7 @@ def read_gcode_stats(path: Path) -> GcodeStats:
         filament_cost=_number(_first(values, _COST_NAMES)),
         grams_per_filament=_numbers(_first(values, _EACH_GRAMS_NAMES)),
         filament_changes=int(changes) if changes is not None else None,
+        filament_types=_filament_types(text),
     )
     if stats.filament_changes is None and len(stats.used_filaments()) > 1:
         stats = replace(stats, filament_changes=count_filament_changes(path))
@@ -137,6 +145,27 @@ def parse_duration(text: str) -> float | None:
     return sum(float(amount) * _UNIT_SECONDS[unit] for amount, unit in parts)
 
 
+def name_details(stats: GcodeStats) -> str:
+    """Return the material and print time to add to a G-code file's name, such as ``PETG_1h17m``.
+
+    A multi-material print lists the materials of the slots it uses, once
+    each (``PLA-TPU``). Whatever the G-code does not say is left out, so the
+    result may be empty.
+    """
+    types = stats.filament_types
+    used = [number for number, _ in stats.used_filaments() if number <= len(types)]
+    chosen = [types[number - 1] for number in used] if used else list(types)
+    materials: list[str] = []
+    for material in chosen:
+        safe = _NAME_UNSAFE.sub("-", material).strip("-")
+        if safe and safe not in materials:
+            materials.append(safe)
+    parts = ["-".join(materials)] if materials else []
+    if stats.print_seconds:
+        parts.append(format_duration(stats.print_seconds).replace(" ", ""))
+    return "_".join(parts)
+
+
 def format_duration(seconds: float) -> str:
     """Return ``seconds`` as a short duration such as ``2d 3h 4m``."""
     minutes = round(seconds / 60)
@@ -147,6 +176,14 @@ def format_duration(seconds: float) -> str:
         parts.append(f"{hours}h")
     parts.append(f"{minutes}m")
     return " ".join(parts)
+
+
+def _filament_types(text: str) -> tuple[str, ...]:
+    """Return each slot's material from the first ``; filament_type = ...`` line."""
+    match = _FILAMENT_TYPE.search(text)
+    if not match:
+        return ()
+    return tuple(part.strip().strip('"') for part in match.group(1).split(";"))
 
 
 def _read_ends(path: Path) -> str:

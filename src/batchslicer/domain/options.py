@@ -88,6 +88,9 @@ class SliceOptions:
     thumbnails: bool = True
     """Add preview pictures, drawn from the G-code, for printer screens."""
 
+    name_details: bool = True
+    """Add the material and print time to G-code names, ``bracket_PETG_2h50m.gcode``."""
+
     plates: bool = False
     """Slice the loose models of each folder together, arranged on as few plates as fit."""
 
@@ -115,6 +118,8 @@ class SliceOptions:
             parts.append("each folder's models together on plates")
         if not self.thumbnails:
             parts.append("no preview pictures")
+        if not self.name_details:
+            parts.append("no material or print time in names")
         if not self.flat:
             parts.append("G-code in mirrored folders")
         if self.slots:

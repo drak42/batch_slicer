@@ -146,7 +146,7 @@ Then it slices and shows the result:
 
 ```
 Sliced bracket.stl in 2.4s:
-  /home/you/BatchSlicer/output/bracket-20261123-101500/bracket.gcode
+  /home/you/BatchSlicer/output/bracket-20261123-101500/bracket_PLA_1h12m.gcode
   To print: 1h 12m, 18 g filament, filament cost 0.36
 ```
 
@@ -214,6 +214,9 @@ A few more options for folders:
   try with the slicer's auto-orient. This rescues many downloaded models.
 - All the G-code goes into one folder, because printer screens list deep
   folders unreliably. `--folders` copies your subfolders instead.
+- Each file is named after its model plus the filament type and print time
+  (`arm_PETG_45m.gcode`), so the printer's file list tells them apart.
+  `--no-name-details` keeps just `arm.gcode`.
 
 A part that fails does not stop the others; the summary at the end says why it
 failed, and often which option may fix it.
@@ -444,6 +447,7 @@ run with its preview picture, print time and filament, its G-code to download
 | Retry failed parts with auto-orient | `--orient retry` |
 | Leave some files out | `--exclude PATTERN` |
 | Keep my subfolders | `--folders` |
+| Plain G-code names, without type and time | `--no-name-details` |
 | Send to a printer | `--send NAME` or `--send 192.168.1.50` |
 | Start printing one model | add `--start` |
 | Use the filaments in my CFS | add `--loaded-filaments` (with `--send`) |

@@ -26,7 +26,7 @@ RUN_FIELDS = ("input", "output")
 
 SETTING_FIELDS = (
     "orient", "allow_newer_files", "jobs", "exclude", "thumbnails", "plates", "copies",
-    "loaded_filaments", "slots", "flat",
+    "loaded_filaments", "slots", "flat", "name_details",
 )
 """How the run slices (see :mod:`batchslicer.domain.options`), shared by every target."""
 
@@ -90,6 +90,7 @@ class Profile:
     """``--slot`` rules, stored as a mapping from pattern to slot."""
 
     flat: bool | None = None
+    name_details: bool | None = None
 
     @classmethod
     def single(
@@ -147,6 +148,11 @@ class Profile:
             parts.append("slots " + ", ".join(f"{pattern} -> {slot}" for pattern, slot in self.slots))
         if self.flat is not None:
             parts.append("all G-code in one folder" if self.flat else "G-code in mirrored folders")
+        if self.name_details is not None:
+            parts.append(
+                "material and print time in names" if self.name_details
+                else "no material or print time in names"
+            )
         return ", ".join(parts) if parts else "no choices saved"
 
 
@@ -179,6 +185,7 @@ def combine(name: str, profiles: Iterable[Profile]) -> Profile:
         ),
         slots=next((p.slots for p in chosen if p.slots is not None), None),
         flat=next((p.flat for p in chosen if p.flat is not None), None),
+        name_details=next((p.name_details for p in chosen if p.name_details is not None), None),
     )
 
 

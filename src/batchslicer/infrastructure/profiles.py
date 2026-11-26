@@ -141,7 +141,7 @@ class ProfileStore:
             if not isinstance(values["allow_newer_files"], bool):
                 raise ProfileError(f"{where}: allow_newer_files must be true or false.")
             settings["allow_newer_files"] = values["allow_newer_files"]
-        for key in ("thumbnails", "plates", "loaded_filaments", "flat"):
+        for key in ("thumbnails", "plates", "loaded_filaments", "flat", "name_details"):
             if values.get(key) is not None:
                 if not isinstance(values[key], bool):
                     raise ProfileError(f"{where}: {key} must be true or false.")
@@ -240,7 +240,8 @@ class ProfileStore:
             "# orient (off/retry/always), allow_newer_files (true/false), jobs,\n"
             "# exclude (a list of patterns), thumbnails and plates (true/false), copies\n"
             "# (a number, for a single model), loaded_filaments (true/false), slots\n"
-            "# (pattern: filament slot, for STL files), flat (true/false) and, per\n"
+            "# (pattern: filament slot, for STL files), flat and name_details\n"
+            "# (true/false) and, per\n"
             "# printer, send (a printer's address or configured name). filament may\n"
             "# be a list, one per slot of a multi-material printer (CFS, AMS).\n"
             + yaml.safe_dump(data, sort_keys=False, allow_unicode=True)

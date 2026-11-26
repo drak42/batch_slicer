@@ -89,6 +89,9 @@ class RunOptions:
     thumbnails: bool | None = None
     """Add preview pictures to the G-code (--thumbnails / --no-thumbnails)."""
 
+    name_details: bool | None = None
+    """Add the material and print time to G-code names (--name-details / --no-name-details)."""
+
     send: str | None = None
     """Printer to send the G-code to (--send): a configured name or an address; ``""`` for --no-send."""
 
@@ -183,6 +186,7 @@ def parse_arguments(
         jobs=namespace.jobs,
         exclude=tuple(namespace.exclude) if namespace.exclude else None,
         thumbnails=namespace.thumbnails,
+        name_details=namespace.name_details,
         plates=namespace.plates,
         copies=namespace.copies,
         send=namespace.send,
@@ -615,6 +619,15 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "add preview pictures for printer screens to the G-code, drawn from the "
             "G-code itself (default: on; --no-thumbnails saves about a second per model)"
+        ),
+    )
+    slicing.add_argument(
+        "--name-details",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "add the filament type and print time to each G-code file's name, such as "
+            "bracket_PETG_2h50m.gcode (default: on; --no-name-details keeps bracket.gcode)"
         ),
     )
     sending = parser.add_argument_group("sending to a printer (Klipper/Moonraker or OctoPrint)")

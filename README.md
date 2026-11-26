@@ -99,7 +99,9 @@ takes models dropped onto the page.
   G-code file per plate instead of one print per part.
 - **Makes copies.** Slicing a single part, ask for any number of copies; the
   slicer arranges them, adding plates when they don't fit on one.
-- **Keeps your file names.** `bracket.stl` becomes `bracket.gcode`, and a batch
+- **Keeps your file names.** `bracket.stl` becomes `bracket_PETG_2h50m.gcode`
+  (the filament type and print time, so the printer's file list says what each
+  file is; `--no-name-details` gives plain `bracket.gcode`), and a batch
   puts all its G-code in one folder, which printer screens list reliably (or,
   with `--folders`, mirrors your folder structure).
 - **Never overwrites earlier results.** Every run gets its own time-stamped
@@ -629,6 +631,7 @@ asking; anything you leave out is still asked for, unless you add
 | `--plates` | when slicing a folder, put the loose models of each folder together on as few plates as fit (see [Several models per plate](#several-models-per-plate)); `--no-plates` slices each model on its own |
 | `--copies N` | slice N copies of a single STL, OBJ or STEP model, arranged on as many plates as needed (see [Copies](#copies)); not for folders or 3MF projects |
 | `--folders` | mirror a batch's subfolders, here and on the printer, instead of putting all its G-code in one folder (the default; see [Output](#output)); `--flat` turns it back on over a profile, and `--no-flat` is the same as `--folders` |
+| `--no-name-details` | name the G-code after the model only (`bracket.gcode`), without the filament type and print time added by default (`bracket_PETG_2h50m.gcode`; see [Output](#output)); `--name-details` turns them back on over a profile |
 | `--no-thumbnails` | don't add preview pictures to the G-code (see [Output](#output)); `--thumbnails` turns them back on over a profile |
 | `--exclude PATTERN` | leave out folders or files matching PATTERN when slicing a folder; repeat for several (see [Leaving models out](#leaving-models-out)) |
 | `--send PRINTER` | after slicing, upload the G-code to PRINTER: its address (`192.168.1.50`, `k2.local:4408` or a full URL) or a name from the configuration's `printers` section (see [Sending G-code to a printer](#sending-g-code-to-a-printer)); `--no-send` turns off a profile's printer |
@@ -756,7 +759,7 @@ configuration is not in `~/.config/batchslicer/`:
 
 A profile is a named set of choices (slicer, printer, filament (or one per
 slot), process, input and output, plus `--orient`, `--allow-newer-files`,
-`--jobs`, `--exclude`, `--plates`, `--copies`, `--thumbnails`, `--flat`/`--folders`,
+`--jobs`, `--exclude`, `--plates`, `--copies`, `--thumbnails`, `--name-details`, `--flat`/`--folders`,
 `--slot`, `--loaded-filaments` and `--send` if you gave them; `--start` and
 `--watch` are never saved) that you can reuse instead of typing them again. Options you
 add override the profile's; for `--exclude`, the patterns you give replace the
@@ -1301,7 +1304,7 @@ never overwritten.
 ```
 output/
   bracket-20261120-144428/
-    bracket.gcode
+    bracket_PETG_2h50m.gcode
     presets/           # the complete printer, process and filament files used
     report.csv         # see "Reports" below
     report.json
@@ -1323,8 +1326,13 @@ output/
     report.json
 ```
 
-- G-code is named after the model. A `.3mf` project with several plates gives
-  one file per plate: `kit_plate_1.gcode`, `kit_plate_2.gcode`, and so on.
+- G-code is named after the model, followed by the filament type and print
+  time the slicer wrote into it: `bracket_PETG_2h50m.gcode`. A multi-material
+  print lists the materials it uses (`bumper_PLA-TPU_1h17m.gcode`). A `.3mf`
+  project with several plates gives one file per plate:
+  `kit_plate_1_PETG_45m.gcode`, `kit_plate_2_PETG_1h5m.gcode`, and so on.
+  `--no-name-details` leaves out the type and time (`bracket.gcode`); the
+  examples in this README leave them out to keep them short.
 - With `--plates`, a folder's models sliced together go into a `plates` folder
   instead (see below).
 - **`--folders`** mirrors the input's subfolders instead, one folder per model,
