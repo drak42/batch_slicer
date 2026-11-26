@@ -1476,15 +1476,13 @@ def _kit_batch(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def test_folder_run_asks_whether_to_use_plates(
+def test_folder_run_does_not_ask_about_plates(
     startup_mocks: tuple[Mock, Mock, Mock, Mock],
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """With loose models sharing a folder, the run asks; the answer is used and remembered."""
-    from batchslicer.infrastructure.profiles import ProfileStore
-
-    store = _store_with(monkeypatch, tmp_path)
+    """Plates are only used with --plates (or a profile): an interactive run doesn't ask."""
+    _store_with(monkeypatch, tmp_path)
     monkeypatch.setattr(app, "prompt_for_profile", Mock(return_value=None))
     monkeypatch.setattr(app, "prompt_for_slicer", Mock(return_value=_REAL_SLICERS[0]))  # OrcaSlicer
     monkeypatch.setattr(app, "PresetLibrary", Mock())
@@ -1494,19 +1492,14 @@ def test_folder_run_asks_whether_to_use_plates(
 
     def answer(question: str, **kwargs: object) -> bool:
         questions.append(question)
-        return question.startswith("Put the models")
+        return False
 
     monkeypatch.setattr(app, "confirm", answer)
 
     assert app.main([]) == 0
 
-    asked = [q for q in questions if q.startswith("Put the models")]
-    assert asked == [
-        "Put the models in each folder together on plates? (2 models in 1 folder could share "
-        "plates; 3MF projects keep their own)"
-    ]
-    assert app.SlicingService.call_args.kwargs["options"].plates is True
-    assert ProfileStore(store).get("last").plates is True
+    assert not [q for q in questions if "plates" in q]
+    assert app.SlicingService.call_args.kwargs["options"].plates is False
 
 
 @pytest.mark.parametrize("arguments", [["--plates"], ["--no-plates"]])

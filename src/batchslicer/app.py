@@ -228,7 +228,7 @@ def _run(options: RunOptions) -> int:
             plates=bool(options.plates),
             copies=options.copies or 1,
             slots=options.slots or (),
-            flat=bool(options.flat),
+            flat=options.flat is not False,
         )
         jobs = options.jobs or 1
         _check_options(targets, slice_options)
@@ -245,8 +245,6 @@ def _run(options: RunOptions) -> int:
                 from_profile,
             )
         slice_input = _apply_exclude(_select_input(options, config, logger), options.exclude or ())
-        if options.plates is None and not from_profile and not options.no_prompt:
-            options = replace(options, plates=_ask_plates(targets, slice_input, profiles))
         if options.copies is None and not from_profile and not options.no_prompt:
             options = replace(options, copies=_ask_copies(targets, slice_input))
         options = replace(options, copies=_checked_copies(options.copies, slice_input, from_profile))
@@ -614,42 +612,6 @@ def _checked_copies(copies: int | None, slice_input: SliceInput, from_profile: b
     raise SlicerSelectionError(problem)
 
 
-def _ask_plates(
-    targets: list[_ResolvedTarget],
-    slice_input: SliceInput,
-    profiles: ProfileStore,
-) -> bool | None:
-    """Ask whether to put each folder's models together on plates, when that is possible.
-
-    Asked only for a folder with at least one subfolder holding two or more
-    loose models, and only when every chosen slicer can arrange. Enter keeps
-    what the last run did.
-    """
-    if not slice_input.is_folder or not all(t.slicer.supports("--arrange") for t in targets):
-        return None
-    counts: dict[Path, int] = {}
-    for model in slice_input.models:
-        if model.suffix.casefold() in (".stl", ".obj", ".step", ".stp"):
-            counts[model.parent] = counts.get(model.parent, 0) + 1
-    shared = {folder: count for folder, count in counts.items() if count > 1}
-    if not shared:
-        return None
-    try:
-        previous = profiles.load().get(LAST_RUN)
-    except ProfileError:
-        previous = None
-    default = bool(previous is not None and previous.plates)
-    models = sum(shared.values())
-    folders = len(shared)
-    return confirm(
-        f"Put the models in each folder together on plates? ({models} models in {folders} "
-        f"folder{'s' if folders != 1 else ''} could share plates; 3MF projects keep their own)",
-        read_line=input,
-        write=print,
-        default=default,
-    )
-
-
 def _check_start(start: bool, targets: list[_ResolvedTarget], slice_input: SliceInput) -> None:
     """Stop before slicing if --start cannot be done for this run."""
     if not start:
@@ -725,7 +687,7 @@ def _watch(
 
     The watched folder is ``--input`` as given on the command line, or the
     configured incoming folder; a profile's input is never watched, because
-    watching moves what it slices. The questions an interactive run asks about the input (plates, sending,
+    watching moves what it slices. The questions an interactive run asks about the input (sending,
     output) are asked once, before watching starts. Each drop is sliced like
     a run of its own, then moved into the folder's ``sliced`` or ``failed``
     subfolder. Watch runs are not remembered as the last run.
@@ -733,9 +695,6 @@ def _watch(
     folder = (options.input or config.get_path("paths", "incoming")).expanduser().absolute()
     if folder.exists() and not folder.is_dir():
         raise SlicerSelectionError(f"--watch needs a folder to watch; {folder} is a file.")
-    can_arrange = all(target.slicer.supports("--arrange") for target in targets)
-    if options.plates is None and not from_profile and not options.no_prompt and can_arrange:
-        options = replace(options, plates=_ask_watch_plates(profiles))
     copies = options.copies or 1
     slice_options = replace(slice_options, plates=bool(options.plates), copies=copies)
     _check_options(targets, slice_options)
@@ -837,20 +796,6 @@ def _how_to_stop() -> str:
     if interactive:
         return "Press Ctrl+C to stop."
     return "It runs until it is stopped (for a background service: batchslicer service uninstall)."
-
-
-def _ask_watch_plates(profiles: ProfileStore) -> bool:
-    """Ask whether folders dropped in should have their models put together on plates."""
-    try:
-        previous = profiles.load().get(LAST_RUN)
-    except ProfileError:
-        previous = None
-    return confirm(
-        "When a folder is put in, put the models in each of its folders together on plates?",
-        read_line=input,
-        write=print,
-        default=bool(previous is not None and previous.plates),
-    )
 
 
 def _list_profiles(profiles: ProfileStore) -> None:
@@ -1279,7 +1224,7 @@ def _dry_run(
             for line in _planned(item, slice_input, target, options, loaded):
                 print(f"  {line}")
         layout = (
-            "all G-code in that one folder" if options.flat and slice_input.is_folder
+            "all G-code in that one folder" if options.flat is not False and slice_input.is_folder
             else "one folder per model, mirroring the input" if slice_input.is_folder
             else "with the G-code inside"
         )

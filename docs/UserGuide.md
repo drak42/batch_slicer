@@ -212,8 +212,8 @@ A few more options for folders:
 - `--exclude "old"` leaves out folders or files whose names match.
 - `--orient retry` gives parts that fail ("floating above the bed") a second
   try with the slicer's auto-orient. This rescues many downloaded models.
-- `--flat` puts all the G-code in one folder instead of copying your
-  subfolders, for printers whose file lists handle folders badly.
+- All the G-code goes into one folder, because printer screens list deep
+  folders unreliably. `--folders` copies your subfolders instead.
 
 A part that fails does not stop the others; the summary at the end says why it
 failed, and often which option may fix it.
@@ -443,7 +443,7 @@ run with its preview picture, print time and filament, its G-code to download
 | Make copies of one part | `--copies 6` |
 | Retry failed parts with auto-orient | `--orient retry` |
 | Leave some files out | `--exclude PATTERN` |
-| All G-code in one folder | `--flat` |
+| Keep my subfolders | `--folders` |
 | Send to a printer | `--send NAME` or `--send 192.168.1.50` |
 | Start printing one model | add `--start` |
 | Use the filaments in my CFS | add `--loaded-filaments` (with `--send`) |

@@ -97,8 +97,8 @@ class SliceOptions:
     slots: tuple[SlotRule, ...] = ()
     """Filament slots for loose models (``--slot PATTERN=SLOT``), first match wins."""
 
-    flat: bool = False
-    """Put a batch's G-code straight into its folder, not in mirrored subfolders (``--flat``)."""
+    flat: bool = True
+    """Put a batch's G-code straight into its folder; False mirrors its subfolders (``--folders``)."""
 
     def describe(self) -> str:
         """Return the options that differ from the defaults, as one line ("" if none)."""
@@ -115,8 +115,8 @@ class SliceOptions:
             parts.append("each folder's models together on plates")
         if not self.thumbnails:
             parts.append("no preview pictures")
-        if self.flat:
-            parts.append("all G-code in one folder")
+        if not self.flat:
+            parts.append("G-code in mirrored folders")
         if self.slots:
             parts.append(
                 "slots " + ", ".join(f"{pattern} -> {slot}" for pattern, slot in self.slots)

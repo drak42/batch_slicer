@@ -227,7 +227,8 @@ def test_slots_are_given_as_pattern_equals_slot(capsys: pytest.CaptureFixture[st
 
 
 def test_flat_output_can_be_turned_on_and_off() -> None:
-    """--flat and --no-flat set the option; leaving both out keeps the profile's choice."""
+    """--flat, and --folders or --no-flat, set the option; leaving them out keeps the profile's choice."""
     assert parse_arguments(["--flat"]).flat is True  # type: ignore[union-attr]
     assert parse_arguments(["--no-flat"]).flat is False  # type: ignore[union-attr]
+    assert parse_arguments(["--folders"]).flat is False  # type: ignore[union-attr]
     assert parse_arguments([]).flat is None  # type: ignore[union-attr]

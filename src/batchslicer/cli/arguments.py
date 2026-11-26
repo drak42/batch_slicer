@@ -96,7 +96,7 @@ class RunOptions:
     """Start printing the sent G-code (--start); never remembered."""
 
     flat: bool | None = None
-    """Put a batch's G-code in one folder (--flat / --no-flat)."""
+    """Put a batch's G-code in one folder (--flat), or mirror its subfolders (--folders / --no-flat)."""
 
     slots: tuple[tuple[str, str], ...] | None = None
     """Filament slots for loose models (--slot PATTERN=SLOT)."""
@@ -562,7 +562,7 @@ def _parser() -> argparse.ArgumentParser:
             "when slicing a folder, slice the loose models (STL, OBJ, STEP) of each folder "
             "together: the slicer arranges them on as few plates as fit, giving one G-code "
             "file per plate. 3MF projects keep their own plates. Not for Creality Print "
-            "(asked in interactive runs; default: off)"
+            "(default: off; only with this option or a profile that saved it)"
         ),
     )
     slicing.add_argument(
@@ -582,7 +582,17 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "when slicing a folder, put all the G-code straight into the run's folder (and "
             "one folder on the printer) instead of mirroring the input's subfolders; a name "
-            "used twice gets its folder in front, such as kits-arm.gcode (default: off)"
+            "used twice gets its folder in front, such as kits-arm.gcode (default: on; "
+            "--no-flat is the same as --folders)"
+        ),
+    )
+    slicing.add_argument(
+        "--folders",
+        dest="flat",
+        action="store_false",
+        help=(
+            "when slicing a folder, mirror the input's subfolders in the results and on the "
+            "printer, one folder per model, instead of putting all the G-code in one folder"
         ),
     )
     slicing.add_argument(

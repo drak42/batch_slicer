@@ -6,6 +6,18 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- A batch's G-code now goes into one folder by default, here and on the
+  printer (what `--flat` did), because the Creality K2's screen does not list
+  every folder of a deep, mirrored batch. `--folders` (or `--no-flat`) mirrors
+  the input's subfolders as before; a profile saved with `flat: false` keeps
+  doing so.
+- Interactive runs and `--watch` no longer ask whether to put a folder's
+  models together on plates, where Enter repeated the last run's answer and
+  could put a kit on plates unasked. Models are sliced one by one unless you
+  give `--plates` (or use a profile that saved it).
+
 ## [0.20.0] - 2026-11-24
 
 The web page: upload, follow, download and send from a browser on this

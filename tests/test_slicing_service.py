@@ -190,7 +190,7 @@ def test_batch_mirrors_source_folders_and_writes_presets_once(tmp_path: Path) ->
     models = [source / "a.stl", source / "sub" / "deep" / "b.stl"]
     library = Mock()
     library.write_resolved.return_value = ([tmp_path / "m.json", tmp_path / "p.json"], [tmp_path / "f.json"])
-    service = SlicingService(_backend(), presets=library, logger=Mock(), clock=lambda: NOW)
+    service = SlicingService(_backend(), presets=library, logger=Mock(), clock=lambda: NOW, options=SliceOptions(flat=False))
     started: list[tuple[int, int, str]] = []
     finished: list[bool] = []
 
@@ -316,7 +316,7 @@ def test_ctrl_c_stops_a_batch_and_keeps_finished_models(tmp_path: Path) -> None:
         return OrcaResult(True, 0, "", "", 1.0, ())
 
     backend.slice.side_effect = slice_
-    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW)
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(flat=False))
     models = [source / "a.stl", source / "b.stl", source / "c.stl"]
 
     batch = service.slice_batch(models, source, tmp_path / "out")
@@ -340,7 +340,7 @@ def test_failure_includes_the_slicers_validation_log(tmp_path: Path) -> None:
         return OrcaResult(False, 205, "", "", 1.0, ())
 
     backend.slice.side_effect = slice_
-    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW)
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(flat=False))
 
     outcome = service.slice(tmp_path / "part.stl", tmp_path / "out")
 
@@ -665,7 +665,7 @@ def test_plates_put_each_folders_loose_models_together(tmp_path: Path) -> None:
     kit = [source / "kit" / "a.stl", source / "kit" / "b.obj"]
     models = [source / "project.3mf", kit[0], source / "lone" / "c.stl", kit[1]]
     backend = _plates_backend()
-    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(plates=True))
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(plates=True, flat=False))
     started: list[Path] = []
 
     batch = service.slice_batch(models, source, tmp_path / "out", on_start=lambda n, t, m: started.append(m))
@@ -687,7 +687,7 @@ def test_plates_fall_back_to_one_by_one(tmp_path: Path) -> None:
     source = tmp_path / "models"
     kit = [source / "kit" / "a.stl", source / "kit" / "b.stl"]
     service = SlicingService(
-        _plates_backend(together_fails=True), logger=Mock(), clock=lambda: NOW, options=SliceOptions(plates=True)
+        _plates_backend(together_fails=True), logger=Mock(), clock=lambda: NOW, options=SliceOptions(plates=True, flat=False)
     )
 
     batch = service.slice_batch(kit, source, tmp_path / "out")
@@ -770,7 +770,7 @@ def test_good_parts_go_back_on_plates_when_one_fails(tmp_path: Path) -> None:
     source = tmp_path / "models"
     kit = [source / "kit" / name for name in ("a.stl", "bad.stl", "b.stl", "c.stl")]
     backend = _picky_backend()
-    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(plates=True))
+    service = SlicingService(backend, logger=Mock(), clock=lambda: NOW, options=SliceOptions(plates=True, flat=False))
 
     batch = service.slice_batch(kit, source, tmp_path / "out")
 

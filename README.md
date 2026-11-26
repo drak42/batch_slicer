@@ -100,8 +100,8 @@ takes models dropped onto the page.
 - **Makes copies.** Slicing a single part, ask for any number of copies; the
   slicer arranges them, adding plates when they don't fit on one.
 - **Keeps your file names.** `bracket.stl` becomes `bracket.gcode`, and a batch
-  mirrors your folder structure (or, with `--flat`, puts all its G-code in one
-  folder).
+  puts all its G-code in one folder, which printer screens list reliably (or,
+  with `--folders`, mirrors your folder structure).
 - **Never overwrites earlier results.** Every run gets its own time-stamped
   folder, which also records the exact presets that were used.
 - **Slices downloaded kits as they are.** A `.zip` from a model site can be
@@ -542,17 +542,10 @@ What would you like to slice?
   contains models, with a count for each. You can also type any folder path.
   BatchSlicer shows how many files it found and asks you to confirm.
 
-When you slice a folder whose subfolders hold several loose models (STL, OBJ
-or STEP files), BatchSlicer asks whether to put them together on plates (see
-[Several models per plate](#several-models-per-plate)):
-
-```
-Put the models in each folder together on plates? (8 models in 1 folder could share plates; 3MF projects keep their own) [y/N]
-```
-
-Enter keeps what the last run did. The question is skipped with `--plates` or
-`--no-plates`, for runs from a profile, and for Creality Print (which cannot
-arrange from its command line).
+A folder's models are sliced one by one, each to its own G-code file. To put
+the loose models (STL, OBJ or STEP files) of each folder together on as few
+plates as fit, add `--plates` (see
+[Several models per plate](#several-models-per-plate)); BatchSlicer doesn't ask.
 
 When you slice a single STL, OBJ or STEP model, BatchSlicer asks how many
 copies to make (see [Copies](#copies)):
@@ -634,7 +627,7 @@ asking; anything you leave out is still asked for, unless you add
 | `--jobs N` | slice N models at the same time (default 1); see [Speed](#speed) |
 | `--plates` | when slicing a folder, put the loose models of each folder together on as few plates as fit (see [Several models per plate](#several-models-per-plate)); `--no-plates` slices each model on its own |
 | `--copies N` | slice N copies of a single STL, OBJ or STEP model, arranged on as many plates as needed (see [Copies](#copies)); not for folders or 3MF projects |
-| `--flat` | put all of a batch's G-code in one folder, here and on the printer (see [Output](#output)); `--no-flat` turns it off over a profile |
+| `--folders` | mirror a batch's subfolders, here and on the printer, instead of putting all its G-code in one folder (the default; see [Output](#output)); `--flat` turns it back on over a profile, and `--no-flat` is the same as `--folders` |
 | `--no-thumbnails` | don't add preview pictures to the G-code (see [Output](#output)); `--thumbnails` turns them back on over a profile |
 | `--exclude PATTERN` | leave out folders or files matching PATTERN when slicing a folder; repeat for several (see [Leaving models out](#leaving-models-out)) |
 | `--send PRINTER` | after slicing, upload the G-code to PRINTER: its address (`192.168.1.50`, `k2.local:4408` or a full URL) or a name from the configuration's `printers` section (see [Sending G-code to a printer](#sending-g-code-to-a-printer)); `--no-send` turns off a profile's printer |
@@ -762,7 +755,7 @@ configuration is not in `~/.config/batchslicer/`:
 
 A profile is a named set of choices (slicer, printer, filament (or one per
 slot), process, input and output, plus `--orient`, `--allow-newer-files`,
-`--jobs`, `--exclude`, `--plates`, `--copies`, `--thumbnails`, `--flat`,
+`--jobs`, `--exclude`, `--plates`, `--copies`, `--thumbnails`, `--flat`/`--folders`,
 `--slot`, `--loaded-filaments` and `--send` if you gave them; `--start` and
 `--watch` are never saved) that you can reuse instead of typing them again. Options you
 add override the profile's; for `--exclude`, the patterns you give replace the
@@ -1003,7 +996,7 @@ batchslicer --profile k2-pla --input ~/drop --plates --send k2plus --watch
   a number: `cube (2).stl`.
 - **Results** go to the output folder as usual, one folder per drop
   (`kit-20261123-073000`), each with its report.
-- **Questions:** an interactive run asks its questions (presets, plates,
+- **Questions:** an interactive run asks its questions (presets,
   sending, output folder) once, before watching starts. With `--profile` or
   `--no-prompt` nothing is asked, so it can run unattended.
 - **The watched folder** is `--input` as given on the command line, or the
@@ -1310,38 +1303,40 @@ output/
     report.json
 ```
 
-**A folder** (`incoming/brackets/` with `left.stl` and `old/v1.stl`):
+**A folder** (`incoming/brackets/` with `left.stl` and `old/v1.stl`): all of
+the batch's G-code goes straight into its folder, and into one folder on the
+printer with `--send`, because printer screens such as the Creality K2's list
+deep folders unreliably. A name used twice gets the model's folders in front
+(`old-v1.gcode`), then a number:
 
 ```
 output/
   brackets-20261120-144808/
+    left.gcode
+    v1.gcode
     presets/           # shared by the whole batch
     report.csv
     report.json
-    left/
-      left.gcode
-    old/
-      v1/
-        v1.gcode
 ```
 
 - G-code is named after the model. A `.3mf` project with several plates gives
   one file per plate: `kit_plate_1.gcode`, `kit_plate_2.gcode`, and so on.
 - With `--plates`, a folder's models sliced together go into a `plates` folder
   instead (see below).
-- **`--flat`** puts all of a batch's G-code straight into its folder (and into
-  one folder on the printer, with `--send`), for printers whose file lists
-  handle deep folders badly. A name used twice gets the model's folders in
-  front (`old-v1.gcode`), then a number:
+- **`--folders`** mirrors the input's subfolders instead, one folder per model,
+  here and on the printer:
 
   ```
   output/
     brackets-20261120-144808/
-      left.gcode
-      v1.gcode
       presets/
       report.csv
       report.json
+      left/
+        left.gcode
+      old/
+        v1/
+          v1.gcode
   ```
 - Two models with the same name in one folder (`part.stl` and `part.3mf`) get
   separate folders (`part` and `part-2`).

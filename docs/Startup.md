@@ -57,10 +57,9 @@ results removed, and the run ends with exit status 130 (0 for a watch run).
 8. **Choose what to slice** (`cli/file_prompt.py`; a zip file given with
    `--input` is first unpacked into a temporary folder in the data folder by
    `services/archives.py`, removed when the run ends) and leave out models
-   matching `--exclude` (`exclude_models`). For a folder with loose models to share plates,
-   an interactive run without a profile, `--plates` or `--no-plates` asks
-   whether to slice each folder's models together; `--plates` is refused for
-   Creality Print. For a single STL, OBJ or STEP model it asks how many copies
+   matching `--exclude` (`exclude_models`). Each folder's models share plates
+   only with `--plates` (or a profile's `plates`), which is never asked and is
+   refused for Creality Print. For a single STL, OBJ or STEP model it asks how many copies
    to make (`--copies`); copies are refused for folders, 3MF projects and
    Creality Print (a profile's copies are left out with a note). An interactive run without a profile, `--send`
    or `--no-send` then asks whether to send the G-code
