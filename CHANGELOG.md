@@ -6,6 +6,15 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-11-27
+
+Kits now show up in full on the Creality K2's screen, and models go on
+shared plates only when you ask.
+
+Upgrade with `pipx upgrade batchslicer` (or `pipx install --force
+"batchslicer[web]"` for the web page). Slice a folder as before: all its
+G-code lands in one folder, here and on the printer.
+
 ### Changed
 
 - A batch's G-code now goes into one folder by default, here and on the
@@ -659,7 +668,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/drak42/batch_slicer/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/drak42/batch_slicer/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/drak42/batch_slicer/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/drak42/batch_slicer/compare/v0.17.0...v0.18.0

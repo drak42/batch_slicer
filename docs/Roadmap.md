@@ -165,6 +165,12 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
   other watch services are upload targets too.
 - The watcher reports what it is doing in `.batchslicer-status.json`.
 
+### 0.21.0 (2026-11-27): kits that show on the printer's screen
+
+- A batch's G-code goes into one folder by default, because the K2's screen
+  hides deeply nested folders; `--folders` mirrors the input's subfolders.
+- Plates only with `--plates` (or a profile); runs no longer ask.
+
 ## Next
 
 **Direction (24 November 2026):** let 0.20.0 be used for a while and decide
