@@ -1831,3 +1831,10 @@ its own; use the steps you need.
 BatchSlicer is free and open source. If it saves you time at the printer, you
 can [buy me a coffee](https://buymeacoffee.com/drak42) ☕. Bug reports, ideas and pull requests
 are just as welcome: see [CONTRIBUTING.md](https://github.com/drak42/batch_slicer/blob/main/CONTRIBUTING.md).
+
+**Help spread the word.** If BatchSlicer is useful to you, telling others is
+one of the best ways to help. The
+[launch kit](https://github.com/drak42/batch_slicer/tree/main/docs/launch-kit)
+has ready-made posts for forums, Reddit and Discord, the pictures and demo to
+go with them, and tips on where to post; download `index.html` and open it in
+a browser to copy them.
