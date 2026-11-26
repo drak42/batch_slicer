@@ -6,6 +6,16 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-11-27
+
+See the web page in action: drop models on it, watch them slice, send them to
+your printer.
+
+![A one-minute demo of the web page: a two-colour 3MF and a kit's zip dropped on the page, sliced with colours matched to the CFS and sent to the K2, a result with its G-code named bumper_PETG_1h17m, and the Printers page with the CFS spools](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/web-demo.gif)
+
+Try it: `pipx install --force "batchslicer[web]"`, then `batchslicer web`
+and open <http://127.0.0.1:8765>. No change to how BatchSlicer works.
+
 ### Documentation
 
 - A demo of the web page (`docs/images/web-demo.gif`, recorded with the new
@@ -723,7 +733,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.22.1...HEAD
+[0.22.1]: https://github.com/drak42/batch_slicer/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/drak42/batch_slicer/compare/v0.21.1...v0.22.0
 [0.21.1]: https://github.com/drak42/batch_slicer/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/drak42/batch_slicer/compare/v0.20.0...v0.21.0

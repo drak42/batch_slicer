@@ -181,6 +181,10 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - G-code is named `bracket_PETG_2h50m.gcode`, read from the G-code itself;
   `--no-name-details` keeps `bracket.gcode`.
 
+### 0.22.1 (2026-11-27): the web page, first
+
+- A demo of the web page; the README and user guide lead with it.
+
 ## Next
 
 **Direction (24 November 2026):** let 0.20.0 be used for a while and decide
