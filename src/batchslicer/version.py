@@ -8,7 +8,7 @@ metadata, or format console output beyond the public version string.
 
 from dataclasses import dataclass
 
-__version__ = "0.21.1"
+__version__ = "0.22.0"
 
 
 @dataclass(frozen=True)

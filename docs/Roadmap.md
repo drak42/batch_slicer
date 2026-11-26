@@ -176,6 +176,11 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 - Demo GIF and web page screenshots recorded again with 0.21.0.
 - `docs/launch-kit/`, linked from the README, for anyone promoting it.
 
+### 0.22.0 (2026-11-27): filament and print time in names
+
+- G-code is named `bracket_PETG_2h50m.gcode`, read from the G-code itself;
+  `--no-name-details` keeps `bracket.gcode`.
+
 ## Next
 
 **Direction (24 November 2026):** let 0.20.0 be used for a while and decide
