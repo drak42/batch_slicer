@@ -69,9 +69,9 @@ a { color: var(--accent); }
 
 <main>
   <header>
-    <span class="eyebrow">BatchSlicer 0.21.0 · web page · Linux, Windows, macOS · ready to post</span>
+    <span class="eyebrow">BatchSlicer 0.22.0 · web page · Linux, Windows, macOS · ready to post</span>
     <h1>BatchSlicer Launch Kit</h1>
-    <p class="lede">Drafts for announcing BatchSlicer, the pictures and demo to use, and where to post. Edit the wording to sound like you before posting; every number below is from real runs. Everything the drafts describe is in 0.21.0 on PyPI. 0.20.0 added a web page (<code>batchslicer web</code>); 0.21.0 puts a batch's G-code in one folder by default, so the K2's screen lists whole kits, and puts models on shared plates only with <code>--plates</code>. It has been tried on real printers (a Creality K2 Plus with a CFS on Klipper, and an Ender-3 V3 SE on OctoPrint) and with all three slicers on a real Windows 11 machine and a real Mac.</p>
+    <p class="lede">Drafts for announcing BatchSlicer, the pictures and demo to use, and where to post. Edit the wording to sound like you before posting; every number below is from real runs. Everything the drafts describe is in 0.22.0 on PyPI. 0.20.0 added a web page (<code>batchslicer web</code>); 0.21.0 puts a batch's G-code in one folder by default, so the K2's screen lists whole kits, and puts models on shared plates only with <code>--plates</code>; 0.22.0 names each file with its filament and print time (<code>bracket_PETG_2h50m.gcode</code>). It has been tried on real printers (a Creality K2 Plus with a CFS on Klipper, and an Ender-3 V3 SE on OctoPrint) and with all three slicers on a real Windows 11 machine and a real Mac.</p>
   </header>
 
   <section>
@@ -82,7 +82,7 @@ a { color: var(--accent); }
       <li><strong>Posted on the Creality forum</strong>: <a href="https://forum.creality.com/t/i-made-a-free-tool-that-slices-multi-colour-models-with-whatever-is-loaded-in-your-cfs-and-your-k2s-screen-picks-the-right-slots-by-itself/54900">I made a free tool that slices multi-colour models with whatever is loaded in your CFS</a> (the CFS post below), with a follow-up reply saying it now runs on Windows and macOS.</li>
       <li><strong>BlendSVG on <a href="https://extensions.blender.org/add-ons/blendsvg/">Blender Extensions</a></strong>: approved, and 0.1.5 is live there, so Blender users can install it from inside Blender. It now qualifies for awesome-blender (entry below).</li>
       <li><strong>0.20.0 follow-ups, to post</strong>: a reply in each forum thread about the new web page (drafts in &ldquo;0.20.0: the web page&rdquo;), and the answer to the colour-matching question in the Creality thread (in &ldquo;How it's going&rdquo;).</li>
-      <li><strong>0.21.0 follow-up, to post</strong>: a short reply in the Creality thread about whole kits now showing on the K2's screen (draft in &ldquo;0.21.0: kits on the K2's screen&rdquo;). Combine it with the 0.20.0 reply if neither is posted yet.</li>
+      <li><strong>0.21.0 and 0.22.0 follow-up, to post</strong>: one short reply in the Creality thread covering both: whole kits now show on the K2's screen, and file names say the filament and print time (draft in &ldquo;0.21&ndash;0.22: what's new on the K2's screen&rdquo;). Post it a day or more after the 0.20.0 reply, not together.</li>
       <li><strong>Still to post</strong>: r/Creality and the K2 and CFS Facebook groups, then the main post in r/OrcaSlicer and r/klippers, then r/3Dprinting and OrcaSlicer's GitHub Discussions. Watch the two forum threads for questions first: early answers there are the best material for the later posts.</li>
     </ul>
   </section>
@@ -97,7 +97,7 @@ a { color: var(--accent); }
       <li><strong>Reddit</strong>: every post, even requests for help, is removed by Reddit's filters. The account needs checking (shadowban, appeal at reddit.com/appeal) and some ordinary comments before posting again; don't repost or start a new account.</li>
       <li><strong>Awesome Bambu Lab</strong>: the update was merged on 24 November; both entries now say Linux, Windows and macOS.</li>
       <li><strong>GitHub repository</strong>: the description now mentions the web page (&ldquo;a watch folder with a web page&rdquo;), and the <code>web-interface</code> topic replaced <code>python</code> (20 topics, the most GitHub allows).</li>
-      <li><strong>What to try next</strong>, easiest first: answer the Creality question; post the 0.20.0 and 0.21.0 replies (a day apart from the answer); post the OrcaSlicer GitHub Discussions draft; share the short post in the Klipper, OrcaSlicer and Creality Discord servers; record a 20&ndash;30 second clip of dropping a kit on the web page. Quiet is normal this early for a niche tool.</li>
+      <li><strong>What to try next</strong>, easiest first: answer the Creality question; post the 0.20.0 reply and then the 0.21&ndash;0.22 reply (a day or more apart); post the OrcaSlicer GitHub Discussions draft; share the short post in the Klipper, OrcaSlicer and Creality Discord servers; record a 20&ndash;30 second clip of dropping a kit on the web page. Quiet is normal this early for a niche tool.</li>
     </ul>
     <div class="draft">
       <div class="draft-head"><h3>Reply to hentop10 in the Creality thread</h3><span class="where">to post</span><button class="copy" id="copy-match-reply" data-target="match-reply">Copy</button></div>
@@ -151,21 +151,26 @@ When it's that close, you can check and steer it:
   </section>
 
   <section>
-    <h2>0.21.0: kits on the K2's screen</h2>
-    <p>New in 0.21.0: a batch's G-code goes into one folder by default, here and on the printer. The K2's screen hides a folder whose G-code is four or more levels deep (Fluidd and Mainsail still show it), so a kit sent with its folders mirrored could lose whole sections on the screen. <code>--folders</code> keeps the old layout. Models now share plates only with <code>--plates</code>; runs no longer ask, so an earlier &ldquo;yes&rdquo; can't carry over unnoticed.</p>
+    <h2>0.21&ndash;0.22: what's new on the K2's screen</h2>
+    <p><strong>0.22.0</strong> names each G-code file with its filament and print time, the way Creality Print names its own files: <code>bracket_PETG_2h50m.gcode</code>. A multi-material print lists the materials it uses (<code>bumper_PLA-TPU_1h17m.gcode</code>). <code>--no-name-details</code> keeps plain names. <strong>0.21.0</strong> put a batch's G-code in one folder by default, because the K2's screen hides a folder whose G-code is four or more levels deep (Fluidd and Mainsail still show it); <code>--folders</code> keeps the old layout. Models share plates only with <code>--plates</code>; runs no longer ask.</p>
+    <ul>
+      <li><strong>Lead with the file names</strong> in Creality posts: K2 owners see them on the printer's screen every day, and it matches what Creality Print already does.</li>
+      <li><strong>Mention the folders fix</strong> to anyone who sends kits: losing a section of a kit on the screen is confusing, and the fix is automatic.</li>
+    </ul>
     <div class="draft">
       <div class="draft-head"><h3>Reply in the Creality forum thread</h3><span class="where">to post</span><button class="copy" id="copy-k2-folders" data-target="k2-folders">Copy</button></div>
-      <pre id="k2-folders">Update: whole kits now show on the K2's screen (0.21)
+      <pre id="k2-folders">Update: file names and kits that show in full on the K2's screen (0.21–0.22)
 
-A heads-up for anyone sending kits to a K2: its screen hides a folder when all the G-code in it is four or more levels deep. Fluidd and Mainsail still show it, so it's easy to miss. I sent a kit with four sections and the screen only listed three.
+Two changes from using it on my own K2:
 
-BatchSlicer 0.21 now puts all of a batch's G-code in one folder on the printer, named after the kit, so the screen lists everything. If you prefer your folder structure, add --folders.
+- File names now say the filament and print time, like Creality Print's own: bracket_PETG_2h50m.gcode, or bumper_PLA-TPU_1h17m.gcode for a multi-material print. You can tell files apart on the printer's screen without opening them. Prefer plain names? Add --no-name-details.
+- Whole kits show on the screen. The K2's screen hides a folder when all the G-code in it is four or more levels deep (Fluidd and Mainsail still show it), so a kit sent with its folders could lose a section. BatchSlicer now puts a kit's G-code in one folder on the printer, named after the kit. Add --folders if you'd rather keep your folder structure.
 
-Also changed: parts only go on shared plates when you add --plates. It used to ask, and pressing Enter repeated the last answer.
+Also: parts only go on shared plates when you add --plates. It used to ask, and pressing Enter repeated the last answer.
 
     pipx upgrade batchslicer
 
-Changelog: https://github.com/drak42/batch_slicer/releases/tag/v0.21.0</pre>
+Release notes: https://github.com/drak42/batch_slicer/releases/tag/v0.22.0</pre>
     </div>
   </section>
 
@@ -333,7 +338,7 @@ Code and guide: https://github.com/drak42/batch_slicer</pre>
 
 - It reads what is loaded in your CFS and on the external spool, straight from the printer (colour and material).
 - Each colour of a multi-colour 3MF project gets the loaded filament that looks most like it, sliced with a preset of that material and in the real colour. A black-and-white bumper became "black → CFS 1B dark blue PETG, white → external spool white PETG".
-- The G-code and its preview picture show the real colours, and when you tap the file on a K2 Plus, the slot-mapping screen already has every colour on the right slot. I tested exactly this on my K2 Plus.
+- The G-code and its preview picture show the real colours, its name says the filament and print time, and when you tap the file on a K2 Plus, the slot-mapping screen already has every colour on the right slot. I tested exactly this on my K2 Plus.
 - STL kits work too: --slot "*_lens.stl=external" --slot "*=1B" puts the lenses on the external spool and the rest on CFS 1B, all on one plate with --plates.
 - It sends the G-code to the printer, a whole kit in one folder that the K2's screen lists in full, and never starts a multi-colour print by itself, so you can check the slots on the screen first.
 
@@ -382,7 +387,7 @@ If you try the CFS matching on your K2 or K1, I'd like to hear how it picked the
 
 What it does:
 
-- Slices one model or a whole folder tree (STL, 3MF, OBJ), keeping your file names. A kit downloaded as a .zip works as it is: its models are unpacked safely and sliced like a folder.
+- Slices one model or a whole folder tree (STL, 3MF, OBJ), naming each file after its model plus the filament and print time (bracket_PETG_2h50m.gcode). A kit downloaded as a .zip works as it is: its models are unpacked safely and sliced like a folder.
 - --dry-run shows what a run would do (each part or plate, which filament or CFS spool it uses, where the G-code goes) without slicing or sending anything.
 - Uses your presets from OrcaSlicer (2.4 and 2.5), Bambu Studio (2.8 and 2.9) or Creality Print (7.3), including your own custom ones. It only reads the slicer's settings; it never changes them.
 - Puts the parts of each folder together on plates (--plates): 8 small kit parts became one plate in 10 seconds; 31 parts became two plates.
