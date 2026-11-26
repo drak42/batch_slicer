@@ -11,8 +11,10 @@
 
 Slice one 3D model or whole folders of them with **OrcaSlicer**, **Creality
 Print** or **Bambu Studio**, using the printer, filament and process presets
-you already have in those slicers, on Linux, Windows or macOS. Run it interactively and answer a few
-questions, or pass everything on the command line for unattended, scripted runs.
+you already have in those slicers, on Linux, Windows or macOS. Use it from a
+**web page in your browser** (drop models on it, watch them slice, send the
+G-code to your printer), answer a few questions in the terminal, or pass
+everything on the command line for unattended, scripted runs.
 It can put a kit's parts together on plates, make several copies of a part,
 adds preview pictures for printer screens, and can send the G-code straight to
 a Klipper or OctoPrint printer.
@@ -34,6 +36,18 @@ batchslicer                                      # answer a few questions, get G
 Results appear in `~/BatchSlicer/output`. Next time, `batchslicer --last`
 repeats the same run.
 
+**Rather use a browser?** Install BatchSlicer with its web page, answer the
+same few questions, then open <http://127.0.0.1:8765> and drop models on it:
+
+```bash
+pipx install "batchslicer[web]"                  # instead of the first line above
+batchslicer setup
+batchslicer web                                  # answer a few questions, then open the page
+```
+
+See [Following it in a web page](#following-it-in-a-web-page); `batchslicer
+service install --web ...` keeps it running in the background.
+
 The same four commands work on Linux, Windows (PowerShell) and macOS
 (Terminal). Need Python or pipx first? See [Installation](#installation),
 which has the steps for each system.
@@ -45,15 +59,23 @@ This README is the full reference.
 
 ### See it in action
 
+**In the browser** (`batchslicer web`):
+
+![A one-minute demo of the web page: a two-colour 3MF and a kit's zip dropped on the page, sliced with colours matched to the CFS and sent to the K2, a result with its G-code named bumper_PETG_1h17m, and the Printers page with the CFS spools](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/web-demo.gif)
+
+A two-colour project and a downloaded kit's zip dropped on the page, sliced
+one after the other with colours matched to the spools in a Creality CFS,
+and sent to the printer; then a result's page and the Printers page with the
+CFS. Recorded with [`docs/demo/web_demo.py`](https://github.com/drak42/batch_slicer/blob/main/docs/demo/web_demo.py).
+
+**In the terminal:**
+
 ![A 40-second terminal demo: a dry run, a two-colour 3MF matched to the spools in a Creality CFS and sent to the printer, and a kit zip unpacked onto one plate](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/demo.gif)
 
 A dry run, then a two-colour project matched to the spools loaded in a
 Creality CFS and sent to the printer, then a downloaded kit's zip unpacked
 onto one plate. Recorded with [`docs/demo/demo.sh`](https://github.com/drak42/batch_slicer/blob/main/docs/demo/demo.sh).
 
-Prefer a browser? [`batchslicer web`](#following-it-in-a-web-page) shows the
-watch folder, every result with its picture, and your printers' CFS, and
-takes models dropped onto the page.
 
 ---
 
@@ -85,6 +107,12 @@ takes models dropped onto the page.
 
 ## What it does
 
+- **Works from a web page.** `batchslicer web` serves a page you open in your browser:
+  drop models, kit folders or zip files onto it, follow the slicing, see every
+  result with its picture, print time and filament, download the G-code or
+  send it to a printer, and see what is loaded in the CFS. It can run in the
+  background, so the page is always there (see
+  [Following it in a web page](#following-it-in-a-web-page)).
 - **Works with the slicer you already use.** OrcaSlicer, Creality Print and
   Bambu Studio are supported, driven through their own command-line slicing.
 - **Uses your presets.** Choose a printer, then a compatible filament and
@@ -143,10 +171,6 @@ takes models dropped onto the page.
 - **Runs unattended.** Every choice can be given as a command-line option or a
   profile, so it can be scripted or scheduled. With `--watch` it keeps running
   and slices every model or folder you drop into a folder.
-- **Has a web page.** `batchslicer web` shows the watch folder in a browser on
-  the same computer: drop models onto the page, follow the slicing, see every
-  result with its picture, download the G-code, send it to a printer and see
-  what is loaded in the CFS. It is optional, and can run in the background.
 - **Leaves your slicers alone.** BatchSlicer only reads the slicers' settings
   folders; it never changes them.
 
@@ -1087,8 +1111,9 @@ How it works on each system:
 
 ### Following it in a web page
 
-*New in 0.20.0.* `batchslicer web` runs a
-watch together with a web page that shows what it is doing:
+The easiest way to use BatchSlicer day to day: `batchslicer web` runs a
+watch together with a web page where you drop models, follow the slicing,
+and download or send the results:
 
 ```bash
 pipx install --force "batchslicer[web]"   # once: adds the web page's libraries
@@ -1100,7 +1125,7 @@ takes the same options as a watch run (it adds `--watch`), asks the same
 questions in the terminal, and Ctrl+C stops both. `--port PORT` serves it on
 another port.
 
-![The web page: an area to drop models on, the watch folder's queue, and the results with their preview pictures, print time and filament](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/web-home.png)
+![A one-minute demo of the web page: a two-colour 3MF and a kit's zip dropped on the page, sliced with colours matched to the CFS and sent to the K2, a result with its G-code named bumper_PETG_1h17m, and the Printers page with the CFS spools](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/web-demo.gif)
 
 The page shows, refreshing every few seconds:
 

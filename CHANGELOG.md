@@ -6,6 +6,17 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Documentation
+
+- A demo of the web page (`docs/images/web-demo.gif`, recorded with the new
+  `docs/demo/web_demo.py`): a two-colour 3MF and a kit's zip dropped on the
+  page, sliced with colours matched to the CFS and sent to the printer, a
+  result, and the Printers page.
+- The README and user guide put the web page first: it leads the README's
+  features and "See it in action", the quick start shows how to start it,
+  and the user guide's step 9 is now "Slice from your browser, or a watched
+  folder", pointed to from the introduction for anyone who prefers a browser.
+
 ## [0.22.0] - 2026-11-27
 
 G-code names now say the filament and print time, like

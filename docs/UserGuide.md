@@ -7,6 +7,14 @@ printing in several colours and sending G-code to your printer, one step at a
 time. Every step builds on the one before, but you can stop after any of them.
 For every option and detail, see the [README](../README.md).
 
+**Prefer a browser?** BatchSlicer has a web page: drop models on it, watch
+them slice, and download the G-code or send it to your printer. Do steps 1 to
+3, then go to [step 9](#9-slice-from-your-browser-or-a-watched-folder).
+
+![A one-minute demo of the web page: a two-colour 3MF and a kit's zip dropped on the page, sliced with colours matched to the CFS and sent to the K2, a result with its G-code named bumper_PETG_1h17m, and the Printers page with the CFS spools](images/web-demo.gif)
+
+Or from the terminal:
+
 ![A 40-second terminal demo: a dry run, a two-colour 3MF matched to the spools in a Creality CFS and sent to the printer, and a kit zip unpacked onto one plate](images/demo.gif)
 
 **Contents**
@@ -19,7 +27,7 @@ For every option and detail, see the [README](../README.md).
 6. [Slice a whole folder, and put kits on plates](#6-slice-a-whole-folder-and-put-kits-on-plates)
 7. [Send the G-code to your printer](#7-send-the-g-code-to-your-printer)
 8. [Print in several colours](#8-print-in-several-colours)
-9. [Slice whatever you drop into a folder](#9-slice-whatever-you-drop-into-a-folder)
+9. [Slice from your browser, or a watched folder](#9-slice-from-your-browser-or-a-watched-folder)
 10. [Find your results](#10-find-your-results)
 11. [When something goes wrong](#11-when-something-goes-wrong)
 12. [Quick reference](#12-quick-reference)
@@ -50,6 +58,10 @@ on the same network.
 BatchSlicer is installed with [pipx](https://pipx.pypa.io), which installs
 command-line tools in their own space. Follow the steps for your system; after
 that, every command in this guide works the same everywhere.
+
+**To use the [web page](#9-slice-from-your-browser-or-a-watched-folder)**,
+write `pipx install "batchslicer[web]"` (with the quotes) where the steps say
+`pipx install batchslicer`. It adds the page's libraries.
 
 ### On Linux
 
@@ -340,7 +352,33 @@ Good to know:
 - Use OrcaSlicer or Bambu Studio for 3MF projects: Creality Print's command
   line cannot use your presets with them.
 
-## 9. Slice whatever you drop into a folder
+## 9. Slice from your browser, or a watched folder
+
+### From your browser
+
+`batchslicer web` starts a page in your browser where you do everything with
+the mouse: drop models, kit folders or zip files onto it, follow the slicing,
+see every result with its preview picture, print time and filament, download
+the G-code (one file, or a whole run as a ZIP), and send it to your printer.
+With printers set up (step 7), the Printers page shows what is loaded in each
+printer's CFS.
+
+```bash
+pipx install --force "batchslicer[web]"   # once, if you installed plain batchslicer
+batchslicer web --profile k2-petg --plates
+```
+
+Open <http://127.0.0.1:8765> on the same computer. Without `--profile`, it
+asks the questions from step 4 in the terminal first. Ctrl+C stops it.
+
+![A one-minute demo of the web page: a two-colour 3MF and a kit's zip dropped on the page, sliced with colours matched to the CFS and sent to the K2, a result with its G-code named bumper_PETG_1h17m, and the Printers page with the CFS spools](images/web-demo.gif)
+
+Everything you drop on the page goes into the incoming folder and is sliced
+like anything you put there yourself (below). To keep the page running in the
+background, so it is always there, install it as a service: `batchslicer
+service install --web --profile k2-petg --plates`.
+
+### From a watched folder
 
 With `--watch`, BatchSlicer keeps running and slices every model, folder or
 zip file you drop into the incoming folder, once it has finished copying. A
@@ -379,23 +417,6 @@ new settings.
 has finished copying, including a folder you are still working on. Make or
 collect models somewhere else, and move them in when they are ready.
 
-**Follow it in a browser** (new in 0.20.0): `batchslicer web` does
-the same as `--watch` and also shows a web page with what is waiting, what is
-slicing, and every result with its preview picture, print time and filament.
-Drag models, zip files or folders onto the page to slice them, and download
-the G-code one file at a time or a whole run as a ZIP. With printers set up
-(step 7), send a run to one from its page, and see what is loaded in each
-printer's CFS on the Printers page. To keep the page running in the
-background, install it as a service: `batchslicer service install --web
---profile k2-petg --plates`.
-
-```bash
-pipx install --force "batchslicer[web]"   # once
-batchslicer web --profile k2-petg --plates
-```
-
-Open <http://127.0.0.1:8765> on the same computer. Ctrl+C stops both.
-
 ## 10. Find your results
 
 Every run gets its own folder in `~/BatchSlicer/output`, so nothing is ever
@@ -414,7 +435,7 @@ output/
 `report.csv` opens in any spreadsheet. For multi-colour prints it also lists
 the grams of each filament and the number of filament changes.
 
-With `batchslicer web` (step 9), the same results are in the browser: each
+With `batchslicer web` ([step 9](#9-slice-from-your-browser-or-a-watched-folder)), the same results are in the browser: each
 run with its preview picture, print time and filament, its G-code to download
 (one file or a ZIP), and a **Send** button for your printers.
 
@@ -437,6 +458,7 @@ run with its preview picture, print time and filament, its G-code to download
 | Find my slicers | `batchslicer setup` |
 | Check my setup | `batchslicer doctor` |
 | Check just a printer | `batchslicer doctor --printer NAME` or an address |
+| Use it from a browser | `batchslicer web`, then open http://127.0.0.1:8765 |
 | Slice, answering questions | `batchslicer` |
 | Repeat the last run | `batchslicer --last` |
 | Save choices as a profile | add `--save-profile NAME` |
@@ -455,7 +477,6 @@ run with its preview picture, print time and filament, its G-code to download
 | See what a run would do, without doing it | add `--dry-run` |
 | Slice what I drop into a folder | `--watch` |
 | Keep watching in the background | `batchslicer service install ...` |
-| Watch with a web page | `batchslicer web --profile NAME`, then open http://127.0.0.1:8765 |
 | Keep the web page running in the background | `batchslicer service install --web ...` |
 | See preset names for scripts | `batchslicer --slicer orca --list-presets` |
 | See every option | `batchslicer --help` |
