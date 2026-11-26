@@ -171,6 +171,11 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
   hides deeply nested folders; `--folders` mirrors the input's subfolders.
 - Plates only with `--plates` (or a profile); runs no longer ask.
 
+### 0.21.1 (2026-11-27): demo, screenshots and launch kit
+
+- Demo GIF and web page screenshots recorded again with 0.21.0.
+- `docs/launch-kit/`, linked from the README, for anyone promoting it.
+
 ## Next
 
 **Direction (24 November 2026):** let 0.20.0 be used for a while and decide

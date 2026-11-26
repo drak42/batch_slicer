@@ -6,6 +6,30 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-11-27
+
+A fresh demo and screenshots, and a launch kit for anyone who wants to help
+spread the word.
+
+![A 40-second terminal demo: a dry run, a two-colour 3MF matched to the spools in a Creality CFS and sent to the printer, and a kit zip put on one plate with --plates](https://raw.githubusercontent.com/drak42/batch_slicer/main/docs/images/demo.gif)
+
+No change to how BatchSlicer works; `pipx upgrade batchslicer` brings the
+updated README to PyPI's page.
+
+### Documentation
+
+- The demo GIF is recorded again with 0.21.0 (it showed 0.16.1): `--plates`
+  is on the command line, since plates are opt-in, and the kit is sent to the
+  printer as one file. `docs/demo/demo.sh` no longer hides plates in the
+  demo profile.
+- The web page screenshots are retaken with 0.21.0; a result's G-code is now
+  in the run's folder, not in `plates/`.
+- README and user guide: sending puts a batch in one folder (`--folders`
+  keeps the structure), and runs no longer ask about plates.
+- `docs/launch-kit/`: ready-made posts for forums, Reddit and Discord, the
+  pictures to use and where to post, linked from the README's Support
+  section. Not part of the package.
+
 ## [0.21.0] - 2026-11-27
 
 Kits now show up in full on the Creality K2's screen, and models go on
@@ -668,7 +692,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.21.1...HEAD
+[0.21.1]: https://github.com/drak42/batch_slicer/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/drak42/batch_slicer/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/drak42/batch_slicer/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/drak42/batch_slicer/compare/v0.18.0...v0.19.0
