@@ -922,7 +922,10 @@ batchslicer --profile k2-pla --input bracket.stl --send k2plus --start
   BatchSlicer's preview pictures. Creality Print's device list shows the
   printer's address. When a file is replaced under the same name, the screen
   may keep showing the old picture (or none); in testing, sending the file
-  again fixed it.
+  again fixed it. The screen hides a folder whose G-code is all four or more
+  levels deep (such as `kit/4. Rollcage/A/plates/A.gcode`), though Fluidd and
+  Mainsail show it; this is why a batch goes into one folder unless you give
+  `--folders`.
 
 ### OctoPrint
 
