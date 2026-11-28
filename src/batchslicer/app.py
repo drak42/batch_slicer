@@ -44,6 +44,7 @@ from batchslicer.cli.file_prompt import (
 from batchslicer.cli.menu import ask_number, choose, confirm
 from batchslicer.cli.output_prompt import output_from_path, prompt_for_output
 from batchslicer.cli.preset_prompt import choose_preset, find_preset, select_presets
+from batchslicer.cli.printers import PrintersOptions, run_printers
 from batchslicer.cli.profile_prompt import prompt_for_profile
 from batchslicer.cli.send_prompt import prompt_for_printer
 from batchslicer.cli.service import ServiceOptions, run_service
@@ -138,6 +139,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return EXIT_SUCCESS if run_service(options) == 0 else EXIT_FAILURE
         if isinstance(options, WebOptions):
             return run_web(options, run=_run_watch)
+        if isinstance(options, PrintersOptions):
+            return EXIT_SUCCESS if run_printers(options) == 0 else EXIT_FAILURE
         return _run(options)
     except KeyboardInterrupt:
         _error("\nCancelled.")

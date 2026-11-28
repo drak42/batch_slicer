@@ -16,6 +16,7 @@ from pathlib import Path
 
 from batchslicer.backends.slicers import SLICERS
 from batchslicer.cli.doctor import DoctorOptions
+from batchslicer.cli.printers import PrintersOptions
 from batchslicer.cli.service import SERVICE_ACTIONS, ServiceOptions
 from batchslicer.cli.setup import SetupOptions
 from batchslicer.cli.web import DEFAULT_PORT, WebOptions
@@ -137,11 +138,11 @@ class RunOptions:
 
 def parse_arguments(
     argv: Sequence[str] | None = None,
-) -> RunOptions | SetupOptions | DoctorOptions | ServiceOptions | WebOptions:
+) -> RunOptions | SetupOptions | DoctorOptions | ServiceOptions | WebOptions | PrintersOptions:
     """Return the options in ``argv`` (default: the process arguments).
 
-    ``setup``, ``doctor``, ``service`` or ``web`` as the first argument selects that
-    command. Invalid options print a usage message and exit with status 2.
+    ``setup``, ``doctor``, ``service``, ``web`` or ``printers`` as the first
+    argument selects that command. Invalid options print a usage message and exit with status 2.
     """
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments[:1] == ["setup"]:
@@ -152,6 +153,8 @@ def parse_arguments(
         return _parse_service(arguments[1:])
     if arguments[:1] == ["web"]:
         return _parse_web(arguments[1:])
+    if arguments[:1] == ["printers"]:
+        return _parse_printers(arguments[1:])
     parser = _parser()
     namespace = parser.parse_args(arguments)
     if namespace.dry_run and namespace.watch:
@@ -385,6 +388,31 @@ def _parse_web(arguments: Sequence[str]) -> WebOptions:
     if not isinstance(run, RunOptions):
         parser.error("the options after 'web' must be run options, not another command")
     return WebOptions(port=port, run_arguments=tuple(run_arguments), input=run.input, config=run.config)
+
+
+def _parse_printers(arguments: Sequence[str]) -> PrintersOptions:
+    """Return the options for ``batchslicer printers``."""
+    parser = argparse.ArgumentParser(
+        prog="batchslicer printers",
+        description=(
+            "List the printers in the configuration's printers section. --json prints them "
+            "for other programs, such as 3dprintmon importing them."
+        ),
+    )
+    parser.add_argument("--config", type=Path, metavar="PATH", help="configuration file to read")
+    parser.add_argument("--json", action="store_true", help="print JSON for other programs")
+    parser.add_argument(
+        "--with-keys",
+        action="store_true",
+        help=(
+            "include API keys written in the configuration file (keys kept in environment "
+            "variables are only named)"
+        ),
+    )
+    parsed = parser.parse_args(arguments)
+    if parsed.with_keys and not parsed.json:
+        parser.error("--with-keys only goes with --json.")
+    return PrintersOptions(config=parsed.config, json=parsed.json, with_keys=parsed.with_keys)
 
 
 def _parse_doctor(arguments: Sequence[str]) -> DoctorOptions:

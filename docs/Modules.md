@@ -34,6 +34,7 @@ docstring says more, including what it intentionally does not do.
 | `cli/output_prompt.py` | choose or create the output folder |
 | `cli/send_prompt.py` | ask whether to send the G-code to a printer, and to which |
 | `cli/setup.py` | `batchslicer setup`: detect slicers, write the configuration |
+| `cli/printers.py` | `batchslicer printers`: list the configured printers, as text or as JSON for other programs (API keys only with `--with-keys`, and only those in the file) |
 | `cli/doctor.py` | `batchslicer doctor`: check the setup and report problems (or, with `--printer`, only the printers named) |
 | `cli/service_host.py` | Windows: run BatchSlicer for a background task, with its output in a log file, stopping like Ctrl+C when asked |
 | `cli/service.py` | `batchslicer service`: install, show and remove watch-folder services (or, with `--web`, the web page with its watch), with this system's service manager; tell the web page which folders services watch |

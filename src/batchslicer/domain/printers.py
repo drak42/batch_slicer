@@ -59,7 +59,10 @@ class PrinterHost:
 
 
 def printer_hosts(
-    section: Any, environ: Mapping[str, str] | None = None
+    section: Any,
+    environ: Mapping[str, str] | None = None,
+    *,
+    require_keys: bool = True,
 ) -> dict[str, PrinterHost]:
     """Return the printers in a configuration ``printers`` section, by name.
 
@@ -68,7 +71,8 @@ def printer_hosts(
     variable (in ``environ``, by default the process environment) that holds
     the API key, so the key need not be stored in the file. Raises
     :class:`PrinterHostError` for anything that cannot be used, naming the
-    printer.
+    printer. With ``require_keys=False`` an ``api_key_env`` variable that is not
+    set is accepted (the key is then empty), for listing printers without using them.
     """
     environ = os.environ if environ is None else environ
     if section in (None, ""):
@@ -91,14 +95,14 @@ def printer_hosts(
                 f"printers.{name} has unknown settings: {', '.join(sorted(unknown))}"
             )
         url = _checked_url(name, values.get("url"))
-        api_key, api_key_env = _api_key(name, values, environ)
+        api_key, api_key_env = _api_key(name, values, environ, require_keys)
         kind = values.get("type") or MOONRAKER
         if not isinstance(kind, str) or kind.casefold() not in PRINTER_TYPES:
             raise PrinterHostError(
                 f"printers.{name}.type must be {' or '.join(PRINTER_TYPES)}, not {kind}."
             )
         kind = kind.casefold()
-        if kind == OCTOPRINT and not api_key:
+        if kind == OCTOPRINT and not api_key and not api_key_env:
             raise PrinterHostError(
                 f"printers.{name}: OctoPrint needs an api_key or api_key_env (create a key "
                 "in OctoPrint under Settings > Application Keys)."
@@ -109,7 +113,9 @@ def printer_hosts(
     return hosts
 
 
-def _api_key(name: str, values: Mapping[Any, Any], environ: Mapping[str, str]) -> tuple[str, str]:
+def _api_key(
+    name: str, values: Mapping[Any, Any], environ: Mapping[str, str], require_keys: bool = True
+) -> tuple[str, str]:
     """Return a printer's API key and the environment variable it came from ("" for the file)."""
     api_key = values.get("api_key") or ""
     if not isinstance(api_key, str):
@@ -127,7 +133,7 @@ def _api_key(name: str, values: Mapping[Any, Any], environ: Mapping[str, str]) -
             f"printers.{name} sets both api_key and api_key_env; keep only one."
         )
     value = environ.get(variable, "").strip()
-    if not value:
+    if not value and require_keys:
         raise PrinterHostError(
             f"printers.{name}.api_key_env names {variable}, but that environment variable "
             "is not set (or is empty)."

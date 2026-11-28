@@ -284,6 +284,9 @@ How sending works:
   spool each colour comes from.
 - `batchslicer doctor` checks every printer in the configuration;
   `batchslicer doctor --printer k2plus` (or an address) checks just one, quickly.
+- `batchslicer printers` lists them. 3dprintmon (a tray icon that tells you when
+  a print finishes or fails) can import them with
+  `3dprintmon import-batchslicer`, so each printer is set up once.
 
 ## 8. Print in several colours
 

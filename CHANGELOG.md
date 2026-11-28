@@ -6,6 +6,14 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `batchslicer printers` lists the configured printers; `--json` prints them
+  in a small, versioned format for other programs, such as 3dprintmon
+  importing them so each printer is set up once. API keys kept in environment
+  variables are only named, and keys in the configuration file are only
+  included with `--with-keys`. Listing does not need the key variables to be set.
+
 ## [0.23.0] - 2026-11-28
 
 Every result folder now says what it was sliced for: `print-settings.txt`

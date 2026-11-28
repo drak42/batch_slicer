@@ -994,6 +994,29 @@ Everything above applies, with these differences:
   created, names with spaces come through, sending a file again replaces it,
   and `--start` selects and prints a single file.
 
+### Listing your printers for other programs
+
+`batchslicer printers` lists the printers in the configuration;
+`batchslicer printers --json` prints them for other programs, such as
+[3dprintmon](https://github.com/drak42/3dprintmon), which imports them so each
+printer is set up once:
+
+```json
+{
+  "format": 1,
+  "printers": [
+    {"name": "k2plus", "type": "moonraker", "url": "http://192.168.1.50:7125"},
+    {"name": "octo", "type": "octoprint", "url": "http://192.168.1.60", "api_key_env": "OCTO_KEY"}
+  ]
+}
+```
+
+API keys are never printed by accident: a key kept in an environment variable
+is only named (`api_key_env`), and one written in the configuration file is
+only flagged (`"has_api_key": true`) unless you add `--with-keys`. Listing does
+not need the key variables to be set. `format` changes only if the output
+changes in a way that would break a reader.
+
 ## Watch folder
 
 With `--watch`, BatchSlicer keeps running and slices whatever you put in a
