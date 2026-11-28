@@ -6,6 +6,31 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-11-28
+
+Every result folder now says what it was sliced for: `print-settings.txt`
+names the printer, filament and process preset, lists their main settings, and
+shows what your own presets change.
+
+```
+Printer:  Creality K2 Plus 0.4 nozzle
+Filament: Sliced PETG @Creality K2 Plus 0.4 nozzle
+Process:  0.12mm PETG - Quality
+
+Process preset
+--------------
+  Layer height             0.12 mm
+  Walls                    4
+  Infill                   25%
+  ...
+Changes in your preset "0.12mm PETG - Quality" (compared with "0.20mm Standard @Creality K2 Plus 0.4 nozzle")
+  layer_height: 0.2 -> 0.12
+  wall_loops: 2 -> 4
+```
+
+Try it: `pipx upgrade batchslicer`, slice anything with your presets, and open
+`print-settings.txt` in the result folder.
+
 ### Added
 
 - Every result folder gets `print-settings.txt`, which says in plain words
@@ -742,7 +767,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.22.1...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.23.0...HEAD
+[0.23.0]: https://github.com/drak42/batch_slicer/compare/v0.22.1...v0.23.0
 [0.22.1]: https://github.com/drak42/batch_slicer/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/drak42/batch_slicer/compare/v0.21.1...v0.22.0
 [0.21.1]: https://github.com/drak42/batch_slicer/compare/v0.21.0...v0.21.1

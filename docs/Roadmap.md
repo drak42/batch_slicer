@@ -185,6 +185,12 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
 
 - A demo of the web page; the README and user guide lead with it.
 
+### 0.23.0 (2026-11-28): what it was sliced for
+
+- `print-settings.txt` in every result folder: the printer, filament and
+  process preset, their main settings, and what the user's own presets
+  change; included in the web page's downloads and ZIPs.
+
 ## Next
 
 **Direction (24 November 2026):** let 0.20.0 be used for a while and decide
