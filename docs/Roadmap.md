@@ -191,6 +191,12 @@ This is the agreed plan. Items move from **Next** to **Done** as they ship;
   process preset, their main settings, and what the user's own presets
   change; included in the web page's downloads and ZIPs.
 
+### 0.24.0 (2026-11-29): printers for other programs
+
+- `batchslicer printers` lists the configured printers; `--json` gives them
+  to other programs (3dprintmon imports them), without printing API keys
+  unless asked.
+
 ## Next
 
 **Direction (24 November 2026):** let 0.20.0 be used for a while and decide

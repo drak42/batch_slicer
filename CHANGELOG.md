@@ -6,6 +6,21 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-29
+
+Set your printers up once: `batchslicer printers` lists them, and
+`--json` hands them to other programs. [3dprintmon](https://github.com/drak42/3dprintmon),
+a tray icon that tells you when a print finishes or fails, imports them or
+keeps watching them as they change.
+
+```
+$ batchslicer printers
+k2plus (http://192.168.1.50:7125)
+octo (OctoPrint, http://192.168.1.60), API key from $OCTO_KEY
+```
+
+Try it: `pipx upgrade batchslicer`, then `batchslicer printers --json`.
+
 ### Added
 
 - `batchslicer printers` lists the configured printers; `--json` prints them
@@ -775,7 +790,8 @@ OrcaSlicer, Creality Print or Bambu Studio, interactively or unattended.
 - Initial project bootstrap: project structure, architecture and coding
   documents, and version information.
 
-[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.23.0...HEAD
+[Unreleased]: https://github.com/drak42/batch_slicer/compare/v0.24.0...HEAD
+[0.24.0]: https://github.com/drak42/batch_slicer/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/drak42/batch_slicer/compare/v0.22.1...v0.23.0
 [0.22.1]: https://github.com/drak42/batch_slicer/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/drak42/batch_slicer/compare/v0.21.1...v0.22.0
