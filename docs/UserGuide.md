@@ -427,6 +427,7 @@ output/
   rc-boat-20261123-101500/
     hull/hull.gcode          # one folder per model, like your input
     plates/...               # with --plates
+    print-settings.txt       # printer, filament, preset and its settings, in plain words
     presets/                 # the exact settings that were used
     report.csv               # print time, filament and cost of every model
     report.json
@@ -434,6 +435,12 @@ output/
 
 `report.csv` opens in any spreadsheet. For multi-colour prints it also lists
 the grams of each filament and the number of filament changes.
+
+`print-settings.txt` says what the G-code was sliced for: the printer, the
+filament, the process preset and their main settings (layer height, walls,
+infill, speeds, temperatures). If you made a preset of your own, it also lists
+what yours changes compared with the preset it is based on, for example
+`layer_height: 0.2 -> 0.12`.
 
 With `batchslicer web` ([step 9](#9-slice-from-your-browser-or-a-watched-folder)), the same results are in the browser: each
 run with its preview picture, print time and filament, its G-code to download

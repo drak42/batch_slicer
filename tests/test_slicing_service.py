@@ -871,3 +871,61 @@ def test_gcode_name_gets_the_material_and_print_time(tmp_path: Path, name_detail
 
     assert [path.name for path in outcome.gcode_files] == [expected]
     assert outcome.gcode_files[0].is_file()
+
+
+def _library_writing_presets(directory: Path) -> Mock:
+    """Return a preset library mock whose write_resolved writes real preset files."""
+    library = Mock()
+
+    def write_resolved(selection: PresetSelection, presets: Path, **kwargs: object) -> tuple[list[Path], list[Path]]:
+        presets.mkdir(parents=True, exist_ok=True)
+        files = []
+        for name, data in (
+            ("machine", {"type": "machine", "printer_settings_id": "K2", "nozzle_diameter": ["0.4"]}),
+            ("process", {"type": "process", "print_settings_id": "Fine", "layer_height": "0.12"}),
+            ("filament", {"type": "filament", "filament_settings_id": ["PLA"], "filament_type": ["PLA"]}),
+        ):
+            path = presets / f"{name}.json"
+            path.write_text(json.dumps(data), encoding="utf-8")
+            files.append(path)
+        return files[:2], files[2:]
+
+    library.write_resolved.side_effect = write_resolved
+    library.changed_settings.return_value = ("0.20mm Standard", [("layer_height", "0.2", "0.12")])
+    return library
+
+
+def test_a_print_settings_summary_is_written_with_the_presets(tmp_path: Path) -> None:
+    """The job folder gets print-settings.txt naming the presets and the user's changes."""
+    library = _library_writing_presets(tmp_path)
+    backend = _backend()
+    backend.slicer.display_name = "Creality Print"
+    selection = PresetSelection(
+        Preset("K2", PresetKind.PRINTER, Path("K2"), is_user=False),
+        Preset("PLA", PresetKind.FILAMENT, Path("PLA"), is_user=False),
+        Preset("Fine", PresetKind.PROCESS, Path("Fine"), is_user=True),
+    )
+    service = SlicingService(backend, presets=library, logger=Mock(), clock=lambda: NOW)
+
+    outcome = service.slice(tmp_path / "cube.stl", tmp_path / "output", selection)
+
+    text = (outcome.job_directory / "print-settings.txt").read_text(encoding="utf-8")
+    assert "with Creality Print" in text
+    assert "Printer:  K2" in text
+    assert "Process:  Fine" in text
+    assert "layer_height: 0.2 -> 0.12" in text
+    library.changed_settings.assert_called_once_with(selection.process)  # shipped presets are skipped
+
+
+def test_a_summary_that_cannot_be_written_does_not_stop_the_slice(tmp_path: Path) -> None:
+    """If the preset files cannot be read, a warning is logged and slicing goes on."""
+    library = Mock()
+    library.write_resolved.return_value = ([tmp_path / "missing.json"], [])
+    logger = Mock()
+    service = SlicingService(_backend(), presets=library, logger=logger, clock=lambda: NOW)
+
+    outcome = service.slice(tmp_path / "cube.stl", tmp_path / "output", _selection())
+
+    assert outcome.success
+    assert not (outcome.job_directory / "print-settings.txt").exists()
+    assert any("print settings summary" in str(call) for call in logger.warning.call_args_list)

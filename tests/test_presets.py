@@ -422,3 +422,50 @@ def test_bambu_studio_user_printer_matches_its_base_printers_presets(tmp_path: P
 
     assert [p.name for p in library.filaments_for(mine)] == ["Generic PLA @Creality"]
     assert [p.name for p in library.processes_for(mine)] == ["0.20mm Standard @Creality K1Max 0.4 nozzle"]
+
+
+def test_changed_settings_lists_what_a_preset_sets_differently(datadir: Path) -> None:
+    """A user's preset's own values are compared with the preset it is based on."""
+    library = _library(datadir)
+    k2 = next(printer for printer in library.printers() if printer.name == K2)
+    mine = library.processes_for(k2)[0]
+    pla = library.filaments_for(k2)[0]
+
+    assert library.changed_settings(mine) == (
+        f"0.20mm Standard @{K2}",
+        [("layer_height", "0.2", "0.12")],
+    )
+    assert library.changed_settings(pla) == (
+        f"Generic PLA @{K2}",
+        [("nozzle_temperature", ["210"], ["220"])],
+    )
+
+
+def test_changed_settings_leaves_out_bookkeeping_and_unchanged_values(datadir: Path) -> None:
+    """Names, links, ids and values equal to the parent's are not changes."""
+    _write(
+        datadir / "user" / USER_ID / "process" / "same.json",
+        {
+            "name": "Same",
+            "inherits": f"0.20mm Standard @{K2}",
+            "from": "User",
+            "setting_id": "abc",
+            "compatible_printers": [K2],
+            "wall_loops": "2",
+            "brim_type": "no_brim",
+            "layer_height": ["0.2"],
+        },
+    )
+    library = _library(datadir)
+
+    parent, changes = library.changed_settings(Preset("Same", PresetKind.PROCESS, Path("x"), is_user=True))
+
+    assert parent == f"0.20mm Standard @{K2}"
+    assert changes == [("brim_type", None, "no_brim")]
+
+
+def test_a_preset_without_a_parent_has_no_changes(datadir: Path) -> None:
+    """A preset that inherits from nothing returns no parent and no changes."""
+    library = _library(datadir)
+
+    assert library.changed_settings(Preset("fdm_process", PresetKind.PROCESS, Path("x"), is_user=False)) == (None, [])

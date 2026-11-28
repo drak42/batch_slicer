@@ -16,9 +16,12 @@ from pathlib import Path, PurePosixPath
 from typing import IO, Any
 
 from batchslicer.services.gcode_stats import format_duration
+from batchslicer.services.print_settings import PRINT_SETTINGS
 from batchslicer.services.report import REPORT_CSV, REPORT_JSON
 
 _DEPTHS = ("*/" + REPORT_JSON, "*/*/" + REPORT_JSON)
+_DOWNLOADABLE_NAMES = (REPORT_CSV, REPORT_JSON, PRINT_SETTINGS)
+"""Files of a run, other than G-code, that may be downloaded."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,16 +149,16 @@ def inside(base: Path, relative: str) -> Path | None:
 
 
 def downloadable(path: Path) -> bool:
-    """Return whether a file of a run may be downloaded: its G-code and its reports."""
-    return path.suffix.casefold() == ".gcode" or path.name in (REPORT_CSV, REPORT_JSON)
+    """Return whether a file of a run may be downloaded: G-code, reports, settings summary."""
+    return path.suffix.casefold() == ".gcode" or path.name in _DOWNLOADABLE_NAMES
 
 
 def write_zip(result: RunResult, target: IO[bytes]) -> int:
-    """Write a run's G-code files and reports into a ZIP file, keeping their folders.
+    """Write a run's G-code, reports and settings summary into a ZIP file, keeping folders.
 
     Everything sits in a folder named after the run. Returns how many files were written.
     """
-    names = [*result.gcode, REPORT_CSV, REPORT_JSON]
+    names = [*result.gcode, *_DOWNLOADABLE_NAMES]
     top = PurePosixPath(result.name).name
     written = 0
     with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:

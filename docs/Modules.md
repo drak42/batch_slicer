@@ -57,6 +57,7 @@ docstring says more, including what it intentionally does not do.
 |---|---|
 | `services/slicing.py` | slice one model or a batch into job folders (parallel jobs, auto-orient retry, models together on plates, copies, clean-up) |
 | `services/report.py` | write `report.csv` and `report.json` |
+| `services/print_settings.py` | write `print-settings.txt`: the printer, filament and process presets of a result folder, their main settings and what the user's own presets change |
 | `services/gcode_stats.py` | read print time and filament use from G-code |
 | `services/thumbnails.py` | draw preview pictures from G-code toolpaths and insert them as PNG blocks; read them back |
 | `services/filament_matching.py` | match multi-colour projects to the filaments loaded in the printer (`--loaded-filaments`) and write their filament files |
@@ -64,7 +65,7 @@ docstring says more, including what it intentionally does not do.
 | `services/archives.py` | unpack the models of a zip file (`--input kit.zip`, zip drops) safely: model files only, no paths outside the folder, size limits |
 | `services/watching.py` | watch a folder (`--watch`): find drops that have finished copying and move them to `sliced` or `failed` once handled |
 | `services/watch_status.py` | write and read `.batchslicer-status.json`: what a watch run is doing, for the web page |
-| `services/results.py` | find the runs in the output folder, newest first, and read their reports; keep paths inside it; pack a run's G-code and reports into a ZIP |
+| `services/results.py` | find the runs in the output folder, newest first, and read their reports; keep paths inside it; pack a run's G-code, reports and `print-settings.txt` into a ZIP |
 | `services/uploads.py` | put uploaded files into the watched folder all at once, through a hidden staging folder: clean names, keep only what the watcher slices, limit sizes |
 
 ## backends

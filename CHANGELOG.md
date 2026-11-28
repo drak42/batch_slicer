@@ -6,6 +6,15 @@ All notable changes to BatchSlicer are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Every result folder gets `print-settings.txt`, which says in plain words
+  what the G-code was sliced for: the slicer, printer, filament(s) and process
+  preset, their main settings (layer height, walls, infill, speeds,
+  accelerations, temperatures, flow, pressure advance), and what your own
+  presets change compared with the preset they are based on
+  (`layer_height: 0.2 -> 0.12`). The web page's downloads and ZIPs include it.
+
 ## [0.22.1] - 2026-11-27
 
 See the web page in action: drop models on it, watch them slice, send them to

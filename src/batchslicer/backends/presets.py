@@ -174,6 +174,28 @@ class PresetLibrary:
             filament["filament_colour"] = [colour]
         return filament
 
+    def changed_settings(
+        self, preset: Preset
+    ) -> tuple[str | None, list[tuple[str, Any, Any]]]:
+        """Return what ``preset`` itself sets differently from the preset it inherits from.
+
+        Returns ``(parent name, [(setting, parent value, own value), ...])``,
+        sorted by setting. Names, links and other bookkeeping fields are left
+        out. A preset that inherits from nothing returns ``(None, [])``.
+        """
+        data = self._data(preset.kind, preset.name)
+        parent = data.get("inherits")
+        if not parent:
+            return None, []
+        changes = []
+        for key in sorted(data):
+            if _is_bookkeeping(key):
+                continue
+            before = self._inherited_value(preset.kind, str(parent), key)
+            if _comparable(before) != _comparable(data[key]):
+                changes.append((key, before, data[key]))
+        return str(parent), changes
+
     def _printer_for_cli(self, printer: Preset, *, link_user_printer: bool = True) -> dict[str, Any]:
         """Return a resolved printer the CLI accepts and matches compatibility against.
 
@@ -335,3 +357,38 @@ class PresetLibrary:
         if not isinstance(data, dict):
             raise PresetError(f"Slicer settings file is not a JSON object: {path}")
         return data
+
+
+_BOOKKEEPING = frozenset(
+    {
+        "name",
+        "inherits",
+        "from",
+        "type",
+        "instantiation",
+        "version",
+        "is_custom_defined",
+        "compatible_printers",
+        "compatible_printers_condition",
+        "compatible_prints",
+        "compatible_prints_condition",
+        "updated_time",
+    }
+)
+"""Preset fields that name, link or track a preset rather than set how it prints."""
+
+
+def _is_bookkeeping(key: str) -> bool:
+    """Return whether a preset field is bookkeeping (see ``_BOOKKEEPING``) or an id."""
+    return key in _BOOKKEEPING or key.endswith("_id")
+
+
+def _comparable(value: Any) -> Any:
+    """Return a setting in a form where ``["8"]`` and ``"8"`` compare equal.
+
+    Presets store most values as text, some as one-item lists (one value per
+    extruder); the same setting may be written either way in a preset and its parent.
+    """
+    if isinstance(value, list) and len(value) == 1:
+        value = value[0]
+    return str(value) if isinstance(value, int | float) else value

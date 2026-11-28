@@ -82,3 +82,27 @@ def test_a_whole_folder_on_plates_is_named_in_words(tmp_path: Path) -> None:
     [result] = find_results(tmp_path)
     assert result.rows[0].label == "All models, together on plates"
     assert ResultRow(model="cube.stl", success=True, gcode=()).label == "cube.stl"
+
+
+def test_the_zip_and_downloads_include_the_print_settings(tmp_path: Path) -> None:
+    """A run's ZIP holds its G-code, reports and print-settings.txt; all may be downloaded."""
+    import io
+    import zipfile
+
+    from batchslicer.services.results import downloadable, write_zip
+
+    folder = _run(tmp_path, "kit-20261128-101500", [_OK])
+    (folder / "cube").mkdir()
+    (folder / "cube" / "cube.gcode").write_text("G1")
+    (folder / "print-settings.txt").write_text("Printer: K2")
+    result = get_result(tmp_path, "kit-20261128-101500")
+    assert result is not None
+
+    buffer = io.BytesIO()
+    written = write_zip(result, buffer)
+
+    names = zipfile.ZipFile(buffer).namelist()
+    assert "kit-20261128-101500/print-settings.txt" in names
+    assert written == 3  # G-code, report.json and print-settings.txt (no report.csv here)
+    assert downloadable(folder / "print-settings.txt")
+    assert not downloadable(folder / "presets" / "process.json")

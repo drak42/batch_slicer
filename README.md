@@ -156,6 +156,9 @@ onto one plate. Recorded with [`docs/demo/demo.sh`](https://github.com/drak42/ba
 - **Reports print time and filament.** Every run writes `report.csv` and
   `report.json` with each model's status, print time, filament weight, length
   and cost, and the summary shows the totals.
+- **Records what it was sliced for.** `print-settings.txt` in every result
+  folder names the printer, filament and process preset and lists their main
+  settings, including what your own presets change.
 - **Can slice several models at once.** `--jobs N` runs N slicers side by
   side, which helps most on computers with many cores (see [Speed](#speed)).
 - **Slices for several printers at once.** One run can slice the same models
@@ -1330,6 +1333,7 @@ never overwritten.
 output/
   bracket-20261120-144428/
     bracket_PETG_2h50m.gcode
+    print-settings.txt # printer, filament, process and their main settings
     presets/           # the complete printer, process and filament files used
     report.csv         # see "Reports" below
     report.json
@@ -1346,6 +1350,7 @@ output/
   brackets-20261120-144808/
     left.gcode
     v1.gcode
+    print-settings.txt
     presets/           # shared by the whole batch
     report.csv
     report.json
@@ -1366,6 +1371,7 @@ output/
   ```
   output/
     brackets-20261120-144808/
+      print-settings.txt
       presets/
       report.csv
       report.json
@@ -1375,6 +1381,12 @@ output/
         v1/
           v1.gcode
   ```
+- `print-settings.txt` says in plain words what the G-code was sliced for: the
+  slicer, printer, filament(s) and process preset, their main settings (layer
+  height, walls, infill, speeds, temperatures...), and what your own presets
+  change compared with the preset they are based on. Every setting is in the
+  `presets` folder next to it. Runs sliced with a 3MF project's own settings
+  (no presets chosen) have neither.
 - Two models with the same name in one folder (`part.stl` and `part.3mf`) get
   separate folders (`part` and `part-2`).
 - A model that fails leaves no folder; its reason is in the summary, the

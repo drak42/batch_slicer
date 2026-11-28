@@ -5,8 +5,9 @@ model and the time, so earlier results are never overwritten. A batch gets one
 such folder named after the source folder, inside which the source folder
 structure is mirrored with one folder per model. When presets were chosen,
 complete copies are written into the job (once per batch) so it records
-exactly what was used. A failed model does not stop a batch, and Ctrl+C stops
-it cleanly, keeping the models already sliced. G-code files are
+exactly what was used, with ``print-settings.txt`` summing them up in plain
+words. A failed model does not stop a batch, and Ctrl+C stops it cleanly,
+keeping the models already sliced. G-code files are
 named after their model (``bracket.stl`` gives ``bracket.gcode``) instead of the
 slicer's generic ``plate_N.gcode``.
 
@@ -40,7 +41,7 @@ from datetime import datetime
 from pathlib import Path
 
 from batchslicer.backends.orca import OrcaBackend, OrcaResult
-from batchslicer.backends.presets import PresetLibrary
+from batchslicer.backends.presets import PresetError, PresetLibrary
 from batchslicer.backends.projects import is_project, project_filaments
 from batchslicer.core.logging import get_logger
 from batchslicer.domain.options import (
@@ -53,6 +54,7 @@ from batchslicer.domain.options import (
 from batchslicer.domain.presets import PresetSelection
 from batchslicer.services.filament_matching import FilamentMatcher
 from batchslicer.services.gcode_stats import GcodeStats, name_details, read_gcode_stats, total_stats
+from batchslicer.services.print_settings import PresetChanges, write_print_settings
 from batchslicer.services.thumbnails import ThumbnailError, add_thumbnails
 
 _RESULT_FILE_NAME = "result.json"
@@ -633,7 +635,35 @@ class SlicingService:
         settings, filaments = self._presets.write_resolved(
             selection, job_directory / _PRESETS_FOLDER_NAME, link_user_printer=link
         )
+        self._write_summary(self._presets, selection, job_directory, settings, filaments)
         return list(settings), list(filaments)
+
+    def _write_summary(
+        self,
+        library: PresetLibrary,
+        selection: PresetSelection,
+        job_directory: Path,
+        settings: Sequence[Path],
+        filaments: Sequence[Path],
+    ) -> None:
+        """Write ``print-settings.txt`` into the job; a problem is logged, never fatal."""
+        try:
+            changes = []
+            for preset in (selection.process, *dict.fromkeys(selection.filaments)):
+                if preset.is_user:
+                    parent, changed = library.changed_settings(preset)
+                    if parent is not None:
+                        changes.append(PresetChanges(preset.name, parent, tuple(changed)))
+            write_print_settings(
+                job_directory,
+                self._backend.slicer.display_name,
+                settings,
+                filaments,
+                changes,
+                when=self._clock(),
+            )
+        except (OSError, ValueError, PresetError) as error:
+            self._logger.warning("Could not write the print settings summary: %s", error)
 
     def _stamp(self) -> str:
         """Return the current time as used in job folder names."""
